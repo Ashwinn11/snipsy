@@ -1,14 +1,39 @@
 import SwiftUI
 
-/// The album-world background: warm paper with tooth, a faint dot grid, and a
-/// soft edge vignette. Used by develop, reveal, and album screens.
+/// Paper that breathes (the 75her background, in Postmark's colors): a
+/// near-imperceptible 3×3 mesh drifting between warm paper and a whisper of
+/// postal red, finished with the paper-grain shader so the fill reads as
+/// stock rather than a flat hex. Develop and reveal each mount their own
+/// copy; the drift is a pure function of absolute time, so the two stay
+/// pixel-identical through the phase handoff.
 struct PaperBackdrop: View {
-    var showsGrid = true
+    var showsGrid = false
+    var accent: Color = Theme.postalRed
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
-            Theme.paper
+            TimelineView(.animation(minimumInterval: 1 / 10, paused: reduceMotion)) { tl in
+                let t = tl.date.timeIntervalSinceReferenceDate / 10
+                let drift = Float(sin(t)) * 0.16
+                MeshGradient(
+                    width: 3, height: 3,
+                    points: [
+                        [0, 0], [0.5, 0], [1, 0],
+                        [0, 0.5], [0.5 + drift * 0.5, 0.5 - drift * 0.4], [1, 0.5],
+                        [0, 1], [0.5, 1], [1, 1],
+                    ],
+                    colors: meshColors(warmth: 0.05 + Double(drift) * 0.06)
+                )
+            }
+
+            // Static grain pass multiplied over the drifting mesh — rendered
+            // once and cached, so the mesh ticks never re-run the shader.
+            Rectangle()
+                .fill(.white)
                 .colorEffect(ShaderLibrary.paperGrain(.float(0.31), .float(0.5)))
+                .blendMode(.multiply)
 
             if showsGrid {
                 Canvas(opaque: false, rendersAsynchronously: true) { ctx, size in
@@ -35,9 +60,17 @@ struct PaperBackdrop: View {
                 center: .center, startRadius: 220, endRadius: 640
             )
         }
-        // No .ignoresSafeArea() here: every host is already full-bleed, and
-        // the expansion made DevelopOverlay's stack 8 pt taller than the
-        // window — centering then shifted its whole render 4 pt up, breaking
-        // the pixel handoff (grain pattern and crop jumped at each phase).
+        // Contain the grain's multiply blend within the backdrop.
+        .compositingGroup()
+    }
+
+    private func meshColors(warmth: Double) -> [Color] {
+        let breath = Theme.paper.mix(with: accent, by: warmth)
+        let corner = Theme.paper.mix(with: accent, by: 0.035)
+        return [
+            corner, Theme.paper, Theme.paper,
+            Theme.paper, breath, Theme.paper,
+            Theme.paper, Theme.paper, corner,
+        ]
     }
 }

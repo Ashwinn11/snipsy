@@ -13,7 +13,7 @@ struct OnboardingScreen: View {
 
     var body: some View {
         ZStack {
-            PaperBackdrop(showsGrid: true)
+            PaperBackdrop()
 
             VStack(spacing: 0) {
                 Spacer(minLength: 0)

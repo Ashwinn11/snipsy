@@ -13,7 +13,7 @@ struct AlbumScreen: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                PaperBackdrop()
+                PaperBackdrop(showsGrid: true)
 
                 VStack(spacing: 0) {
                     header(topInset: safeArea.top)
