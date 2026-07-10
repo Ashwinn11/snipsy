@@ -21,6 +21,7 @@ struct RevealScreen: View {
     /// main-thread hitch must pause the wave, never teleport it).
     @State private var wasteProgress: Double = 0
     @State private var wasteTarget: Double = 0
+    @State private var waveDriver = DisplayLinkDriver()
     /// The die cutter has run once (sticker path only).
     @State private var cutDone = false
     @State private var paper: Double = 0
@@ -126,7 +127,11 @@ struct RevealScreen: View {
         // Same pinning as CameraScreen/DevelopOverlay: placement must not
         // depend on the parent's (occasionally overshooting) proposal.
         .frame(width: screenSize.width, height: screenSize.height)
-        .onAppear { runEntrance() }
+        .onAppear {
+            wireWaveDriver()
+            runEntrance()
+        }
+        .onDisappear { waveDriver.stop() }
         .onTapGesture { if editingTitle { stopEditingTitle() } }
     }
 
@@ -145,9 +150,7 @@ struct RevealScreen: View {
     private var stampLayer: some View {
         let frame = stampFrame
 
-        TimelineView(.animation(
-            paused: rippleStart == nil && wasteProgress == wasteTarget
-        )) { timeline in
+        TimelineView(.animation(paused: rippleStart == nil)) { timeline in
             let rippleTime = rippleStart.map { timeline.date.timeIntervalSince($0) } ?? 10
 
             StampView(
@@ -177,16 +180,6 @@ struct RevealScreen: View {
                 onSubmitTitle: { stopEditingTitle() },
                 onTapCaption: chromeVisible && !flying ? { startEditingTitle() } : nil
             )
-            .onChange(of: timeline.date) { old, new in
-                guard wasteProgress != wasteTarget else { return }
-                let dt = min(max(0, new.timeIntervalSince(old)), 1.0 / 30.0)
-                let duration = wasteTarget > wasteProgress ? 1.15 : 0.6
-                if wasteTarget > wasteProgress {
-                    wasteProgress = min(wasteTarget, wasteProgress + dt / duration)
-                } else {
-                    wasteProgress = max(wasteTarget, wasteProgress - dt / duration)
-                }
-            }
         }
         .frame(width: frame.width, height: frame.height)
         .gesture(
@@ -215,6 +208,26 @@ struct RevealScreen: View {
             try? await Task.sleep(for: .seconds(1.6))
             if rippleStart == start { rippleStart = nil }
         }
+    }
+
+    /// The grain wave's integrator: per display frame, clamped dt, so a
+    /// hitch pauses the wave rather than teleporting it — and, unlike a
+    /// timeline `.onChange`, it cannot starve mid-wave under load.
+    private func wireWaveDriver() {
+        waveDriver.onTick = { dt in
+            let duration = wasteTarget > wasteProgress ? 1.15 : 0.6
+            if wasteTarget > wasteProgress {
+                wasteProgress = min(wasteTarget, wasteProgress + dt / duration)
+            } else if wasteTarget < wasteProgress {
+                wasteProgress = max(wasteTarget, wasteProgress - dt / duration)
+            }
+            return wasteProgress != wasteTarget
+        }
+    }
+
+    private func driveWaste(to target: Double) {
+        wasteTarget = target
+        waveDriver.start()
     }
 
     private func assembly() -> StampView.Assembly {
@@ -285,7 +298,7 @@ struct RevealScreen: View {
                     // …then the waste shatters off the cut line — a grain
                     // wave radiating outward — and the piece settles.
                     model.haptics.grains(duration: 0.8)
-                    wasteTarget = 1
+                    driveWaste(to: 1)
                     // The settle waits on the wave itself, not the clock: if
                     // a stall pauses the grains, the piece must not shrink
                     // out from beneath them.
@@ -300,7 +313,7 @@ struct RevealScreen: View {
                         caption = 0.001
                     }
                 } else {
-                    wasteTarget = 1
+                    driveWaste(to: 1)
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.8)) {
                         border = 1
                         settle = 1
@@ -310,7 +323,7 @@ struct RevealScreen: View {
                 }
             case .paper:
                 // The whole photo, framed — cut waste reassembles in reverse.
-                wasteTarget = 0
+                driveWaste(to: 0)
                 withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
                     border = 0
                     paper = 1
