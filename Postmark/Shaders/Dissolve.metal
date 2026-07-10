@@ -109,7 +109,9 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     float2 uv = position / size;
     half m = mask.sample(s, uv).a;
 
-    if (m > 0.5) { return layer.sample(position); }
+    // Kept pixels are modulated by the matte's continuous alpha so the end
+    // state is pixel-identical to rendering the cutout image itself.
+    if (m > 0.5) { return layer.sample(position) * m; }
 
     float2 cell = floor(position / cellSize);
     float rnd = hash21(cell + 5.7);

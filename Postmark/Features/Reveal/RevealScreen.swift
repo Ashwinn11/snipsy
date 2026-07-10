@@ -15,6 +15,8 @@ struct RevealScreen: View {
     @State private var centered = false
     @State private var maskStart: Date? = nil
     @State private var maskDone = false
+    @State private var diecut = false
+    @State private var stickerPop: CGFloat = 1
     @State private var paper: Double = 0
     @State private var caption: Double = 0
     @State private var settle: Double = 0
@@ -152,12 +154,18 @@ struct RevealScreen: View {
         a.paper = paper
         a.caption = caption
         a.settle = settle
+        a.stickerPop = stickerPop
 
-        if pending.style == .cutout, let cutout = pending.cutout, !maskDone {
-            if maskStart != nil {
-                a.content = .unmasking(mask: cutout, progress: maskProgress)
+        if pending.style == .cutout, let cutout = pending.cutout {
+            if !maskDone {
+                a.content = maskStart != nil
+                    ? .unmasking(mask: cutout, progress: maskProgress)
+                    : .raw
+            } else if !diecut {
+                // Beat 1 after the lift: the exact cutout, no border yet.
+                a.content = .lifted(cutout: cutout)
             } else {
-                a.content = .raw
+                a.content = .final
             }
         } else {
             a.content = .final
@@ -185,7 +193,18 @@ struct RevealScreen: View {
 
     private func finishUnmask() {
         maskDone = true
-        dress()
+        // Lift → breath → die-cut punch → assembly.
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.22))
+            model.haptics.tick()
+            stickerPop = 1.1
+            diecut = true
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.58)) {
+                stickerPop = 1
+            }
+            try? await Task.sleep(for: .seconds(0.38))
+            dress()
+        }
     }
 
     private func dress() {

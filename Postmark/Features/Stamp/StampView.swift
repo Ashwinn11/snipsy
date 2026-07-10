@@ -17,6 +17,8 @@ struct StampView: View {
         var caption: Double = 1
         /// 0 → sticker at its captured position, 1 → composed at center.
         var settle: Double = 1
+        /// Die-cut punch scale on the sticker (springs 1.12 → 1).
+        var stickerPop: CGFloat = 1
         var content: ContentStage = .final
 
         enum ContentStage {
@@ -24,6 +26,9 @@ struct StampView: View {
             case raw
             /// Grain shader eating everything but the subject.
             case unmasking(mask: UIImage, progress: Double)
+            /// The exact cutout image, subject at its captured position —
+            /// the guaranteed-clean end state of the unmask.
+            case lifted(cutout: UIImage)
             /// Final display image (sticker on paper / classic photo).
             case final
         }
@@ -148,6 +153,8 @@ struct StampView: View {
                         maxSampleOffset: CGSize(width: 52, height: 210)
                     )
             }
+        case .lifted(let cutout):
+            rawView(cutout, content: content)
         case .final:
             finalContent(w, content: content)
         }
@@ -178,6 +185,7 @@ struct StampView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: frame.width, height: frame.height)
+                .scaleEffect(assembly.stickerPop)
                 .shadow(color: Theme.ink.opacity(0.12 * assembly.paper),
                         radius: 0.012 * w, y: 0.008 * w)
                 .position(x: frame.midX, y: frame.midY)

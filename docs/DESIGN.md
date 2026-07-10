@@ -33,8 +33,9 @@ lives on warm paper.
 - **Grain dissolve** (Metal): wave from viewfinder edge outward; pixels become grains
   that shrink, glint, drift up and die. 1.35 s. Haptic: soft continuous texture.
 - **Stamp assembly**: crop glides from viewfinder to center; second grain pass eats
-  everything but the Vision subject; perforated paper unfurls behind; caption rises
-  letter by letter; № and year fade in.
+  everything but the Vision subject; a breath on the clean cutout, then the white
+  die-cut border *punches* in (spring 1.1→1 + tick haptic); perforated paper unfurls
+  behind; caption rises letter by letter; № and year fade in.
 - **Cancellation**: on Keep, postmark strikes (scale 1.6→1, rot −14°→−8°, heavy haptic),
   then the stamp arcs into the collection pill; pill bounces, count ticks.
 - **Album**: staggered entrance; cells rotated ±1.2° (organic); detail = matched
