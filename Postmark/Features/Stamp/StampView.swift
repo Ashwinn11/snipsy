@@ -239,10 +239,50 @@ struct StampView: View {
                         .opacity(assembly.waste)
                 }
                 stickerOverlay(w, content: content)
+                stickerTag(w, content: content)
             }
             .scaleEffect(1 - 0.018 * sin(min(1, max(0, assembly.border)) * .pi))
         case .final:
             finalContent(w, content: content)
+        }
+    }
+
+    /// The sticker's name — part of its die cut, CapWords-style: a white
+    /// tag pressed onto the subject's lower edge.
+    @ViewBuilder
+    private func stickerTag(_ w: CGFloat, content: CGRect) -> some View {
+        if style == .cutout, stickerBox != nil, let image, !title.isEmpty || editableTitle != nil {
+            let frame = stickerFrame(w, content: content, imageSize: image.size)
+            Group {
+                if let binding = editableTitle {
+                    TextField("NAME IT", text: binding)
+                        .font(Theme.engraved(0.05 * w))
+                        .foregroundStyle(Theme.ink.opacity(0.85))
+                        .tint(Theme.postalRed)
+                        .multilineTextAlignment(.center)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onSubmit(onSubmitTitle)
+                        .frame(width: 0.4 * w)
+                        .modifier(FocusedIfAvailable(focus: titleFocused))
+                } else {
+                    Text(title.uppercased())
+                        .font(Theme.engraved(0.05 * w))
+                        .tracking(0.05 * w * 0.08)
+                        .foregroundStyle(Theme.ink.opacity(0.85))
+                        .lineLimit(1)
+                        .contentShape(Capsule())
+                        .onTapGesture { onTapCaption?() }
+                }
+            }
+            .padding(.horizontal, 0.05 * w)
+            .padding(.vertical, 0.023 * w)
+            .background(Capsule().fill(.white))
+            .shadow(color: Theme.ink.opacity(0.16), radius: 0.012 * w, y: 0.006 * w)
+            .rotationEffect(.degrees(-2))
+            .position(x: frame.midX, y: frame.maxY - 0.006 * w)
+            .opacity(max(0.001, assembly.border))
         }
     }
 
@@ -450,6 +490,46 @@ struct StampView: View {
         } else {
             field
         }
+    }
+}
+
+/// Applies .focused only when a binding exists.
+struct FocusedIfAvailable: ViewModifier {
+    var focus: FocusState<Bool>.Binding?
+    func body(content: Content) -> some View {
+        if let focus { content.focused(focus) } else { content }
+    }
+}
+
+/// The stored sticker artifact: subject + its die-cut name tag, rendered
+/// once at keep time so every surface (album, Messages, share) shows the
+/// same object.
+struct StickerArtifact: View {
+    let image: UIImage
+    let title: String
+
+    var body: some View {
+        let w = min(image.size.width * image.scale, 1200)
+        let scale = w / max(image.size.width * image.scale, 1)
+        let h = image.size.height * image.scale * scale
+
+        VStack(spacing: -w * 0.03) {
+            Image(uiImage: image)
+                .resizable()
+                .frame(width: w, height: h)
+            if !title.isEmpty {
+                Text(title.uppercased())
+                    .font(Theme.engraved(w * 0.055))
+                    .tracking(w * 0.055 * 0.08)
+                    .foregroundStyle(Theme.ink.opacity(0.85))
+                    .lineLimit(1)
+                    .padding(.horizontal, w * 0.055)
+                    .padding(.vertical, w * 0.026)
+                    .background(Capsule().fill(.white))
+                    .rotationEffect(.degrees(-2))
+            }
+        }
+        .padding(w * 0.03)
     }
 }
 

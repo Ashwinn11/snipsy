@@ -18,20 +18,21 @@ struct RevealScreen: View {
     @State private var border: Double = 0
     /// The raw photo around the cut sticker; fades to 0 after the punch.
     @State private var waste: Double = 1
-    /// Swapped to .final once the waste is gone (pixel-identical states).
-    @State private var assembled = false
+    /// The die cutter has run once (sticker path only).
+    @State private var cutDone = false
     @State private var paper: Double = 0
     @State private var caption: Double = 0
     @State private var settle: Double = 0
     @State private var chromeVisible = false
 
-    // Artifact choice — sticker or stamp — made before the die cut.
-    @State private var artifactChooser = false
-    @State private var artifact: ArtifactKind? = nil
-
-    // Paper chooser (stamp path)
-    @State private var chooser = false
-    @State private var selectedVariant: StampVariant? = nil
+    /// One row, five options: the bare sticker or one of four papers.
+    enum ArtifactChoice: Equatable {
+        case sticker
+        case paper(StampVariant)
+    }
+    @State private var options = false
+    @State private var selection: ArtifactChoice? = nil
+    @State private var selectedVariant: StampVariant = .tinted
 
     // Liquid poke on the die-cut sticker
     @State private var rippleCenter: CGPoint = .zero
@@ -112,9 +113,7 @@ struct RevealScreen: View {
 
             stampLayer
 
-            artifactPicker
-
-            variantChooser
+            optionsChooser
 
             chrome
         }
@@ -151,7 +150,7 @@ struct RevealScreen: View {
                 number: model.store.nextNumber,
                 year: String(Calendar.current.component(.year, from: Date())),
                 date: .now,
-                variant: selectedVariant ?? .tinted,
+                variant: selectedVariant,
                 showsPostmark: postmarked,
                 postmarkScale: postmarkScale,
                 stickerBox: pending.stickerBox,
@@ -205,7 +204,7 @@ struct RevealScreen: View {
         a.settle = settle
         a.border = border
         a.waste = waste
-        a.content = pending.style == .cutout && !assembled ? .raw : .final
+        a.content = .raw
         return a
     }
 
@@ -231,146 +230,85 @@ struct RevealScreen: View {
             paper = 0.001
             caption = 0.001
             await afterNextCommit()
-            if pending.style == .cutout, pending.sticker != nil {
-                // The user decides what this becomes; the cutter waits.
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    artifactChooser = true
-                }
-            } else {
-                // No subject to lift — classic photo stamp only.
-                artifact = .stamp
-                assembled = true
-                offerPapers()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                options = true
             }
         }
     }
 
-    /// Sticker or stamp chosen — the die cutter runs, then the flow branches.
-    private func chooseArtifact(_ kind: ArtifactKind) {
-        guard artifact == nil else { return }
+    /// An option was tapped. Stickers run the die cutter (once); stamps
+    /// frame the whole photo on paper — no cut. Every switch is reversible
+    /// because both forms are opacity-driven over the same content.
+    private func select(_ choice: ArtifactChoice) {
+        guard selection != choice else { return }
         model.haptics.tick()
-        artifact = kind
+        let first = selection == nil
+        withAnimation(Theme.spring) { selection = choice }
+        if case .paper(let v) = choice {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                selectedVariant = v
+            }
+        }
         Task { @MainActor in
-            withAnimation(.easeOut(duration: 0.25)) { artifactChooser = false }
-            try? await Task.sleep(for: .seconds(0.28))
-            await afterNextCommit()
-            // Die cut: the press dips the sheet and the outline appears.
-            model.haptics.tick()
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                border = 1
-            }
-            try? await Task.sleep(for: .seconds(0.48))
-            // …then the waste sheet fades away, leaving the sticker.
-            withAnimation(.easeInOut(duration: 0.45)) {
-                waste = 0
-            }
-            try? await Task.sleep(for: .seconds(0.52))
-            assembled = true
-            await afterNextCommit()
-            if kind == .sticker {
-                // A sticker composes bare: settle to center, then chrome.
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            switch choice {
+            case .sticker:
+                if !cutDone {
+                    cutDone = true
+                    await afterNextCommit()
+                    // Die cut: the press dips the sheet, the outline appears…
+                    model.haptics.tick()
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                        border = 1
+                    }
+                    try? await Task.sleep(for: .seconds(0.48))
+                    // …then the waste sheet fades away and the piece settles.
+                    withAnimation(.easeInOut(duration: 0.45)) {
+                        waste = 0
+                    }
+                    try? await Task.sleep(for: .seconds(0.5))
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        settle = 1
+                        paper = 0.001
+                        caption = 0.001
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.55, dampingFraction: 0.8)) {
+                        border = 1
+                        waste = 0
+                        settle = 1
+                        paper = 0.001
+                        caption = 0.001
+                    }
+                }
+            case .paper:
+                // The whole photo, framed — the waste returns if it was cut.
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                    border = 0
+                    waste = 1
+                    paper = 1
                     settle = 1
                 }
-                try? await Task.sleep(for: .seconds(0.35))
+                if caption < 0.5 {
+                    withAnimation(.linear(duration: 0.7).delay(0.22)) {
+                        caption = 1
+                    }
+                }
+                if first {
+                    // Holographic sweep across the fresh stamp.
+                    holoStrength = 0.4
+                    withAnimation(.easeInOut(duration: 1.15).delay(0.35)) {
+                        holoSweep = 1.4
+                    }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(1.6))
+                        withAnimation(.easeOut(duration: 0.4)) { holoStrength = 0 }
+                    }
+                }
+            }
+            if first {
+                try? await Task.sleep(for: .seconds(0.4))
                 withAnimation(Theme.spring) { chromeVisible = true }
-            } else {
-                offerPapers()
             }
-        }
-    }
-
-    /// The moment of choice: the bare die-cut or the dressed collectible.
-    private var artifactPicker: some View {
-        let rowY = screenSize.height - max(safeArea.bottom, 16) - 152
-
-        return VStack(spacing: 16) {
-            Text("Make it a…")
-                .font(.system(size: 14, design: .serif))
-                .italic()
-                .foregroundStyle(Theme.inkSoft)
-
-            HStack(spacing: 26) {
-                Button {
-                    chooseArtifact(.sticker)
-                } label: {
-                    VStack(spacing: 10) {
-                        Group {
-                            if let sticker = pending.sticker {
-                                Image(uiImage: sticker)
-                                    .resizable()
-                                    .scaledToFit()
-                            }
-                        }
-                        .frame(width: 84, height: 84)
-                        .shadow(color: Theme.ink.opacity(0.14), radius: 6, y: 4)
-                        Text("STICKER")
-                            .font(Theme.engraved(12))
-                            .tracking(1.5)
-                            .foregroundStyle(Theme.ink.opacity(0.75))
-                    }
-                }
-                .buttonStyle(PressableButtonStyle())
-
-                Button {
-                    chooseArtifact(.stamp)
-                } label: {
-                    VStack(spacing: 10) {
-                        StampView(
-                            image: pending.displayImage,
-                            style: pending.style,
-                            tint: pending.tint.color,
-                            title: "",
-                            number: model.store.nextNumber,
-                            year: "",
-                            stickerBox: pending.stickerBox,
-                            assembly: thumbAssembly
-                        )
-                        .frame(width: 64)
-                        .frame(width: 84, height: 84)
-                        Text("STAMP")
-                            .font(Theme.engraved(12))
-                            .tracking(1.5)
-                            .foregroundStyle(Theme.ink.opacity(0.75))
-                    }
-                }
-                .buttonStyle(PressableButtonStyle())
-            }
-        }
-        .position(x: screenSize.width / 2, y: rowY)
-        .opacity(artifactChooser ? 1 : 0.001)
-        .offset(y: artifactChooser ? 0 : 18)
-        .allowsHitTesting(artifactChooser)
-    }
-
-    /// The die-cut floats bare; four papers rise beneath it. Dressing waits
-    /// for the user's pick — until then, poking the sticker ripples it.
-    private func offerPapers() {
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-            chooser = true
-        }
-    }
-
-    private func dress() {
-        model.haptics.tick()
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
-            paper = 1
-            settle = 1
-        }
-        withAnimation(.linear(duration: 0.7).delay(0.22)) {
-            caption = 1
-        }
-        withAnimation(Theme.spring.delay(0.3)) {
-            chromeVisible = true
-        }
-        // Holographic sweep across the fresh stamp.
-        holoStrength = 0.4
-        withAnimation(.easeInOut(duration: 1.15).delay(0.35)) {
-            holoSweep = 1.4
-        }
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1.6))
-            withAnimation(.easeOut(duration: 0.4)) { holoStrength = 0 }
         }
     }
 
@@ -379,7 +317,7 @@ struct RevealScreen: View {
         stopEditingTitle()
         model.haptics.thunk()
 
-        if artifact == .sticker {
+        if selection == .sticker {
             // Stickers fly uncancelled — no date strike.
             Task { @MainActor in
                 withAnimation(Theme.spring) {
@@ -410,54 +348,53 @@ struct RevealScreen: View {
                 stampGone = true
             }
             try? await Task.sleep(for: .seconds(0.52))
-            model.keep(pending, title: title, variant: selectedVariant ?? .tinted,
-                       kind: .stamp)
+            model.keep(pending, title: title, variant: selectedVariant, kind: .stamp)
         }
     }
 
-    // MARK: Paper chooser
+    // MARK: Options
 
-    /// Four papers to pick from. Mounted from the reveal's first frame at
-    /// near-zero opacity so its one-time render cost (four mini paper
-    /// shaders + the sticker texture) is pre-paid, never inside its spring.
-    private var variantChooser: some View {
-        let shown = chooser && !flying && !editingTitle
+    /// One row, five options: sticker first, then the four papers. Mounted
+    /// from the reveal's first frame at near-zero opacity so the one-time
+    /// render cost (mini paper shaders + textures) is pre-paid, never
+    /// inside its spring.
+    private var optionsChooser: some View {
+        let shown = options && !flying && !editingTitle
         let rowY = screenSize.height - max(safeArea.bottom, 16) - 158
-        let year = String(Calendar.current.component(.year, from: Date()))
 
         return VStack(spacing: 14) {
-            Text("Choose its paper")
+            Text("Make it a…")
                 .font(.system(size: 14, design: .serif))
                 .italic()
                 .foregroundStyle(Theme.inkSoft)
-                .opacity(selectedVariant == nil ? 1 : 0)
+                .opacity(selection == nil ? 1 : 0)
 
-            HStack(spacing: 16) {
+            HStack(spacing: 13) {
+                if pending.style == .cutout, let sticker = pending.sticker {
+                    optionButton(.sticker, selected: selection == .sticker) {
+                        Image(uiImage: sticker)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 52, height: 68)
+                            .shadow(color: Theme.ink.opacity(0.16), radius: 3, y: 2)
+                    }
+                }
                 ForEach(StampVariant.allCases) { v in
-                    Button {
-                        choose(v)
-                    } label: {
+                    optionButton(.paper(v), selected: selection == .paper(v)) {
                         StampView(
                             image: pending.displayImage,
                             style: pending.style,
                             tint: pending.tint.color,
                             title: "",
                             number: model.store.nextNumber,
-                            year: year,
+                            year: "",
                             variant: v,
                             stickerBox: pending.stickerBox,
+                            rawCrop: pending.capture.cropImage,
                             assembly: thumbAssembly
                         )
-                        .frame(width: 56)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 5)
-                                .strokeBorder(Theme.postalRed, lineWidth: 1.6)
-                                .padding(-5)
-                                .opacity(selectedVariant == v ? 1 : 0)
-                        }
+                        .frame(width: 52)
                     }
-                    .buttonStyle(PressableButtonStyle())
-                    .scaleEffect(selectedVariant == v ? 1.07 : 1)
                 }
             }
         }
@@ -468,23 +405,30 @@ struct RevealScreen: View {
         .animation(.easeOut(duration: 0.2), value: editingTitle)
     }
 
-    /// Dressed, caption hidden — the minis are about the paper, not the text.
-    private var thumbAssembly: StampView.Assembly {
-        var a = StampView.Assembly()
-        a.caption = 0
-        return a
+    private func optionButton<Preview: View>(
+        _ choice: ArtifactChoice, selected: Bool,
+        @ViewBuilder preview: () -> Preview
+    ) -> some View {
+        Button {
+            select(choice)
+        } label: {
+            preview()
+                .frame(width: 56, height: 70)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5)
+                        .strokeBorder(Theme.postalRed, lineWidth: 1.6)
+                        .padding(-4)
+                        .opacity(selected ? 1 : 0)
+                }
+        }
+        .buttonStyle(PressableButtonStyle())
+        .scaleEffect(selected ? 1.07 : 1)
     }
 
-    private func choose(_ v: StampVariant) {
-        model.haptics.tick()
-        if selectedVariant == nil {
-            withAnimation(Theme.spring) { selectedVariant = v }
-            dress()
-        } else if selectedVariant != v {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                selectedVariant = v
-            }
-        }
+    /// Full photo on paper, caption hidden — the minis are about the paper.
+    private var thumbAssembly: StampView.Assembly {
+        StampView.Assembly(paper: 1, caption: 0, settle: 1,
+                           border: 0, waste: 1, content: .raw)
     }
 
     // MARK: Chrome

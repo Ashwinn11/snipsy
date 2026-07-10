@@ -101,12 +101,34 @@ final class StampStore {
 
     var nextNumber: Int { (stamps.map(\.number).max() ?? 0) + 1 }
 
+    /// Sticker artifacts bake the name tag into the die cut once, at keep
+    /// time, so every surface shows the same object.
+    private func compositedSticker(_ pending: PendingStamp, title: String) -> UIImage? {
+        guard let sticker = pending.sticker else { return nil }
+        let renderer = ImageRenderer(content: StickerArtifact(image: sticker, title: title))
+        renderer.scale = 1
+        renderer.isOpaque = false
+        return renderer.uiImage
+    }
+
     @discardableResult
     func add(_ pending: PendingStamp, title: String, variant: StampVariant,
              kind: ArtifactKind = .stamp) -> Stamp {
         let id = UUID()
         let file = "\(id.uuidString).heic"
-        let display = pending.displayImage
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Stickers store the composited die cut (subject + name tag);
+        // stamps store the whole framed photo.
+        let display: UIImage
+        let style: Stamp.Style
+        switch kind {
+        case .sticker:
+            display = compositedSticker(pending, title: trimmed) ?? pending.displayImage
+            style = .cutout
+        case .stamp:
+            display = pending.capture.cropImage
+            style = .classic
+        }
         // Optimize + write off-main: done here it stalls the fly-out fade.
         // The in-memory cache serves reads until the files land.
         let destination = imagesDir.appendingPathComponent(file)
@@ -117,10 +139,10 @@ final class StampStore {
         }
         let stamp = Stamp(
             id: id,
-            title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            title: trimmed,
             date: Date(),
             number: nextNumber,
-            style: pending.style,
+            style: style,
             tint: pending.tint,
             imageFile: file,
             variant: variant,

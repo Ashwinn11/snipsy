@@ -73,12 +73,15 @@ final class ShareViewController: UIViewController {
 @MainActor
 @Observable
 final class ShareComposerState {
+    enum Choice: Equatable {
+        case sticker
+        case paper(StampVariant)
+    }
+
     var failed = false
     var analyzing = true
     var kept = false
-    var variant: StampVariant = .tinted
-    var kind: ArtifactKind = .stamp
-    var canBeSticker: Bool { pending?.style == .cutout }
+    var choice: Choice? = nil
 
     private(set) var pending: PendingStamp? = nil
     private let store = StampStore()
@@ -122,9 +125,15 @@ final class ShareComposerState {
     }
 
     func keep() {
-        guard let pending, !kept else { return }
-        store.add(pending, title: pending.suggestedTitle ?? "",
-                  variant: variant, kind: kind)
+        guard let pending, let choice, !kept else { return }
+        switch choice {
+        case .sticker:
+            store.add(pending, title: pending.suggestedTitle ?? "",
+                      variant: .tinted, kind: .sticker)
+        case .paper(let v):
+            store.add(pending, title: pending.suggestedTitle ?? "",
+                      variant: v, kind: .stamp)
+        }
         kept = true
     }
 }
@@ -185,29 +194,25 @@ struct ShareComposerView: View {
                             number: state.nextNumber,
                             year: String(Calendar.current.component(.year, from: Date())),
                             date: .now,
-                            variant: state.variant,
+                            variant: previewVariant,
                             stickerBox: pending.stickerBox,
-                            assembly: state.kind == .sticker
-                                ? bareAssembly
-                                : .dressed
+                            rawCrop: pending.capture.cropImage,
+                            assembly: previewAssembly
                         )
                         .frame(width: 210)
                         .shadow(color: Theme.ink.opacity(0.14), radius: 16, y: 9)
 
-                        if state.canBeSticker {
-                            HStack(spacing: 10) {
-                                kindChip("Sticker", .sticker)
-                                kindChip("Stamp", .stamp)
+                        HStack(spacing: 11) {
+                            if pending.style == .cutout, let sticker = pending.sticker {
+                                optionButton(.sticker) {
+                                    Image(uiImage: sticker)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 44, height: 56)
+                                }
                             }
-                        }
-
-                        HStack(spacing: 12) {
                             ForEach(StampVariant.allCases) { v in
-                                Button {
-                                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                                        state.variant = v
-                                    }
-                                } label: {
+                                optionButton(.paper(v)) {
                                     StampView(
                                         image: pending.displayImage,
                                         style: pending.style,
@@ -217,21 +222,13 @@ struct ShareComposerView: View {
                                         year: "",
                                         variant: v,
                                         stickerBox: pending.stickerBox,
+                                        rawCrop: pending.capture.cropImage,
                                         assembly: thumbAssembly
                                     )
                                     .frame(width: 44)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .strokeBorder(Theme.postalRed, lineWidth: 1.4)
-                                            .padding(-4)
-                                            .opacity(state.variant == v ? 1 : 0)
-                                    }
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
-                        .opacity(state.kind == .stamp ? 1 : 0)
-                        .allowsHitTesting(state.kind == .stamp)
                     }
                 }
 
@@ -250,38 +247,57 @@ struct ShareComposerView: View {
                     .padding(.horizontal, 40)
                     .frame(height: 52)
                     .background(Theme.postalRed, in: Capsule())
-                    .opacity(state.pending == nil ? 0.4 : 1)
+                    .opacity(state.pending == nil || state.choice == nil ? 0.4 : 1)
                 }
-                .disabled(state.pending == nil || state.kept)
+                .disabled(state.pending == nil || state.choice == nil || state.kept)
                 .padding(.bottom, 26)
             }
         }
     }
 
     private var thumbAssembly: StampView.Assembly {
-        var a = StampView.Assembly()
-        a.caption = 0
-        return a
+        StampView.Assembly(paper: 1, caption: 0, settle: 1,
+                           border: 0, waste: 1, content: .raw)
     }
 
-    private var bareAssembly: StampView.Assembly {
-        StampView.Assembly(paper: 0, caption: 0, content: .final)
+    /// Raw crop until a choice is made, then the chosen form. Stamps frame
+    /// the whole photo; only stickers are die-cut.
+    private var previewAssembly: StampView.Assembly {
+        switch state.choice {
+        case nil:
+            return StampView.Assembly(paper: 0, caption: 0, settle: 0,
+                                      border: 0, waste: 1, content: .raw)
+        case .sticker:
+            return StampView.Assembly(paper: 0, caption: 0, settle: 1,
+                                      border: 1, waste: 0, content: .raw)
+        case .paper:
+            return StampView.Assembly(paper: 1, caption: 1, settle: 1,
+                                      border: 0, waste: 1, content: .raw)
+        }
     }
 
-    private func kindChip(_ label: String, _ kind: ArtifactKind) -> some View {
+    private var previewVariant: StampVariant {
+        if case .paper(let v) = state.choice { return v }
+        return .tinted
+    }
+
+    private func optionButton<Preview: View>(
+        _ choice: ShareComposerState.Choice,
+        @ViewBuilder preview: () -> Preview
+    ) -> some View {
         Button {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
-                state.kind = kind
+                state.choice = choice
             }
         } label: {
-            Text(label)
-                .font(.system(size: 13, weight: .semibold, design: .serif))
-                .foregroundStyle(state.kind == kind ? .white : Theme.ink)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 7)
-                .background(
-                    Capsule().fill(state.kind == kind ? Theme.postalRed : Theme.ink.opacity(0.06))
-                )
+            preview()
+                .frame(width: 48, height: 58)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 4)
+                        .strokeBorder(Theme.postalRed, lineWidth: 1.4)
+                        .padding(-4)
+                        .opacity(state.choice == choice ? 1 : 0)
+                }
         }
         .buttonStyle(.plain)
     }
