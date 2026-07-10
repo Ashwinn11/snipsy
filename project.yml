@@ -1,0 +1,34 @@
+name: Postmark
+options:
+  bundleIdPrefix: com.ashwinn
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_IDENTITY: "Apple Development"
+    CODE_SIGNING_REQUIRED: "NO"
+targets:
+  Postmark:
+    type: application
+    platform: iOS
+    sources:
+      - path: Postmark
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: "NO"
+        ENABLE_PREVIEWS: "YES"
+        GENERATE_INFOPLIST_FILE: "YES"
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0"
+        INFOPLIST_KEY_CFBundleDisplayName: "Postmark"
+        INFOPLIST_KEY_NSCameraUsageDescription: "Postmark uses the camera so you can turn what you see into collectible stamps."
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_UIUserInterfaceStyle: "Light"
+        INFOPLIST_KEY_UIStatusBarHidden: "NO"
