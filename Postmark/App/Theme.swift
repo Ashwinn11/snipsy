@@ -50,8 +50,10 @@ struct RGBValue: Codable, Equatable {
     static func stampTint(from color: UIColor) -> RGBValue {
         var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
         color.getHue(&h, saturation: &s, brightness: &v, alpha: &a)
-        let mutedS = min(max(s * 0.55, 0.10), 0.30)
-        let mutedV = min(max(v, 0.86), 0.94)
+        // Floor saturation and cap brightness so the stamp always sits
+        // clearly deeper than the album paper behind it (S≈0.06, V≈0.96).
+        let mutedS = min(max(s * 0.6, 0.16), 0.34)
+        let mutedV = min(max(v, 0.84), 0.90)
         let out = UIColor(hue: h, saturation: mutedS, brightness: mutedV, alpha: 1)
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
         out.getRed(&r, green: &g, blue: &b, alpha: &a)

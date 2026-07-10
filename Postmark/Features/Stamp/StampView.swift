@@ -70,10 +70,13 @@ struct StampView: View {
     /// Paper fill for the current variant.
     private var paperFill: Color {
         switch variant {
+        // Every paper keeps clear tonal separation from the album backdrop
+        // (#F4EFE6): tinted and ivory sit deeper, ink far darker, airmail
+        // brighter — a white envelope on cream, carried by its stripes.
         case .tinted: tint
-        case .ivory: Color(red: 0.925, green: 0.885, blue: 0.795)
+        case .ivory: Color(red: 0.885, green: 0.830, blue: 0.700)
         case .ink: Color(red: 0.165, green: 0.150, blue: 0.130)
-        case .airmail: Color(red: 0.975, green: 0.960, blue: 0.930)
+        case .airmail: Color(red: 0.995, green: 0.990, blue: 0.980)
         }
     }
 
@@ -163,8 +166,8 @@ struct StampView: View {
             PerforatedRect()
                 .fill(paperFill)
                 .colorEffect(ShaderLibrary.paperGrain(.float(0.62), .float(0.55)))
-                .shadow(color: Theme.ink.opacity(0.16), radius: 0.045 * w, y: 0.02 * w)
-                .shadow(color: Theme.ink.opacity(0.10), radius: 0.008 * w, y: 0.004 * w)
+                .shadow(color: Theme.ink.opacity(0.22), radius: 0.05 * w, y: 0.024 * w)
+                .shadow(color: Theme.ink.opacity(0.12), radius: 0.009 * w, y: 0.005 * w)
 
             // Each paper has its own signature framing. All treatments stay
             // mounted; switching variants only animates opacity, never view
