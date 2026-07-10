@@ -8,7 +8,7 @@ struct PaperBackdrop: View {
     var body: some View {
         ZStack {
             Theme.paper
-                .colorEffect(ShaderLibrary.paperGrain(.float(0.31), .float(0.55)))
+                .colorEffect(ShaderLibrary.paperGrain(.float(0.31), .float(0.5)))
 
             if showsGrid {
                 Canvas(opaque: false, rendersAsynchronously: true) { ctx, size in

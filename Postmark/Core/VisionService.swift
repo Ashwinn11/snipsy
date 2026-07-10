@@ -84,6 +84,8 @@ enum VisionService {
         "structure", "material", "machine", "equipment", "furniture",
         "container", "indoor", "outdoor", "adult", "people", "textile",
         "pattern", "design", "art", "still_life", "product", "document",
+        "tableware", "utensil", "cookware", "drink", "liquid", "foliage",
+        "plant", "food", "vegetable", "fruit", "decoration", "toy",
     ]
 
     private static func classify(_ cg: CGImage) -> String? {

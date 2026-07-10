@@ -37,9 +37,9 @@ struct DevelopOverlay: View {
                             .float4(vf.minX, vf.minY, vf.width, vf.height),
                             .float(12),
                             .float(progress),
-                            .float(6)
+                            .float(9)
                         ),
-                        maxSampleOffset: CGSize(width: 40, height: 130)
+                        maxSampleOffset: CGSize(width: 52, height: 210)
                     )
                     .onChange(of: raw >= 1) { _, done in
                         if done {

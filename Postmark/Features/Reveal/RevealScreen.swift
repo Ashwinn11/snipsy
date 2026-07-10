@@ -32,6 +32,7 @@ struct RevealScreen: View {
 
     // Title
     @State private var title: String
+    @State private var editingTitle = false
     @FocusState private var titleFocused: Bool
 
     private let maskDuration: TimeInterval = 0.95
@@ -88,7 +89,18 @@ struct RevealScreen: View {
             chrome
         }
         .onAppear { runEntrance() }
-        .onTapGesture { titleFocused = false }
+        .onTapGesture { if editingTitle { stopEditingTitle() } }
+    }
+
+    private func startEditingTitle() {
+        model.haptics.tick()
+        editingTitle = true
+        titleFocused = true
+    }
+
+    private func stopEditingTitle() {
+        editingTitle = false
+        titleFocused = false
     }
 
     @ViewBuilder
@@ -113,9 +125,10 @@ struct RevealScreen: View {
                 assembly: assembly(maskProgress: maskProgress),
                 holoStrength: holoStrength,
                 holoSweep: holoSweep,
-                editableTitle: chromeVisible && !flying ? $title : nil,
+                editableTitle: editingTitle ? $title : nil,
                 titleFocused: $titleFocused,
-                onSubmitTitle: { titleFocused = false }
+                onSubmitTitle: { stopEditingTitle() },
+                onTapCaption: chromeVisible && !flying ? { startEditingTitle() } : nil
             )
             .onChange(of: maskProgress >= 1) { _, done in
                 if done && !maskDone { finishUnmask() }
@@ -196,11 +209,24 @@ struct RevealScreen: View {
             try? await Task.sleep(for: .seconds(1.6))
             withAnimation(.easeOut(duration: 0.4)) { holoStrength = 0 }
         }
+        #if DEBUG
+        let autokeep = ProcessInfo.processInfo.environment["POSTMARK_AUTOKEEP"]
+        if autokeep == "1" || autokeep == "2" {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.8))
+                keepTapped()
+                if autokeep == "2" {
+                    try? await Task.sleep(for: .seconds(2.2))
+                    withAnimation(Theme.spring) { model.showAlbum = true }
+                }
+            }
+        }
+        #endif
     }
 
     private func keepTapped() {
         guard !flying, !postmarked else { return }
-        titleFocused = false
+        stopEditingTitle()
         model.haptics.thunk()
         postmarked = true
         withAnimation(.spring(response: 0.32, dampingFraction: 0.62)) {

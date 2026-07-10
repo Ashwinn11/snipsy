@@ -4,9 +4,9 @@ using namespace metal;
 
 // ────────────────────────────────────────────────────────────────────────────
 // Grain dissolve — the signature Postmark transition.
-// Pixels quantize into small grains that glint, shrink, drift upward and die.
-// Two variants: rect-masked (everything outside the viewfinder) and
-// texture-masked (everything that is not the Vision subject).
+// Pixels quantize into visible grains that glint, shrink, drift upward on a
+// breeze and die. Two variants: rect-masked (everything outside the
+// viewfinder) and texture-masked (everything that is not the Vision subject).
 // ────────────────────────────────────────────────────────────────────────────
 
 static inline float hash21(float2 p) {
@@ -27,24 +27,24 @@ static inline GrainSample grainMotion(float2 position, float2 cell, float cellSi
     float rnd  = hash21(cell);
     float rnd2 = hash21(cell + 71.7);
 
-    // Rigid per-grain drift: up and slightly windblown sideways.
-    float rise = local * local * (44.0 + 66.0 * rnd);
-    float wind = sin(rnd * 6.28318) * 26.0 * local;
+    // Rigid per-grain drift: up and sideways on a randomized breeze.
+    float rise = local * local * (70.0 + 130.0 * rnd);
+    float wind = sin(rnd * 6.28318) * (18.0 + 30.0 * rnd2) * local;
     float2 offset = float2(wind, -rise);
 
     // Shrink grain content toward its center as it dies.
     float2 center = (cell + 0.5) * cellSize;
-    float shrink = 1.0 - 0.75 * local;
-    g.samplePos = center + (position - offset - center) / max(shrink, 0.08);
+    float shrink = 1.0 - 0.8 * local;
+    g.samplePos = center + (position - offset - center) / max(shrink, 0.06);
 
     // If the shrunken sample escapes this grain's cell, the grain is gone there.
     float2 rel = (g.samplePos / cellSize) - cell;
     float inCell = step(0.0, rel.x) * step(rel.x, 1.0) * step(0.0, rel.y) * step(rel.y, 1.0);
 
-    g.alpha = (1.0 - smoothstep(0.55, 1.0, local)) * inCell;
+    g.alpha = (1.0 - smoothstep(0.30, 0.92, local)) * inCell;
     // A brief glint as the grain lets go — like mica catching light.
-    g.glint = smoothstep(0.02, 0.18, local) * (1.0 - smoothstep(0.18, 0.5, local))
-              * pow(rnd2, 6.0) * 1.6;
+    g.glint = smoothstep(0.04, 0.16, local) * (1.0 - smoothstep(0.16, 0.45, local))
+              * pow(rnd2, 3.5) * 2.2;
     return g;
 }
 
@@ -54,7 +54,7 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
-/// Everything outside the viewfinder rounded-rect dissolves.
+/// Everything outside the viewfinder rounded-rect dissolves, edge-out.
 /// vfRect = (x, y, w, h) in view points; progress 0→1.
 [[ stitchable ]] half4 grainDissolveRect(
     float2 position,
@@ -71,12 +71,13 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     // Inside the viewfinder: untouched, always.
     if (sd <= 0.0) { return layer.sample(position); }
 
-    // Distance-based wave: grains at the viewfinder edge go first.
-    float maxDist = length(bounds.zw) * 0.55;
+    // The wave travels outward from the viewfinder edge; per-grain jitter
+    // keeps the front ragged but legible.
+    float maxDist = length(bounds.zw) * 0.42;
     float2 cell = floor(position / cellSize);
     float rnd = hash21(cell + 13.1);
-    float delay = clamp(sd / maxDist, 0.0, 1.0) * 0.48 + rnd * 0.22;
-    float local = clamp((progress * 1.7 - delay) / 0.5, 0.0, 1.0);
+    float delay = clamp(sd / maxDist, 0.0, 1.0) * 0.62 + rnd * 0.10;
+    float local = clamp((progress * 1.75 - delay) / 0.42, 0.0, 1.0);
 
     if (local <= 0.0) { return layer.sample(position); }
     if (local >= 1.0) { return half4(0.0); }
@@ -88,9 +89,8 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     return c;
 }
 
-/// Everything the mask calls background (mask alpha < 0.5) dissolves.
-/// Used to lift the Vision subject out of the crop. Mask is sampled in
-/// normalized coordinates over `bounds`.
+/// Everything the mask calls background (mask alpha < 0.5) dissolves,
+/// top → bottom. Used to lift the Vision subject out of the crop.
 [[ stitchable ]] half4 grainDissolveMask(
     float2 position,
     SwiftUI::Layer layer,
@@ -105,11 +105,10 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
 
     if (m > 0.5) { return layer.sample(position); }
 
-    // Wave sweeps top → bottom with per-grain jitter.
     float2 cell = floor(position / cellSize);
     float rnd = hash21(cell + 5.7);
-    float delay = uv.y * 0.35 + rnd * 0.3;
-    float local = clamp((progress * 1.65 - delay) / 0.5, 0.0, 1.0);
+    float delay = uv.y * 0.40 + rnd * 0.18;
+    float local = clamp((progress * 1.6 - delay) / 0.42, 0.0, 1.0);
 
     if (local <= 0.0) { return layer.sample(position); }
     if (local >= 1.0) { return half4(0.0); }

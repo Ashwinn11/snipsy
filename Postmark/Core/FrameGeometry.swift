@@ -66,4 +66,9 @@ extension UIImage {
             draw(in: CGRect(origin: .zero, size: size))
         }
     }
+
+    /// Force-decode so first display never stutters on JPEG decompression.
+    func predecoded() -> UIImage {
+        preparingForDisplay() ?? self
+    }
 }

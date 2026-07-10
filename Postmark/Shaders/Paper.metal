@@ -36,10 +36,10 @@ static inline float vnoise(float2 p) {
     // Longer horizontal fibers.
     float fiber = vnoise(float2(p.x * 0.12, p.y * 1.7)) - 0.5;
     // Sparse darker flecks, like recycled pulp.
-    float fleck = step(0.992, phash(floor(p / 2.0))) * 0.5;
+    float fleck = step(0.9965, phash(floor(p / 2.0))) * 0.30;
 
-    float shade = 1.0 + (tooth * 0.5 + fiber * 0.35) * strength - fleck * strength * 0.35;
-    color.rgb *= half(clamp(shade, 0.0, 1.15));
+    float shade = 1.0 + (tooth * 0.30 + fiber * 0.18) * strength - fleck * strength;
+    color.rgb *= half(clamp(shade, 0.0, 1.06));
     return color;
 }
 

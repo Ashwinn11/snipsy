@@ -80,7 +80,8 @@ struct CameraScreen: View {
         Text("POSTMARK")
             .font(Theme.engraved(15))
             .tracking(5)
-            .foregroundStyle(.white.opacity(0.85))
+            .foregroundStyle(.white.opacity(0.9))
+            .shadow(color: .black.opacity(0.45), radius: 7, y: 1)
             .position(x: screenSize.width / 2, y: safeArea.top + 24)
 
         // Flash (device, back camera only)
@@ -102,7 +103,8 @@ struct CameraScreen: View {
         if CameraController.isDemo {
             Text("Swipe for another scene")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(.white.opacity(0.75))
+                .shadow(color: .black.opacity(0.5), radius: 5, y: 1)
                 .position(x: screenSize.width / 2, y: vf.maxY + 30)
         }
 

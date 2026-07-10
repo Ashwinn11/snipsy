@@ -12,6 +12,14 @@ final class AppModel {
         case camera
         case developing(Capture)
         case reveal(PendingStamp)
+
+        var kind: Int {
+            switch self {
+            case .camera: 0
+            case .developing: 1
+            case .reveal: 2
+            }
+        }
     }
 
     var phase: Phase = .camera
@@ -40,9 +48,15 @@ final class AppModel {
         isCapturing = true
         defer { isCapturing = false }
         haptics.shutter()
+        let shutterMoment = Date()
 
         do {
             let shot = try await camera.capture()
+            // Hold the shutter blink long enough to read as a beat.
+            let elapsed = Date().timeIntervalSince(shutterMoment)
+            if elapsed < 0.26 {
+                try? await Task.sleep(for: .seconds(0.26 - elapsed))
+            }
             let screenRect = CGRect(origin: .zero, size: viewSize)
 
             // Bake the on-screen presentation (aspect-fill + demo drift) into a

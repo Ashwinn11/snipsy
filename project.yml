@@ -17,18 +17,25 @@ targets:
     platform: iOS
     sources:
       - path: Postmark
+    info:
+      path: Postmark/Info.plist
+      properties:
+        CFBundleDisplayName: Postmark
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSCameraUsageDescription: "Postmark uses the camera so you can turn what you see into collectible stamps."
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIUserInterfaceStyle: Light
+        UIStatusBarHidden: true
+        UIViewControllerBasedStatusBarAppearance: false
+        UIRequiresFullScreen: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
         ENABLE_PREVIEWS: "YES"
-        GENERATE_INFOPLIST_FILE: "YES"
         CURRENT_PROJECT_VERSION: "1"
         MARKETING_VERSION: "1.0"
-        INFOPLIST_KEY_CFBundleDisplayName: "Postmark"
-        INFOPLIST_KEY_NSCameraUsageDescription: "Postmark uses the camera so you can turn what you see into collectible stamps."
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
-        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
-        INFOPLIST_KEY_UIUserInterfaceStyle: "Light"
-        INFOPLIST_KEY_UIStatusBarHidden: "NO"

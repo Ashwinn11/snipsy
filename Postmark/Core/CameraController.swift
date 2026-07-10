@@ -179,7 +179,23 @@ final class DemoFeed {
 
     var current: Sample? { samples.isEmpty ? nil : samples[index] }
 
-    init() { load() }
+    init() {
+        // Decode bundle images off the main thread, publishing each sample as
+        // it becomes ready — the feed appears the moment the first JPEG lands.
+        Task.detached(priority: .userInitiated) {
+            var any = false
+            for sample in Self.sampleLoaders() {
+                if let loaded = sample() {
+                    any = true
+                    await MainActor.run { self.samples.append(loaded) }
+                }
+            }
+            if !any {
+                let fallback = Self.placeholder()
+                await MainActor.run { self.samples = [fallback] }
+            }
+        }
+    }
 
     func advance(_ delta: Int = 1) {
         guard !samples.isEmpty else { return }
@@ -205,12 +221,14 @@ final class DemoFeed {
         let label: String
     }
 
-    private func load() {
-        if let url = Bundle.main.url(forResource: "feed", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let entries = try? JSONDecoder().decode([ManifestEntry].self, from: data) {
-            samples = entries.compactMap { entry in
-                guard let image = bundleImage(entry.file) else { return nil }
+    nonisolated private static func sampleLoaders() -> [() -> Sample?] {
+        guard let url = Bundle.main.url(forResource: "feed", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let entries = try? JSONDecoder().decode([ManifestEntry].self, from: data)
+        else { return [] }
+        return entries.map { entry in
+            {
+                guard let image = bundleImage(entry.file)?.predecoded() else { return nil }
                 return Sample(
                     id: entry.file,
                     label: entry.label,
@@ -219,10 +237,9 @@ final class DemoFeed {
                 )
             }
         }
-        if samples.isEmpty { samples = [Self.placeholder()] }
     }
 
-    private func bundleImage(_ name: String) -> UIImage? {
+    nonisolated private static func bundleImage(_ name: String) -> UIImage? {
         let parts = name.split(separator: ".", maxSplits: 1).map(String.init)
         guard parts.count == 2,
               let url = Bundle.main.url(forResource: parts[0], withExtension: parts[1]),
@@ -232,7 +249,7 @@ final class DemoFeed {
     }
 
     /// Keeps the app alive even if sample assets are missing from the bundle.
-    private static func placeholder() -> Sample {
+    nonisolated private static func placeholder() -> Sample {
         let size = CGSize(width: 1200, height: 1600)
         let image = UIGraphicsImageRenderer(size: size).image { ctx in
             UIColor(red: 0.16, green: 0.17, blue: 0.19, alpha: 1).setFill()

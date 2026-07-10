@@ -55,6 +55,8 @@ struct StampView: View {
     var editableTitle: Binding<String>? = nil
     var titleFocused: FocusState<Bool>.Binding? = nil
     var onSubmitTitle: () -> Void = {}
+    /// When set, the static caption is tappable (shows a rename affordance).
+    var onTapCaption: (() -> Void)? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -112,7 +114,7 @@ struct StampView: View {
         ZStack(alignment: .topLeading) {
             PerforatedRect()
                 .fill(tint)
-                .colorEffect(ShaderLibrary.paperGrain(.float(0.62), .float(0.7)))
+                .colorEffect(ShaderLibrary.paperGrain(.float(0.62), .float(0.55)))
                 .shadow(color: Theme.ink.opacity(0.16), radius: 0.045 * w, y: 0.02 * w)
                 .shadow(color: Theme.ink.opacity(0.10), radius: 0.008 * w, y: 0.004 * w)
 
@@ -141,9 +143,9 @@ struct StampView: View {
                             .boundingRect,
                             .image(Image(uiImage: mask)),
                             .float(progress),
-                            .float(max(3, w * 0.016))
+                            .float(max(4, w * 0.024))
                         ),
-                        maxSampleOffset: CGSize(width: 40, height: 130)
+                        maxSampleOffset: CGSize(width: 52, height: 210)
                     )
             }
         case .final:
@@ -235,6 +237,19 @@ struct StampView: View {
             if let binding = editableTitle {
                 editableCaption(binding, font: titleFont, width: w)
                     .position(x: w / 2, y: lineY)
+            } else if let onTapCaption {
+                staggeredTitle(font: titleFont, width: w)
+                    .overlay(alignment: .bottom) {
+                        // Rename affordance: a faint dashed rule under the title.
+                        Line()
+                            .stroke(Theme.ink.opacity(0.28 * assembly.caption),
+                                    style: StrokeStyle(lineWidth: 1, dash: [2.5, 3]))
+                            .frame(height: 1)
+                            .offset(y: 0.016 * w)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onTapCaption)
+                    .position(x: w / 2, y: lineY)
             } else {
                 staggeredTitle(font: titleFont, width: w)
                     .position(x: w / 2, y: lineY)
@@ -288,6 +303,16 @@ struct StampView: View {
         } else {
             field
         }
+    }
+}
+
+/// A 1-pt horizontal line shape (dashed rules).
+struct Line: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        return p
     }
 }
 
