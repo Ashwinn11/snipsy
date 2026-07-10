@@ -37,6 +37,20 @@ extension Color {
 }
 
 /// A codable sRGB triple used to persist stamp tints.
+extension Color {
+    /// A juicy, subject-matched label ink: same hue as the stamp tint,
+    /// re-saturated for sticker lettering (the tint itself is muted
+    /// toward paper).
+    var vividLabel: Color {
+        let ui = UIColor(self)
+        var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
+        ui.getHue(&h, saturation: &s, brightness: &v, alpha: &a)
+        return Color(hue: h,
+                     saturation: min(max(s * 2.4, 0.52), 0.80),
+                     brightness: min(max(v * 0.85, 0.55), 0.80))
+    }
+}
+
 struct RGBValue: Codable, Equatable {
     var r: Double, g: Double, b: Double
     var color: Color { Color(.sRGB, red: r, green: g, blue: b) }

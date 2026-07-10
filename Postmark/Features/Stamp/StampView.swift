@@ -258,35 +258,35 @@ struct StampView: View {
             let frame = stickerFrame(w, content: content, imageSize: image.size)
             Group {
                 if let binding = editableTitle {
-                    TextField("NAME IT", text: binding)
-                        .font(Theme.engraved(0.05 * w))
-                        .foregroundStyle(Theme.ink.opacity(0.85))
+                    TextField("Name it", text: binding)
+                        .font(.system(size: 0.055 * w, weight: .heavy, design: .rounded))
+                        .foregroundStyle(tint.vividLabel)
                         .tint(Theme.postalRed)
                         .multilineTextAlignment(.center)
-                        .textInputAutocapitalization(.characters)
+                        .textInputAutocapitalization(.words)
                         .autocorrectionDisabled()
                         .submitLabel(.done)
                         .onSubmit(onSubmitTitle)
-                        .frame(width: 0.4 * w)
+                        .frame(width: 0.44 * w)
                         .modifier(FocusedIfAvailable(focus: titleFocused))
                         .padding(.horizontal, 0.04 * w)
                         .padding(.vertical, 0.02 * w)
                         .background(Capsule().fill(.white.opacity(0.95)))
                 } else {
                     DieCutText(
-                        text: title.isEmpty ? "NAME IT" : title.uppercased(),
-                        fontSize: 0.05 * w,
+                        text: title.isEmpty ? "Name it" : title,
+                        fontSize: 0.06 * w,
                         ink: title.isEmpty
                             ? Theme.inkSoft.opacity(0.8)
-                            : Theme.ink.opacity(0.85)
+                            : tint.vividLabel
                     )
                     .contentShape(Rectangle())
                     .onTapGesture { onTapCaption?() }
                 }
             }
             .shadow(color: Theme.ink.opacity(0.16), radius: 0.012 * w, y: 0.006 * w)
-            .rotationEffect(.degrees(-2))
-            .position(x: frame.midX, y: frame.maxY - 0.006 * w)
+            .rotationEffect(.degrees(-3))
+            .position(x: frame.midX, y: frame.maxY - 0.012 * w)
             .opacity(max(0.001, assembly.border))
         }
     }
@@ -508,8 +508,7 @@ struct DieCutText: View {
 
     var body: some View {
         let base = Text(text)
-            .font(Theme.engraved(fontSize))
-            .tracking(fontSize * 0.08)
+            .font(.system(size: fontSize, weight: .heavy, design: .rounded))
             .lineLimit(1)
         let r = fontSize * 0.24
 
@@ -545,6 +544,7 @@ struct FocusedIfAvailable: ViewModifier {
 struct StickerArtifact: View {
     let image: UIImage
     let title: String
+    var tint: Color = Theme.ink
 
     var body: some View {
         let w = min(image.size.width * image.scale, 1200)
@@ -556,8 +556,8 @@ struct StickerArtifact: View {
                 .resizable()
                 .frame(width: w, height: h)
             if !title.isEmpty {
-                DieCutText(text: title.uppercased(), fontSize: w * 0.055)
-                    .rotationEffect(.degrees(-2))
+                DieCutText(text: title, fontSize: w * 0.066, ink: tint.vividLabel)
+                    .rotationEffect(.degrees(-3))
             }
         }
         .padding(w * 0.04)

@@ -105,7 +105,8 @@ final class StampStore {
     /// time, so every surface shows the same object.
     private func compositedSticker(_ pending: PendingStamp, title: String) -> UIImage? {
         guard let sticker = pending.sticker else { return nil }
-        let renderer = ImageRenderer(content: StickerArtifact(image: sticker, title: title))
+        let renderer = ImageRenderer(content: StickerArtifact(
+            image: sticker, title: title, tint: pending.tint.color))
         renderer.scale = 1
         renderer.isOpaque = false
         return renderer.uiImage
