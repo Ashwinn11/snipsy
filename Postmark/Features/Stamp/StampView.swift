@@ -248,10 +248,13 @@ struct StampView: View {
     }
 
     /// The sticker's name — part of its die cut, CapWords-style: a white
-    /// tag pressed onto the subject's lower edge.
+    /// tag pressed onto the subject's lower edge. Interactive contexts
+    /// (reveal) always show it, with a NAME IT placeholder when empty;
+    /// static previews only show a real name.
     @ViewBuilder
     private func stickerTag(_ w: CGFloat, content: CGRect) -> some View {
-        if style == .cutout, stickerBox != nil, let image, !title.isEmpty || editableTitle != nil {
+        if style == .cutout, stickerBox != nil, let image,
+           !title.isEmpty || editableTitle != nil || onTapCaption != nil {
             let frame = stickerFrame(w, content: content, imageSize: image.size)
             Group {
                 if let binding = editableTitle {
@@ -267,10 +270,12 @@ struct StampView: View {
                         .frame(width: 0.4 * w)
                         .modifier(FocusedIfAvailable(focus: titleFocused))
                 } else {
-                    Text(title.uppercased())
+                    Text(title.isEmpty ? "NAME IT" : title.uppercased())
                         .font(Theme.engraved(0.05 * w))
                         .tracking(0.05 * w * 0.08)
-                        .foregroundStyle(Theme.ink.opacity(0.85))
+                        .foregroundStyle(title.isEmpty
+                            ? Theme.inkSoft.opacity(0.75)
+                            : Theme.ink.opacity(0.85))
                         .lineLimit(1)
                         .contentShape(Capsule())
                         .onTapGesture { onTapCaption?() }

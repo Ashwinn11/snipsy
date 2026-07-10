@@ -1,5 +1,4 @@
 import SwiftUI
-import Photos
 
 /// Full-bleed stamp inspection: 3D tilt with a holographic shimmer that
 /// follows your finger, inline rename, share, delete.
@@ -22,9 +21,6 @@ struct StampDetailView: View {
     @State private var confirmDelete = false
     @State private var shareImage: Image? = nil
     @State private var shareUIImage: UIImage? = nil
-    @State private var chooseShare = false
-    /// Set when the user picks an artifact; drives the share sheet.
-    @State private var shareItem: ShareArtifact? = nil
 
     // Liquid poke — same gesture language as the reveal.
     @State private var rippleCenter: CGPoint = .zero
@@ -162,28 +158,14 @@ struct StampDetailView: View {
 
     private var actions: some View {
         HStack(spacing: 16) {
-            if shareImage != nil {
-                Button {
-                    model.haptics.tick()
-                    if current.kind == .sticker {
-                        shareItem = stickerArtifact
-                    } else if current.style == .cutout {
-                        chooseShare = true
-                    } else {
-                        shareItem = stampArtifact
-                    }
-                } label: {
+            if let artifact = shareArtifact {
+                ShareLink(
+                    item: artifact,
+                    preview: SharePreview(artifact.title, image: artifact.preview)
+                ) {
                     actionIcon("square.and.arrow.up")
                 }
                 .glassEffect(.regular.interactive(), in: .circle)
-                .confirmationDialog("Share as…", isPresented: $chooseShare,
-                                    titleVisibility: .visible) {
-                    Button("Stamp") { shareItem = stampArtifact }
-                    Button("Sticker") { shareItem = stickerArtifact }
-                }
-                .sheet(item: $shareItem) { artifact in
-                    ShareArtifactSheet(artifact: artifact)
-                }
             }
 
             if current.kind == .stamp {
@@ -230,16 +212,15 @@ struct StampDetailView: View {
         }
     }
 
-    /// The dressed stamp, flattened on paper.
-    private var stampArtifact: ShareArtifact? {
+    /// The item in its own form: stickers share the die cut (alpha intact),
+    /// stamps share the flattened render on paper.
+    private var shareArtifact: PNGArtifact? {
+        if current.kind == .sticker {
+            guard let ui = model.store.image(for: current) else { return nil }
+            return PNGArtifact(title: current.displayTitle, uiImage: ui)
+        }
         guard let ui = shareUIImage else { return nil }
-        return ShareArtifact(title: current.displayTitle, uiImage: ui)
-    }
-
-    /// The bare die-cut, alpha preserved.
-    private var stickerArtifact: ShareArtifact? {
-        guard let ui = model.store.image(for: current) else { return nil }
-        return ShareArtifact(title: "\(current.displayTitle) sticker", uiImage: ui)
+        return PNGArtifact(title: current.displayTitle, uiImage: ui)
     }
 
     @MainActor
@@ -256,101 +237,21 @@ struct StampDetailView: View {
     }
 }
 
-/// One shareable image with its title, for the share sheet.
-struct ShareArtifact: Identifiable {
-    let id = UUID()
+/// A shareable PNG file — the file representation keeps the alpha channel
+/// through every share-sheet activity, including Save Image.
+struct PNGArtifact: Transferable {
     let title: String
     let uiImage: UIImage
-    var image: Image { Image(uiImage: uiImage) }
-}
 
-/// Preview + Share + Save for a chosen artifact. Saving writes PNG data
-/// through the Photos API — the stock "Save Image" activity re-encodes to
-/// JPEG and would destroy the sticker's transparency.
-struct ShareArtifactSheet: View {
-    let artifact: ShareArtifact
-    @Environment(\.dismiss) private var dismiss
-    @State private var saved = false
-    @State private var saveDenied = false
+    var preview: Image { Image(uiImage: uiImage) }
 
-    var body: some View {
-        ZStack {
-            PaperBackdrop(showsGrid: false)
-                .ignoresSafeArea()
-            VStack(spacing: 24) {
-                artifact.image
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 240, maxHeight: 300)
-                    .shadow(color: Theme.ink.opacity(0.18), radius: 18, y: 10)
-
-                HStack(spacing: 14) {
-                    ShareLink(
-                        item: artifact.image,
-                        preview: SharePreview(artifact.title, image: artifact.image)
-                    ) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 15, weight: .semibold))
-                            Text("Share")
-                                .font(.system(size: 17, weight: .semibold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 28)
-                        .frame(height: 52)
-                        .background(Theme.postalRed, in: Capsule())
-                    }
-                    .buttonStyle(PressableButtonStyle())
-
-                    Button {
-                        save()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: saved ? "checkmark" : "square.and.arrow.down")
-                                .font(.system(size: 15, weight: .semibold))
-                            Text(saved ? "Saved" : "Save")
-                                .font(.system(size: 17, weight: .semibold))
-                        }
-                        .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 24)
-                        .frame(height: 52)
-                    }
-                    .glassEffect(.regular.interactive(), in: .capsule)
-                    .disabled(saved)
-                }
-
-                if saveDenied {
-                    Text("Allow adding to Photos in Settings to save.")
-                        .font(.system(size: 12.5, design: .serif))
-                        .italic()
-                        .foregroundStyle(Theme.inkSoft)
-                }
-            }
-            .padding(.vertical, 30)
-        }
-        .presentationDetents([.medium])
-        .presentationCornerRadius(28)
-    }
-
-    private func save() {
-        guard let png = artifact.uiImage.pngData() else { return }
-        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-            DispatchQueue.main.async {
-                guard status == .authorized || status == .limited else {
-                    saveDenied = true
-                    return
-                }
-                PHPhotoLibrary.shared().performChanges({
-                    let request = PHAssetCreationRequest.forAsset()
-                    request.addResource(with: .photo, data: png, options: nil)
-                }) { success, _ in
-                    DispatchQueue.main.async {
-                        if success {
-                            withAnimation(Theme.springTight) { saved = true }
-                        }
-                    }
-                }
-            }
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .png) { artifact in
+            let name = artifact.title.isEmpty ? "Postmark" : artifact.title
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("\(name).png")
+            try artifact.uiImage.pngData()?.write(to: url)
+            return SentTransferredFile(url)
         }
     }
 }
