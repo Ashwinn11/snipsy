@@ -275,7 +275,7 @@ struct StampView: View {
                 } else {
                     DieCutText(
                         text: title.isEmpty ? "Name it" : title,
-                        fontSize: 0.06 * w,
+                        fontSize: 0.068 * w,
                         ink: title.isEmpty ? Theme.inkSoft.opacity(0.8) : .black
                     )
                     .contentShape(Rectangle())
@@ -283,7 +283,9 @@ struct StampView: View {
                 }
             }
             .rotationEffect(.degrees(-3))
-            .position(x: frame.midX, y: frame.maxY - 0.045 * w)
+            .position(x: frame.midX,
+                      y: frame.maxY - 0.055 * max(frame.width, frame.height)
+                         + 0.068 * w * 0.55)
             .opacity(max(0.001, assembly.border))
         }
     }
@@ -507,20 +509,20 @@ struct DieCutText: View {
         let base = Text(text)
             .font(.system(size: fontSize, weight: .heavy, design: .rounded))
             .lineLimit(1)
-        let r = fontSize * 0.24
+        let r = fontSize * 0.34
 
         return ZStack {
-            ForEach(0..<12, id: \.self) { i in
-                let a = Double(i) / 12 * 2 * .pi
+            ForEach(0..<16, id: \.self) { i in
+                let a = Double(i) / 16 * 2 * .pi
                 base
                     .foregroundStyle(.white)
                     .offset(x: cos(a) * r, y: sin(a) * r)
             }
-            ForEach(0..<8, id: \.self) { i in
-                let a = Double(i) / 8 * 2 * .pi + 0.35
+            ForEach(0..<10, id: \.self) { i in
+                let a = Double(i) / 10 * 2 * .pi + 0.3
                 base
                     .foregroundStyle(.white)
-                    .offset(x: cos(a) * r * 0.55, y: sin(a) * r * 0.55)
+                    .offset(x: cos(a) * r * 0.6, y: sin(a) * r * 0.6)
             }
             base.foregroundStyle(ink)
         }
@@ -548,13 +550,20 @@ struct StickerArtifact: View {
         let scale = w / max(image.size.width * image.scale, 1)
         let h = image.size.height * image.scale * scale
 
-        VStack(spacing: -w * 0.075) {
+        // The generator pads the subject (9% trim margin, 3.5% border), so
+        // the visible contour sits ~5.5% of the long side above the image's
+        // bottom edge — anchor the name to the CONTOUR, half on, half off.
+        let margin = 0.055 * max(w, h)
+        let fontSize = w * 0.085
+
+        ZStack(alignment: .bottom) {
             Image(uiImage: image)
                 .resizable()
                 .frame(width: w, height: h)
             if !title.isEmpty {
-                DieCutText(text: title, fontSize: w * 0.066, ink: .black)
+                DieCutText(text: title, fontSize: fontSize, ink: .black)
                     .rotationEffect(.degrees(-3))
+                    .offset(y: -margin + fontSize * 0.55)
             }
         }
         .padding(w * 0.04)
