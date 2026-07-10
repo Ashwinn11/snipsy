@@ -77,6 +77,8 @@ final class ShareComposerState {
     var analyzing = true
     var kept = false
     var variant: StampVariant = .tinted
+    var kind: ArtifactKind = .stamp
+    var canBeSticker: Bool { pending?.style == .cutout }
 
     private(set) var pending: PendingStamp? = nil
     private let store = StampStore()
@@ -121,7 +123,8 @@ final class ShareComposerState {
 
     func keep() {
         guard let pending, !kept else { return }
-        store.add(pending, title: pending.suggestedTitle ?? "", variant: variant)
+        store.add(pending, title: pending.suggestedTitle ?? "",
+                  variant: variant, kind: kind)
         kept = true
     }
 }
@@ -183,10 +186,20 @@ struct ShareComposerView: View {
                             year: String(Calendar.current.component(.year, from: Date())),
                             date: .now,
                             variant: state.variant,
-                            stickerBox: pending.stickerBox
+                            stickerBox: pending.stickerBox,
+                            assembly: state.kind == .sticker
+                                ? bareAssembly
+                                : .dressed
                         )
                         .frame(width: 210)
                         .shadow(color: Theme.ink.opacity(0.14), radius: 16, y: 9)
+
+                        if state.canBeSticker {
+                            HStack(spacing: 10) {
+                                kindChip("Sticker", .sticker)
+                                kindChip("Stamp", .stamp)
+                            }
+                        }
 
                         HStack(spacing: 12) {
                             ForEach(StampVariant.allCases) { v in
@@ -217,6 +230,8 @@ struct ShareComposerView: View {
                                 .buttonStyle(.plain)
                             }
                         }
+                        .opacity(state.kind == .stamp ? 1 : 0)
+                        .allowsHitTesting(state.kind == .stamp)
                     }
                 }
 
@@ -247,5 +262,27 @@ struct ShareComposerView: View {
         var a = StampView.Assembly()
         a.caption = 0
         return a
+    }
+
+    private var bareAssembly: StampView.Assembly {
+        StampView.Assembly(paper: 0, caption: 0, content: .final)
+    }
+
+    private func kindChip(_ label: String, _ kind: ArtifactKind) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                state.kind = kind
+            }
+        } label: {
+            Text(label)
+                .font(.system(size: 13, weight: .semibold, design: .serif))
+                .foregroundStyle(state.kind == kind ? .white : Theme.ink)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule().fill(state.kind == kind ? Theme.postalRed : Theme.ink.opacity(0.06))
+                )
+        }
+        .buttonStyle(.plain)
     }
 }

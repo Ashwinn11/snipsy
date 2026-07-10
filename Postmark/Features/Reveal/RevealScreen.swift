@@ -25,7 +25,11 @@ struct RevealScreen: View {
     @State private var settle: Double = 0
     @State private var chromeVisible = false
 
-    // Paper chooser
+    // Artifact choice — sticker or stamp — made before the die cut.
+    @State private var artifactChooser = false
+    @State private var artifact: ArtifactKind? = nil
+
+    // Paper chooser (stamp path)
     @State private var chooser = false
     @State private var selectedVariant: StampVariant? = nil
 
@@ -107,6 +111,8 @@ struct RevealScreen: View {
                 .animation(.easeInOut(duration: 0.4), value: flying)
 
             stampLayer
+
+            artifactPicker
 
             variantChooser
 
@@ -219,41 +225,122 @@ struct RevealScreen: View {
             withAnimation(.spring(response: 0.52, dampingFraction: 0.82)) {
                 centered = true
             }
-            // The punch starts on the glide's settling tail — beats overlap
-            // instead of queueing, so the cut arrives while the piece still
-            // has momentum.
             try? await Task.sleep(for: .seconds(0.42))
+            // Pre-render the dressed layers invisibly (paper shader, path
+            // shadows, caption glyphs) on this static beat.
+            paper = 0.001
+            caption = 0.001
             await afterNextCommit()
             if pending.style == .cutout, pending.sticker != nil {
-                // Die cut first: the press dips the sheet and the outline
-                // appears around the subject. Nothing else is scheduled in
-                // this window — the punch owns its frames.
-                model.haptics.tick()
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                    border = 1
+                // The user decides what this becomes; the cutter waits.
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    artifactChooser = true
                 }
-                try? await Task.sleep(for: .seconds(0.48))
-                // …then the waste sheet fades away, leaving the sticker.
-                withAnimation(.easeInOut(duration: 0.45)) {
-                    waste = 0
-                }
-                try? await Task.sleep(for: .seconds(0.52))
-                // Waste 0 and .final render identical pixels — swap quietly,
-                // then pre-render the dressed layers invisibly (paper shader,
-                // path shadows, caption glyphs) on this static beat.
-                assembled = true
-                paper = 0.001
-                caption = 0.001
-                await afterNextCommit()
-                offerPapers()
             } else {
+                // No subject to lift — classic photo stamp only.
+                artifact = .stamp
                 assembled = true
-                paper = 0.001
-                caption = 0.001
-                await afterNextCommit()
                 offerPapers()
             }
         }
+    }
+
+    /// Sticker or stamp chosen — the die cutter runs, then the flow branches.
+    private func chooseArtifact(_ kind: ArtifactKind) {
+        guard artifact == nil else { return }
+        model.haptics.tick()
+        artifact = kind
+        Task { @MainActor in
+            withAnimation(.easeOut(duration: 0.25)) { artifactChooser = false }
+            try? await Task.sleep(for: .seconds(0.28))
+            await afterNextCommit()
+            // Die cut: the press dips the sheet and the outline appears.
+            model.haptics.tick()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                border = 1
+            }
+            try? await Task.sleep(for: .seconds(0.48))
+            // …then the waste sheet fades away, leaving the sticker.
+            withAnimation(.easeInOut(duration: 0.45)) {
+                waste = 0
+            }
+            try? await Task.sleep(for: .seconds(0.52))
+            assembled = true
+            await afterNextCommit()
+            if kind == .sticker {
+                // A sticker composes bare: settle to center, then chrome.
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    settle = 1
+                }
+                try? await Task.sleep(for: .seconds(0.35))
+                withAnimation(Theme.spring) { chromeVisible = true }
+            } else {
+                offerPapers()
+            }
+        }
+    }
+
+    /// The moment of choice: the bare die-cut or the dressed collectible.
+    private var artifactPicker: some View {
+        let rowY = screenSize.height - max(safeArea.bottom, 16) - 152
+
+        return VStack(spacing: 16) {
+            Text("Make it a…")
+                .font(.system(size: 14, design: .serif))
+                .italic()
+                .foregroundStyle(Theme.inkSoft)
+
+            HStack(spacing: 26) {
+                Button {
+                    chooseArtifact(.sticker)
+                } label: {
+                    VStack(spacing: 10) {
+                        Group {
+                            if let sticker = pending.sticker {
+                                Image(uiImage: sticker)
+                                    .resizable()
+                                    .scaledToFit()
+                            }
+                        }
+                        .frame(width: 84, height: 84)
+                        .shadow(color: Theme.ink.opacity(0.14), radius: 6, y: 4)
+                        Text("STICKER")
+                            .font(Theme.engraved(12))
+                            .tracking(1.5)
+                            .foregroundStyle(Theme.ink.opacity(0.75))
+                    }
+                }
+                .buttonStyle(PressableButtonStyle())
+
+                Button {
+                    chooseArtifact(.stamp)
+                } label: {
+                    VStack(spacing: 10) {
+                        StampView(
+                            image: pending.displayImage,
+                            style: pending.style,
+                            tint: pending.tint.color,
+                            title: "",
+                            number: model.store.nextNumber,
+                            year: "",
+                            stickerBox: pending.stickerBox,
+                            assembly: thumbAssembly
+                        )
+                        .frame(width: 64)
+                        .frame(width: 84, height: 84)
+                        Text("STAMP")
+                            .font(Theme.engraved(12))
+                            .tracking(1.5)
+                            .foregroundStyle(Theme.ink.opacity(0.75))
+                    }
+                }
+                .buttonStyle(PressableButtonStyle())
+            }
+        }
+        .position(x: screenSize.width / 2, y: rowY)
+        .opacity(artifactChooser ? 1 : 0.001)
+        .offset(y: artifactChooser ? 0 : 18)
+        .allowsHitTesting(artifactChooser)
     }
 
     /// The die-cut floats bare; four papers rise beneath it. Dressing waits
@@ -291,6 +378,23 @@ struct RevealScreen: View {
         guard !flying, !postmarked else { return }
         stopEditingTitle()
         model.haptics.thunk()
+
+        if artifact == .sticker {
+            // Stickers fly uncancelled — no date strike.
+            Task { @MainActor in
+                withAnimation(Theme.spring) {
+                    flying = true
+                    chromeVisible = false
+                }
+                withAnimation(.easeIn(duration: 0.18).delay(0.34)) {
+                    stampGone = true
+                }
+                try? await Task.sleep(for: .seconds(0.52))
+                model.keep(pending, title: title, variant: .tinted, kind: .sticker)
+            }
+            return
+        }
+
         postmarked = true   // seal mounts at 1.7
         Task { @MainActor in
             await afterNextCommit()
@@ -306,7 +410,8 @@ struct RevealScreen: View {
                 stampGone = true
             }
             try? await Task.sleep(for: .seconds(0.52))
-            model.keep(pending, title: title, variant: selectedVariant ?? .tinted)
+            model.keep(pending, title: title, variant: selectedVariant ?? .tinted,
+                       kind: .stamp)
         }
     }
 

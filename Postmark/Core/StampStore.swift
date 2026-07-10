@@ -1,3 +1,4 @@
+import SwiftUI
 import UIKit
 import Observation
 
@@ -25,31 +26,61 @@ final class StampStore {
     private var stickersDir: URL { root.appendingPathComponent("stickers", isDirectory: true) }
     private var indexURL: URL { root.appendingPathComponent("stamps.json") }
 
+    private static var isExtension: Bool {
+        Bundle.main.bundleURL.pathExtension == "appex"
+    }
+
     init() {
         migrateFromDocumentsIfNeeded()
         try? FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(at: stickersDir, withIntermediateDirectories: true)
         load()
-        backfillStickers()
+        if !Self.isExtension { backfillDrawer() }
     }
 
-    /// Stamps kept before the Messages extension existed have no drawer
-    /// copies — generate any that are missing.
-    private func backfillStickers() {
+    /// Drawer copy for one item: sticker items ship the bare die-cut; stamp
+    /// items ship the dressed collectible rendered with a transparent
+    /// perforated silhouette. Rendering happens on the main actor; the write
+    /// goes off-main.
+    private func writeDrawerCopy(for stamp: Stamp, display: UIImage) {
+        let destination = stickersDir.appendingPathComponent("\(stamp.id.uuidString).png")
+        let data: Data?
+        if stamp.kind == .sticker {
+            data = ImageOptimizer.stickerPNG(display)
+        } else {
+            let renderer = ImageRenderer(content:
+                StampView(stamp: stamp, image: display)
+                    .frame(width: 400, height: 525))
+            renderer.scale = 1.5
+            renderer.isOpaque = false
+            data = renderer.uiImage.flatMap { ImageOptimizer.stickerPNG($0) }
+        }
+        guard let data else { return }
+        Task.detached(priority: .utility) {
+            try? data.write(to: destination)
+        }
+    }
+
+    /// Regenerate drawer copies: once after the format change (v2 wipes the
+    /// old bare-cutout copies), then only for items missing a copy.
+    private func backfillDrawer() {
+        let defaults = UserDefaults.standard
+        if !defaults.bool(forKey: "postmark.drawerV2") {
+            try? FileManager.default.removeItem(at: stickersDir)
+            try? FileManager.default.createDirectory(
+                at: stickersDir, withIntermediateDirectories: true)
+            defaults.set(true, forKey: "postmark.drawerV2")
+        }
         let missing = stamps.filter {
-            $0.style == .cutout && !FileManager.default.fileExists(
+            !FileManager.default.fileExists(
                 atPath: stickersDir.appendingPathComponent("\($0.id.uuidString).png").path)
         }
         guard !missing.isEmpty else { return }
-        let pairs: [(URL, URL)] = missing.map {
-            (imagesDir.appendingPathComponent($0.imageFile),
-             stickersDir.appendingPathComponent("\($0.id.uuidString).png"))
-        }
-        Task.detached(priority: .utility) {
-            for (source, destination) in pairs {
-                guard let image = UIImage(contentsOfFile: source.path),
-                      let png = ImageOptimizer.stickerPNG(image) else { continue }
-                try? png.write(to: destination)
+        Task { @MainActor in
+            for stamp in missing {
+                guard let display = image(for: stamp) else { continue }
+                writeDrawerCopy(for: stamp, display: display)
+                await Task.yield()
             }
         }
     }
@@ -71,22 +102,17 @@ final class StampStore {
     var nextNumber: Int { (stamps.map(\.number).max() ?? 0) + 1 }
 
     @discardableResult
-    func add(_ pending: PendingStamp, title: String, variant: StampVariant) -> Stamp {
+    func add(_ pending: PendingStamp, title: String, variant: StampVariant,
+             kind: ArtifactKind = .stamp) -> Stamp {
         let id = UUID()
         let file = "\(id.uuidString).heic"
         let display = pending.displayImage
         // Optimize + write off-main: done here it stalls the fly-out fade.
         // The in-memory cache serves reads until the files land.
         let destination = imagesDir.appendingPathComponent(file)
-        let stickerDestination = pending.style == .cutout
-            ? stickersDir.appendingPathComponent("\(id.uuidString).png") : nil
         Task.detached(priority: .utility) {
             if let data = ImageOptimizer.optimized(display) {
                 try? data.write(to: destination)
-            }
-            // A small PNG copy for the Messages drawer.
-            if let stickerDestination, let png = ImageOptimizer.stickerPNG(display) {
-                try? png.write(to: stickerDestination)
             }
         }
         let stamp = Stamp(
@@ -97,11 +123,13 @@ final class StampStore {
             style: pending.style,
             tint: pending.tint,
             imageFile: file,
-            variant: variant
+            variant: variant,
+            kind: kind
         )
         cache.setObject(display, forKey: file as NSString)
         stamps.insert(stamp, at: 0)
         save()
+        writeDrawerCopy(for: stamp, display: display)
         return stamp
     }
 

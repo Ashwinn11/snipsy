@@ -93,7 +93,10 @@ struct StampDetailView: View {
                 year: current.year,
                 date: current.date,
                 variant: current.variant,
-                showsPostmark: true,
+                showsPostmark: current.kind == .stamp,
+                assembly: current.kind == .sticker
+                    ? StampView.Assembly(paper: 0, caption: 0, content: .final)
+                    : .dressed,
                 holoEnabled: true,
                 holoStrength: magnitude * 0.75,
                 holoSweep: 0.5 + Double(tilt.width) / 220,
@@ -162,7 +165,9 @@ struct StampDetailView: View {
             if shareImage != nil {
                 Button {
                     model.haptics.tick()
-                    if current.style == .cutout {
+                    if current.kind == .sticker {
+                        shareItem = stickerArtifact
+                    } else if current.style == .cutout {
                         chooseShare = true
                     } else {
                         shareItem = stampArtifact
@@ -181,19 +186,21 @@ struct StampDetailView: View {
                 }
             }
 
-            Button {
-                model.haptics.tick()
-                if editing {
-                    commitRename()
-                } else {
-                    localTitle = current.title
-                    editing = true
-                    titleFocused = true
+            if current.kind == .stamp {
+                Button {
+                    model.haptics.tick()
+                    if editing {
+                        commitRename()
+                    } else {
+                        localTitle = current.title
+                        editing = true
+                        titleFocused = true
+                    }
+                } label: {
+                    actionIcon(editing ? "checkmark" : "pencil")
                 }
-            } label: {
-                actionIcon(editing ? "checkmark" : "pencil")
+                .glassEffect(.regular.interactive(), in: .circle)
             }
-            .glassEffect(.regular.interactive(), in: .circle)
 
             Button {
                 confirmDelete = true

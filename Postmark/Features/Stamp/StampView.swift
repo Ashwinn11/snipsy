@@ -547,7 +547,8 @@ struct AirmailBorder: View {
     }
 }
 
-/// Convenience for album rendering.
+/// Convenience for album/drawer rendering. Sticker items render bare —
+/// no paper, no caption, no cancellation.
 extension StampView {
     init(stamp: Stamp, image: UIImage?) {
         self.init(
@@ -559,7 +560,10 @@ extension StampView {
             year: stamp.year,
             date: stamp.date,
             variant: stamp.variant,
-            showsPostmark: true
+            showsPostmark: stamp.kind == .stamp,
+            assembly: stamp.kind == .sticker
+                ? Assembly(paper: 0, caption: 0, content: .final)
+                : .dressed
         )
     }
 }

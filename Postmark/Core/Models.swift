@@ -16,6 +16,14 @@ enum StampVariant: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// What the user chose to make from a capture. A sticker is a first-class
+/// collectible: bare die-cut in the album and the Messages drawer; a stamp
+/// is the dressed artifact.
+enum ArtifactKind: String, Codable {
+    case stamp
+    case sticker
+}
+
 /// A collected stamp.
 struct Stamp: Identifiable, Codable, Equatable {
     enum Style: String, Codable {
@@ -35,6 +43,7 @@ struct Stamp: Identifiable, Codable, Equatable {
     /// or the viewfinder crop (classic style).
     var imageFile: String
     var variant: StampVariant = .tinted
+    var kind: ArtifactKind = .stamp
 
     var displayTitle: String { title.isEmpty ? "Untitled" : title }
     var year: String { Stamp.yearFormatter.string(from: date) }
@@ -59,6 +68,7 @@ extension Stamp {
         tint = try c.decode(RGBValue.self, forKey: .tint)
         imageFile = try c.decode(String.self, forKey: .imageFile)
         variant = (try? c.decodeIfPresent(StampVariant.self, forKey: .variant)) ?? .tinted
+        kind = (try? c.decodeIfPresent(ArtifactKind.self, forKey: .kind)) ?? .stamp
     }
 }
 

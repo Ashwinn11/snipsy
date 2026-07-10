@@ -76,10 +76,11 @@ struct CameraScreen: View {
         PhotosPicker(selection: $pickedItem, matching: .images) {
             Image(systemName: "photo.on.rectangle")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
                 .frame(width: 44, height: 44)
         }
-        .glassEffect(.regular.interactive(), in: .circle)
+        .glassEffect(.regular.tint(.black.opacity(0.22)).interactive(), in: .circle)
         .position(x: 46, y: safeArea.top + 24)
         .onChange(of: pickedItem) { _, item in
             guard let item else { return }
@@ -112,10 +113,11 @@ struct CameraScreen: View {
             } label: {
                 Image(systemName: model.camera.flashOn ? "bolt.fill" : "bolt.slash.fill")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white.opacity(model.camera.flashOn ? 1 : 0.75))
+                    .foregroundStyle(.white.opacity(model.camera.flashOn ? 1 : 0.85))
+                    .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
                     .frame(width: 44, height: 44)
             }
-            .glassEffect(.regular.interactive(), in: .circle)
+            .glassEffect(.regular.tint(.black.opacity(0.22)).interactive(), in: .circle)
             .position(x: screenSize.width - 46, y: safeArea.top + 24)
         }
 
@@ -149,10 +151,11 @@ struct CameraScreen: View {
                   ? "photo.on.rectangle.angled"
                   : "arrow.triangle.2.circlepath.camera")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
                 .frame(width: 48, height: 48)
         }
-        .glassEffect(.regular.interactive(), in: .circle)
+        .glassEffect(.regular.tint(.black.opacity(0.22)).interactive(), in: .circle)
         .position(x: screenSize.width - 66, y: barY)
     }
 }
