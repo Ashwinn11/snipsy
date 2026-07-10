@@ -67,8 +67,8 @@ enum LegalDoc: String, Identifiable, CaseIterable {
     3. Photos and Processing
     When you capture a photo, Apple's on-device Vision framework finds the subject and the app renders your stamp. The photo, the cut-out subject, and the finished stamp are stored only in the app's private storage on your device. Nothing is uploaded anywhere.
 
-    4. Sharing
-    Sharing a stamp uses the standard iOS share sheet. What happens after you share — and where it goes — is controlled by you and the app you share to.
+    4. Sharing and Stickers
+    Sharing a stamp or sticker uses the standard iOS share sheet; what happens after you share is controlled by you and the app you share to. Stickers you keep are also made available to Postmark's Messages sticker extension, stored in the app's private shared container on this device only.
 
     5. Deleting Your Data
     Delete individual stamps from their detail view, or use Settings → Delete All Data to permanently erase every stamp and photo the app has stored. Deleting the app from your device removes everything as well. Deletion is immediate and irreversible.

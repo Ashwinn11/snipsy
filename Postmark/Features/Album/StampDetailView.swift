@@ -20,6 +20,9 @@ struct StampDetailView: View {
     @FocusState private var titleFocused: Bool
     @State private var confirmDelete = false
     @State private var shareImage: Image? = nil
+    @State private var chooseShare = false
+    /// Set when the user picks an artifact; drives the share sheet.
+    @State private var shareItem: ShareArtifact? = nil
 
     // Liquid poke — same gesture language as the reveal.
     @State private var rippleCenter: CGPoint = .zero
@@ -154,14 +157,26 @@ struct StampDetailView: View {
 
     private var actions: some View {
         HStack(spacing: 16) {
-            if let shareImage {
-                ShareLink(
-                    item: shareImage,
-                    preview: SharePreview(stamp.displayTitle, image: shareImage)
-                ) {
+            if shareImage != nil {
+                Button {
+                    model.haptics.tick()
+                    if current.style == .cutout {
+                        chooseShare = true
+                    } else {
+                        shareItem = stampArtifact
+                    }
+                } label: {
                     actionIcon("square.and.arrow.up")
                 }
                 .glassEffect(.regular.interactive(), in: .circle)
+                .confirmationDialog("Share as…", isPresented: $chooseShare,
+                                    titleVisibility: .visible) {
+                    Button("Stamp") { shareItem = stampArtifact }
+                    Button("Sticker") { shareItem = stickerArtifact }
+                }
+                .sheet(item: $shareItem) { artifact in
+                    ShareArtifactSheet(artifact: artifact)
+                }
             }
 
             Button {
@@ -206,6 +221,19 @@ struct StampDetailView: View {
         }
     }
 
+    /// The dressed stamp, flattened on paper.
+    private var stampArtifact: ShareArtifact? {
+        guard let shareImage else { return nil }
+        return ShareArtifact(title: current.displayTitle, image: shareImage)
+    }
+
+    /// The bare die-cut, alpha preserved.
+    private var stickerArtifact: ShareArtifact? {
+        guard let ui = model.store.image(for: current) else { return nil }
+        return ShareArtifact(title: "\(current.displayTitle) sticker",
+                             image: Image(uiImage: ui))
+    }
+
     @MainActor
     private func renderShareImage() async {
         let view = StampView(stamp: current, image: model.store.image(for: current))
@@ -216,5 +244,51 @@ struct StampDetailView: View {
         if let ui = renderer.uiImage {
             shareImage = Image(uiImage: ui)
         }
+    }
+}
+
+/// One shareable image with its title, for the share sheet.
+struct ShareArtifact: Identifiable {
+    let id = UUID()
+    let title: String
+    let image: Image
+}
+
+/// Minimal wrapper so a chosen artifact opens straight into ShareLink.
+struct ShareArtifactSheet: View {
+    let artifact: ShareArtifact
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            PaperBackdrop(showsGrid: false)
+                .ignoresSafeArea()
+            VStack(spacing: 24) {
+                artifact.image
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 240, maxHeight: 300)
+                    .shadow(color: Theme.ink.opacity(0.18), radius: 18, y: 10)
+                ShareLink(
+                    item: artifact.image,
+                    preview: SharePreview(artifact.title, image: artifact.image)
+                ) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text("Share")
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 34)
+                    .frame(height: 52)
+                    .background(Theme.postalRed, in: Capsule())
+                }
+                .buttonStyle(PressableButtonStyle())
+            }
+            .padding(.vertical, 30)
+        }
+        .presentationDetents([.medium])
+        .presentationCornerRadius(28)
     }
 }
