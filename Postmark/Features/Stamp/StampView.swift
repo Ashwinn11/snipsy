@@ -154,6 +154,11 @@ struct StampView: View {
     @ViewBuilder
     private func paper(_ w: CGFloat) -> some View {
         let content = contentRect(w)
+        let fw = content.width + 0.032 * w
+        let fh = content.height + 0.032 * w
+        let fx = content.minX - 0.016 * w
+        let fy = content.minY - 0.016 * w
+
         ZStack(alignment: .topLeading) {
             PerforatedRect()
                 .fill(paperFill)
@@ -161,16 +166,46 @@ struct StampView: View {
                 .shadow(color: Theme.ink.opacity(0.16), radius: 0.045 * w, y: 0.02 * w)
                 .shadow(color: Theme.ink.opacity(0.10), radius: 0.008 * w, y: 0.004 * w)
 
-            // Par avion border — always mounted so switching variants only
-            // animates opacity, never view identity.
+            // Each paper has its own signature framing. All treatments stay
+            // mounted; switching variants only animates opacity, never view
+            // identity.
+
+            // Tinted — the engraved hairline.
+            Rectangle()
+                .strokeBorder(markInk.opacity(0.28), lineWidth: 1)
+                .frame(width: fw, height: fh)
+                .offset(x: fx, y: fy)
+                .opacity(variant == .tinted ? 1 : 0)
+
+            // Ivory — double plate rule, like an engraver's album page.
+            ZStack(alignment: .topLeading) {
+                Rectangle().strokeBorder(markInk.opacity(0.52), lineWidth: 1.6)
+                Rectangle()
+                    .strokeBorder(markInk.opacity(0.34), lineWidth: 0.8)
+                    .padding(0.014 * w)
+            }
+            .frame(width: fw, height: fh)
+            .offset(x: fx, y: fy)
+            .opacity(variant == .ivory ? 1 : 0)
+
+            // Ink — corner brackets only, the viewfinder echoed in print.
+            PrintedBrackets(length: 0.085 * w)
+                .stroke(markInk.opacity(0.62),
+                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                .frame(width: fw, height: fh)
+                .offset(x: fx, y: fy)
+                .opacity(variant == .ink ? 1 : 0)
+
+            // Airmail — striped border and the envelope mark.
             AirmailBorder(inset: 0.040 * w, band: 0.028 * w)
                 .opacity(variant == .airmail ? 1 : 0)
-
-            // Engraved hairline around the picture area.
-            Rectangle()
-                .strokeBorder(markInk.opacity(variant == .ink ? 0.40 : 0.28), lineWidth: 1)
-                .frame(width: content.width + 0.032 * w, height: content.height + 0.032 * w)
-                .offset(x: content.minX - 0.016 * w, y: content.minY - 0.016 * w)
+            Text("PAR AVION")
+                .font(.system(size: 0.032 * w, weight: .semibold, design: .serif))
+                .italic()
+                .kerning(0.032 * w * 0.28)
+                .foregroundStyle(Color(red: 0.17, green: 0.29, blue: 0.60).opacity(0.75))
+                .position(x: content.minX + 0.17 * w, y: content.minY + 0.045 * w)
+                .opacity(variant == .airmail ? 1 : 0)
         }
     }
 
@@ -280,20 +315,46 @@ struct StampView: View {
 
     // MARK: Caption
 
+    /// Each paper sets the caption's voice: engraved caps (tinted/airmail),
+    /// italic serif title case (ivory), airy tracked caps (ink).
+    private func titleFont(_ w: CGFloat) -> Font {
+        switch variant {
+        case .ivory: .system(size: 0.054 * w, weight: .medium, design: .serif).italic()
+        case .ink: Theme.engraved(0.048 * w)
+        default: Theme.engraved(0.052 * w)
+        }
+    }
+
+    private var titleDisplay: String {
+        let base = title.isEmpty ? (variant == .ivory ? "Untitled" : "UNTITLED")
+                                 : title
+        return variant == .ivory ? base : base.uppercased()
+    }
+
+    private func titleSpacing(_ w: CGFloat) -> CGFloat {
+        switch variant {
+        case .ivory: 0.052 * w * 0.02
+        case .ink: 0.052 * w * 0.34
+        default: 0.052 * w * 0.14
+        }
+    }
+
     @ViewBuilder
     private func captionLayer(_ w: CGFloat) -> some View {
         let lineY = 1.225 * w
-        let titleFont = Theme.engraved(0.052 * w)
+        let titleFont = titleFont(w)
         let cornerFont = Font.system(size: 0.036 * w, weight: .medium, design: .serif)
 
         ZStack {
             Text("№\u{2009}\(number)")
                 .font(cornerFont)
+                .italic(variant == .ivory)
                 .foregroundStyle(markInk.opacity(0.55))
                 .position(x: 0.135 * w, y: lineY)
 
             Text(year)
                 .font(cornerFont)
+                .italic(variant == .ivory)
                 .foregroundStyle(markInk.opacity(0.55))
                 .position(x: w - 0.135 * w, y: lineY)
 
@@ -322,10 +383,9 @@ struct StampView: View {
     }
 
     private func staggeredTitle(font: Font, width w: CGFloat) -> some View {
-        let display = title.isEmpty ? "UNTITLED" : title.uppercased()
-        let chars = Array(display.prefix(18))
+        let chars = Array(titleDisplay.prefix(18))
         let n = max(chars.count, 1)
-        return HStack(spacing: 0.052 * w * 0.14) {
+        return HStack(spacing: titleSpacing(w)) {
             ForEach(Array(chars.enumerated()), id: \.offset) { i, ch in
                 let p = letterProgress(i, of: n)
                 Text(String(ch))
@@ -367,6 +427,24 @@ struct StampView: View {
         } else {
             field
         }
+    }
+}
+
+/// Four corner brackets around a rect — the ink paper's frame.
+struct PrintedBrackets: Shape {
+    var length: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let l = min(length, min(rect.width, rect.height) / 3)
+        for (x, dx) in [(rect.minX, 1.0), (rect.maxX, -1.0)] {
+            for (y, dy) in [(rect.minY, 1.0), (rect.maxY, -1.0)] {
+                p.move(to: CGPoint(x: x, y: y + dy * l))
+                p.addLine(to: CGPoint(x: x, y: y))
+                p.addLine(to: CGPoint(x: x + dx * l, y: y))
+            }
+        }
+        return p
     }
 }
 

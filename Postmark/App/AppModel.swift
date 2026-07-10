@@ -54,7 +54,6 @@ final class AppModel {
         haptics.shutter()
         blackout = true
         let shutterMoment = Date()
-        dbgMark("capture.begin")
 
         do {
             let shot = try await camera.capture()
@@ -103,7 +102,6 @@ final class AppModel {
                 try? await Task.sleep(for: .seconds(0.26 - elapsed))
             }
 
-            dbgMark("capture.developing")
             phase = .developing(Capture(
                 screenImage: baked.screen,
                 cropImage: baked.crop,

@@ -115,13 +115,6 @@ struct RevealScreen: View {
         // Same pinning as CameraScreen/DevelopOverlay: placement must not
         // depend on the parent's (occasionally overshooting) proposal.
         .frame(width: screenSize.width, height: screenSize.height)
-        #if DEBUG
-        .background(GeometryReader { g in
-            Color.clear.onAppear {
-                dbgMark("reveal.globalFrame \(g.frame(in: .global)) landed \(landedFrame)")
-            }
-        })
-        #endif
         .onAppear { runEntrance() }
         .onTapGesture { if editingTitle { stopEditingTitle() } }
     }
@@ -213,7 +206,6 @@ struct RevealScreen: View {
     // MARK: Choreography
 
     private func runEntrance() {
-        dbgMark("reveal.onAppear")
         Task { @MainActor in
             // The first frame carries the raw crop's texture and the glass
             // chrome's one-time setup; gate the glide on its commit so the
@@ -224,7 +216,6 @@ struct RevealScreen: View {
             await afterNextCommit()
             try? await Task.sleep(for: .seconds(0.3))
             await afterNextCommit()
-            dbgMark("reveal.glide")
             withAnimation(.spring(response: 0.6, dampingFraction: 0.82)) {
                 centered = true
             }
@@ -234,14 +225,12 @@ struct RevealScreen: View {
                 // Die cut first: the press dips the sheet and the outline
                 // appears around the subject. Nothing else is scheduled in
                 // this window — the punch owns its frames.
-                dbgMark("reveal.diecut")
                 model.haptics.tick()
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
                     border = 1
                 }
                 try? await Task.sleep(for: .seconds(0.55))
                 // …then the waste sheet fades away, leaving the sticker.
-                dbgMark("reveal.waste")
                 withAnimation(.easeInOut(duration: 0.5)) {
                     waste = 0
                 }
@@ -268,25 +257,12 @@ struct RevealScreen: View {
     /// The die-cut floats bare; four papers rise beneath it. Dressing waits
     /// for the user's pick — until then, poking the sticker ripples it.
     private func offerPapers() {
-        dbgMark("reveal.chooser")
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
             chooser = true
         }
-        #if DEBUG
-        let autokeep = ProcessInfo.processInfo.environment["POSTMARK_AUTOKEEP"]
-        if autokeep == "1" || autokeep == "2" {
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(0.5))
-                pokeStamp(at: CGPoint(x: 140, y: 180))
-                try? await Task.sleep(for: .seconds(1.1))
-                choose(.airmail)
-            }
-        }
-        #endif
     }
 
     private func dress() {
-        dbgMark("reveal.dress")
         model.haptics.tick()
         withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
             paper = 1
@@ -307,26 +283,12 @@ struct RevealScreen: View {
             try? await Task.sleep(for: .seconds(1.6))
             withAnimation(.easeOut(duration: 0.4)) { holoStrength = 0 }
         }
-        #if DEBUG
-        let autokeep = ProcessInfo.processInfo.environment["POSTMARK_AUTOKEEP"]
-        if autokeep == "1" || autokeep == "2" {
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(1.8))
-                keepTapped()
-                if autokeep == "2" {
-                    try? await Task.sleep(for: .seconds(2.2))
-                    withAnimation(Theme.spring) { model.showAlbum = true }
-                }
-            }
-        }
-        #endif
     }
 
     private func keepTapped() {
         guard !flying, !postmarked else { return }
         stopEditingTitle()
         model.haptics.thunk()
-        dbgMark("reveal.keep")
         postmarked = true   // seal mounts at 1.7
         Task { @MainActor in
             await afterNextCommit()
@@ -334,7 +296,6 @@ struct RevealScreen: View {
                 postmarkScale = 1
             }
             try? await Task.sleep(for: .seconds(0.75))
-            dbgMark("reveal.fly")
             withAnimation(Theme.spring) {
                 flying = true
                 chromeVisible = false

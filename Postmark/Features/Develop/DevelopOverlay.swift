@@ -86,13 +86,11 @@ struct DevelopOverlay: View {
         .offset(y: drift)
         .frame(width: screenSize.width, height: screenSize.height)
         .onAppear {
-            dbgMark("develop.onAppear")
             Task { @MainActor in
                 // Let the frozen frame's first commit land behind the
                 // blackout, then lift the curtain and start the wave — the
                 // dissolve clock must never race an expensive first frame.
                 await afterNextCommit()
-                dbgMark("develop.committed")
                 model.blackout = false
                 try? await Task.sleep(for: .seconds(0.06))
                 start = Date()
@@ -132,7 +130,6 @@ struct DevelopOverlay: View {
             suggestedTitle: analysis.label,
             tint: analysis.tint
         )
-        dbgMark("develop.finished")
         model.developFinished(pending)
     }
 }
