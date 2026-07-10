@@ -35,6 +35,9 @@ struct PaperBackdrop: View {
                 center: .center, startRadius: 220, endRadius: 640
             )
         }
-        .ignoresSafeArea()
+        // No .ignoresSafeArea() here: every host is already full-bleed, and
+        // the expansion made DevelopOverlay's stack 8 pt taller than the
+        // window — centering then shifted its whole render 4 pt up, breaking
+        // the pixel handoff (grain pattern and crop jumped at each phase).
     }
 }

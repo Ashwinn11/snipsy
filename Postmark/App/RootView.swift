@@ -37,6 +37,16 @@ struct RootView: View {
                 }
                 .animation(.easeOut(duration: 0.2), value: model.phase.kind)
 
+                // Shutter blackout — above every phase, so the frozen frame's
+                // heavy first render happens behind it, never as a visible
+                // snap. Fades in fast on capture, eases out once the develop
+                // overlay has actually committed a frame.
+                Color.black
+                    .opacity(model.blackout ? 0.88 : 0)
+                    .animation(.easeOut(duration: model.blackout ? 0.12 : 0.22),
+                               value: model.blackout)
+                    .allowsHitTesting(false)
+
                 if model.showAlbum {
                     AlbumScreen(model: model, safeArea: insets)
                         .transition(.move(edge: .bottom))
@@ -45,7 +55,10 @@ struct RootView: View {
             }
             .frame(width: fullSize.width, height: fullSize.height)
             .ignoresSafeArea()
-            .onAppear { screenSize = fullSize }
+            .onAppear {
+                screenSize = fullSize
+                dbgMark("root.fullSize \(fullSize) geo \(geo.size) insets top \(insets.top) bottom \(insets.bottom)")
+            }
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
@@ -62,7 +75,12 @@ struct RootView: View {
             }
         )
         #endif
-        .onAppear { model.camera.start() }
+        .onAppear {
+            model.camera.start()
+            #if DEBUG
+            HitchMonitor.shared.start()
+            #endif
+        }
         .task { await Self.warmUpShaders() }
         .task { await runDebugScript() }
     }
@@ -70,12 +88,9 @@ struct RootView: View {
     /// Precompile every Metal pipeline the capture moment needs — the first
     /// shutter press must never stall on shader compilation.
     private static func warmUpShaders() async {
-        let mask = Image(uiImage: UIImage())
         let layerShaders = [
             ShaderLibrary.grainDissolveRect(
                 .boundingRect, .float4(0, 0, 1, 1), .float(1), .float(0), .float(9)),
-            ShaderLibrary.grainDissolveMask(
-                .float2(1, 1), .image(mask), .float(0), .float(9)),
         ]
         let colorShaders = [
             ShaderLibrary.paperGrain(.float(0), .float(0.5)),

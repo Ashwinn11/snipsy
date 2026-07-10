@@ -2,9 +2,10 @@ import SwiftUI
 
 /// Stamp assembly. Continuity chain:
 ///   develop leaves the crop at the viewfinder → the crop glides to center →
-///   a second grain pass eats everything but the subject → perforated paper
-///   unfurls behind it → the caption rises letter by letter → on Keep, the
-///   postmark strikes and the stamp flies into the collection pill.
+///   the die cutter punches the sticker outline into the photo → the waste
+///   fades away → perforated paper unfurls behind it → the caption rises
+///   letter by letter → on Keep, the postmark strikes and the stamp flies
+///   into the collection pill.
 struct RevealScreen: View {
     let pending: PendingStamp
     let model: AppModel
@@ -13,10 +14,12 @@ struct RevealScreen: View {
 
     // Stage state
     @State private var centered = false
-    @State private var maskStart: Date? = nil
-    @State private var maskDone = false
-    @State private var diecut = false
-    @State private var stickerPop: CGFloat = 1
+    /// Die-cut punch: the sticker outline pressed into the raw photo.
+    @State private var border: Double = 0
+    /// The raw photo around the cut sticker; fades to 0 after the punch.
+    @State private var waste: Double = 1
+    /// Swapped to .final once the waste is gone (pixel-identical states).
+    @State private var assembled = false
     @State private var paper: Double = 0
     @State private var caption: Double = 0
     @State private var settle: Double = 0
@@ -36,8 +39,6 @@ struct RevealScreen: View {
     @State private var title: String
     @State private var editingTitle = false
     @FocusState private var titleFocused: Bool
-
-    private let maskDuration: TimeInterval = 0.95
 
     init(pending: PendingStamp, model: AppModel, screenSize: CGSize, safeArea: EdgeInsets) {
         self.pending = pending
@@ -82,6 +83,17 @@ struct RevealScreen: View {
 
     var body: some View {
         ZStack {
+            // Texture pre-warm: force the sticker bitmap through upload
+            // during the entrance beat, so its first real composite costs
+            // nothing. Tiny, invisible, and behind paper.
+            if let sticker = pending.sticker {
+                Image(uiImage: sticker)
+                    .resizable()
+                    .frame(width: 2, height: 2)
+                    .opacity(0.001)
+                    .allowsHitTesting(false)
+            }
+
             PaperBackdrop()
                 .opacity(flying ? 0 : 1)
                 .animation(.easeInOut(duration: 0.4), value: flying)
@@ -90,6 +102,16 @@ struct RevealScreen: View {
 
             chrome
         }
+        // Same pinning as CameraScreen/DevelopOverlay: placement must not
+        // depend on the parent's (occasionally overshooting) proposal.
+        .frame(width: screenSize.width, height: screenSize.height)
+        #if DEBUG
+        .background(GeometryReader { g in
+            Color.clear.onAppear {
+                dbgMark("reveal.globalFrame \(g.frame(in: .global)) landed \(landedFrame)")
+            }
+        })
+        #endif
         .onAppear { runEntrance() }
         .onTapGesture { if editingTitle { stopEditingTitle() } }
     }
@@ -109,33 +131,27 @@ struct RevealScreen: View {
     private var stampLayer: some View {
         let frame = stampFrame
 
-        TimelineView(.animation(paused: maskStart == nil || maskDone)) { timeline in
-            let maskProgress = currentMaskProgress(at: timeline.date)
-
-            StampView(
-                image: pending.displayImage,
-                style: pending.style,
-                tint: pending.tint.color,
-                title: title,
-                number: model.store.nextNumber,
-                year: String(Calendar.current.component(.year, from: Date())),
-                date: .now,
-                showsPostmark: postmarked,
-                postmarkScale: postmarkScale,
-                stickerBox: pending.stickerBox,
-                rawCrop: pending.capture.cropImage,
-                assembly: assembly(maskProgress: maskProgress),
-                holoStrength: holoStrength,
-                holoSweep: holoSweep,
-                editableTitle: editingTitle ? $title : nil,
-                titleFocused: $titleFocused,
-                onSubmitTitle: { stopEditingTitle() },
-                onTapCaption: chromeVisible && !flying ? { startEditingTitle() } : nil
-            )
-            .onChange(of: maskProgress >= 1) { _, done in
-                if done && !maskDone { finishUnmask() }
-            }
-        }
+        StampView(
+            image: pending.displayImage,
+            style: pending.style,
+            tint: pending.tint.color,
+            title: title,
+            number: model.store.nextNumber,
+            year: String(Calendar.current.component(.year, from: Date())),
+            date: .now,
+            showsPostmark: postmarked,
+            postmarkScale: postmarkScale,
+            stickerBox: pending.stickerBox,
+            rawCrop: pending.capture.cropImage,
+            assembly: assembly(),
+            holoEnabled: true,
+            holoStrength: holoStrength,
+            holoSweep: holoSweep,
+            editableTitle: editingTitle ? $title : nil,
+            titleFocused: $titleFocused,
+            onSubmitTitle: { stopEditingTitle() },
+            onTapCaption: chromeVisible && !flying ? { startEditingTitle() } : nil
+        )
         .frame(width: frame.width, height: frame.height)
         .position(x: frame.midX, y: frame.midY)
         .rotationEffect(.degrees(flying ? -8 : 0))
@@ -143,71 +159,74 @@ struct RevealScreen: View {
         .animation(Theme.spring, value: flying)
     }
 
-    private func currentMaskProgress(at date: Date) -> Double {
-        guard let maskStart else { return 0 }
-        if maskDone { return 1 }
-        return min(1, date.timeIntervalSince(maskStart) / maskDuration)
-    }
-
-    private func assembly(maskProgress: Double) -> StampView.Assembly {
+    private func assembly() -> StampView.Assembly {
         var a = StampView.Assembly()
         a.paper = paper
         a.caption = caption
         a.settle = settle
-        a.stickerPop = stickerPop
-
-        if pending.style == .cutout, let cutout = pending.cutout {
-            if !maskDone {
-                a.content = maskStart != nil
-                    ? .unmasking(mask: cutout, progress: maskProgress)
-                    : .raw
-            } else if !diecut {
-                // Beat 1 after the lift: the exact cutout, no border yet.
-                a.content = .lifted(cutout: cutout)
-            } else {
-                a.content = .final
-            }
-        } else {
-            a.content = .final
-        }
+        a.border = border
+        a.waste = waste
+        a.content = pending.style == .cutout && !assembled ? .raw : .final
         return a
     }
 
     // MARK: Choreography
 
     private func runEntrance() {
+        dbgMark("reveal.onAppear")
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.08))
+            // The first frame carries the raw crop's texture and the glass
+            // chrome's one-time setup; gate the glide on its commit so the
+            // spring plays on screen instead of finishing during a stall.
+            // The longer hold also lets the develop overlay's teardown
+            // (a big texture + shader raster) finish on this static frame
+            // instead of inside the glide.
+            await afterNextCommit()
+            try? await Task.sleep(for: .seconds(0.3))
+            await afterNextCommit()
+            dbgMark("reveal.glide")
             withAnimation(.spring(response: 0.6, dampingFraction: 0.82)) {
                 centered = true
             }
-            try? await Task.sleep(for: .seconds(0.55))
-            if pending.style == .cutout, pending.cutout != nil {
-                maskStart = Date()
-                model.haptics.grains(duration: maskDuration * 0.8)
+            try? await Task.sleep(for: .seconds(0.62))
+            await afterNextCommit()
+            if pending.style == .cutout, pending.sticker != nil {
+                // Die cut first: the press dips the sheet and the outline
+                // appears around the subject. Nothing else is scheduled in
+                // this window — the punch owns its frames.
+                dbgMark("reveal.diecut")
+                model.haptics.tick()
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                    border = 1
+                }
+                try? await Task.sleep(for: .seconds(0.55))
+                // …then the waste sheet fades away, leaving the sticker.
+                dbgMark("reveal.waste")
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    waste = 0
+                }
+                try? await Task.sleep(for: .seconds(0.62))
+                // Waste 0 and .final render identical pixels — swap quietly,
+                // then pre-render the dressed layers invisibly (paper shader,
+                // path shadows, caption glyphs) on this static beat.
+                assembled = true
+                paper = 0.001
+                caption = 0.001
+                await afterNextCommit()
+                try? await Task.sleep(for: .seconds(0.1))
+                dress()
             } else {
+                assembled = true
+                paper = 0.001
+                caption = 0.001
+                await afterNextCommit()
                 dress()
             }
         }
     }
 
-    private func finishUnmask() {
-        maskDone = true
-        // Lift → breath → die-cut punch → assembly.
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.22))
-            model.haptics.tick()
-            stickerPop = 1.1
-            diecut = true
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.58)) {
-                stickerPop = 1
-            }
-            try? await Task.sleep(for: .seconds(0.38))
-            dress()
-        }
-    }
-
     private func dress() {
+        dbgMark("reveal.dress")
         model.haptics.tick()
         withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
             paper = 1
@@ -247,12 +266,15 @@ struct RevealScreen: View {
         guard !flying, !postmarked else { return }
         stopEditingTitle()
         model.haptics.thunk()
-        postmarked = true
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.62)) {
-            postmarkScale = 1
-        }
+        dbgMark("reveal.keep")
+        postmarked = true   // seal mounts at 1.7
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.78))
+            await afterNextCommit()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.62)) {
+                postmarkScale = 1
+            }
+            try? await Task.sleep(for: .seconds(0.75))
+            dbgMark("reveal.fly")
             withAnimation(Theme.spring) {
                 flying = true
                 chromeVisible = false
@@ -267,17 +289,19 @@ struct RevealScreen: View {
 
     // MARK: Chrome
 
+    /// Always mounted, opacity/offset-driven: the glass materials pay their
+    /// one-time setup with the reveal's first frame (behind a static beat),
+    /// so showing the chrome is a pure animation with nothing left to build.
     @ViewBuilder
     private var chrome: some View {
         let barY = screenSize.height - max(safeArea.bottom, 16) - 50
 
-        if chromeVisible {
+        Group {
             Text("№ \(model.store.nextNumber) in your collection")
                 .font(.system(size: 14, design: .serif))
                 .italic()
                 .foregroundStyle(Theme.inkSoft)
                 .position(x: screenSize.width / 2, y: barY - 64)
-                .transition(.opacity.combined(with: .offset(y: 8)))
 
             HStack(spacing: 14) {
                 Button {
@@ -306,8 +330,10 @@ struct RevealScreen: View {
                 .buttonStyle(PressableButtonStyle())
             }
             .position(x: screenSize.width / 2, y: barY)
-            .transition(.opacity.combined(with: .offset(y: 16)))
         }
+        .opacity(chromeVisible ? 1 : 0)
+        .offset(y: chromeVisible ? 0 : 14)
+        .allowsHitTesting(chromeVisible)
     }
 }
 

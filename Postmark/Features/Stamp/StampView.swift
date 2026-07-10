@@ -17,24 +17,24 @@ struct StampView: View {
         var caption: Double = 1
         /// 0 → sticker at its captured position, 1 → composed at center.
         var settle: Double = 1
-        /// Die-cut punch scale on the sticker (springs 1.12 → 1).
-        var stickerPop: CGFloat = 1
+        /// Die-cut punch: the white sticker outline pressed into the raw
+        /// photo (0 → not cut yet, 1 → cut).
+        var border: Double = 1
+        /// The waste around the cut sticker (the raw photo). 1 → present,
+        /// 0 → faded away, leaving only the sticker.
+        var waste: Double = 1
         var content: ContentStage = .final
 
         enum ContentStage {
-            /// The raw viewfinder crop, full bleed in the content rect.
+            /// The raw viewfinder crop with the die-cut sticker over it.
+            /// With waste 0 this is pixel-identical to `.final`.
             case raw
-            /// Grain shader eating everything but the subject.
-            case unmasking(mask: UIImage, progress: Double)
-            /// The exact cutout image, subject at its captured position —
-            /// the guaranteed-clean end state of the unmask.
-            case lifted(cutout: UIImage)
             /// Final display image (sticker on paper / classic photo).
             case final
         }
 
         static let dressed = Assembly()
-        static let bare = Assembly(paper: 0, caption: 0, settle: 0, content: .raw)
+        static let bare = Assembly(paper: 0, caption: 0, settle: 0, border: 0, content: .raw)
     }
 
     var image: UIImage?
@@ -53,6 +53,9 @@ struct StampView: View {
 
     var assembly: Assembly = .dressed
 
+    /// Set true where shimmer will ever run (reveal, detail); must not change
+    /// during the view's lifetime.
+    var holoEnabled: Bool = false
     var holoStrength: Double = 0
     var holoSweep: Double = 0.5
     var holoDir: CGPoint = CGPoint(x: 1, y: 0.35)
@@ -108,7 +111,8 @@ struct StampView: View {
             }
         }
         .compositingGroup()
-        .modifier(HoloModifier(strength: holoStrength, sweep: holoSweep, dir: holoDir))
+        .modifier(HoloModifier(enabled: holoEnabled, strength: holoStrength,
+                               sweep: holoSweep, dir: holoDir))
     }
 
     // MARK: Paper
@@ -137,26 +141,39 @@ struct StampView: View {
     private func contentLayer(_ w: CGFloat, content: CGRect) -> some View {
         switch assembly.content {
         case .raw:
-            if let raw = rawCrop ?? image {
-                rawView(raw, content: content)
+            // The die press: the whole sheet dips as the cutter strikes and
+            // the white outline appears; the waste then fades away beneath
+            // the cut sticker. sin(border·π) is 0 at both ends, so the crop
+            // is pixel-exact before and after the punch, and waste 0 leaves
+            // exactly the sticker — the swap to .final is invisible.
+            ZStack(alignment: .topLeading) {
+                if let raw = rawCrop ?? image {
+                    rawView(raw, content: content)
+                        .opacity(assembly.waste)
+                }
+                stickerOverlay(w, content: content)
             }
-        case .unmasking(let mask, let progress):
-            if let raw = rawCrop ?? image {
-                rawView(raw, content: content)
-                    .layerEffect(
-                        ShaderLibrary.grainDissolveMask(
-                            .float2(content.width, content.height),
-                            .image(Image(uiImage: mask)),
-                            .float(progress),
-                            .float(max(4, w * 0.024))
-                        ),
-                        maxSampleOffset: CGSize(width: 52, height: 210)
-                    )
-            }
-        case .lifted(let cutout):
-            rawView(cutout, content: content)
+            .scaleEffect(1 - 0.018 * sin(min(1, max(0, assembly.border)) * .pi))
         case .final:
             finalContent(w, content: content)
+        }
+    }
+
+    /// The die-cut sticker (white border + subject) over the raw photo. Its
+    /// subject pixels match the crop beneath exactly, so only the outline
+    /// reads as it fades in. The 0.001 floor keeps the layer alive from the
+    /// reveal's first frame — its one-time composite must never land
+    /// mid-choreography.
+    @ViewBuilder
+    private func stickerOverlay(_ w: CGFloat, content: CGRect) -> some View {
+        if style == .cutout, stickerBox != nil, let image {
+            let frame = stickerFrame(w, content: content, imageSize: image.size)
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: frame.width, height: frame.height)
+                .position(x: frame.midX, y: frame.midY)
+                .opacity(max(0.001, assembly.border))
         }
     }
 
@@ -185,7 +202,6 @@ struct StampView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: frame.width, height: frame.height)
-                .scaleEffect(assembly.stickerPop)
                 .shadow(color: Theme.ink.opacity(0.12 * assembly.paper),
                         radius: 0.012 * w, y: 0.008 * w)
                 .position(x: frame.midX, y: frame.midY)
@@ -245,21 +261,22 @@ struct StampView: View {
             if let binding = editableTitle {
                 editableCaption(binding, font: titleFont, width: w)
                     .position(x: w / 2, y: lineY)
-            } else if let onTapCaption {
+            } else {
+                // One stable branch whether or not renaming is available —
+                // conditional branches here would re-mount the title
+                // mid-letter-stagger when chrome appears.
                 staggeredTitle(font: titleFont, width: w)
                     .overlay(alignment: .bottom) {
                         // Rename affordance: a faint dashed rule under the title.
                         Line()
-                            .stroke(Theme.ink.opacity(0.38 * assembly.caption),
+                            .stroke(Theme.ink.opacity(
+                                onTapCaption == nil ? 0 : 0.38 * assembly.caption),
                                     style: StrokeStyle(lineWidth: 1, dash: [2.5, 3]))
                             .frame(height: 1)
                             .offset(y: 0.022 * w)
                     }
                     .contentShape(Rectangle())
-                    .onTapGesture(perform: onTapCaption)
-                    .position(x: w / 2, y: lineY)
-            } else {
-                staggeredTitle(font: titleFont, width: w)
+                    .onTapGesture { onTapCaption?() }
                     .position(x: w / 2, y: lineY)
             }
         }
@@ -324,14 +341,17 @@ struct Line: Shape {
     }
 }
 
-/// Applies the holographic shimmer only when visible — shader-free otherwise.
+/// Applies the holographic shimmer. `enabled` must be constant for a view's
+/// lifetime — branching on live values (like strength) would change the whole
+/// stamp's view identity mid-flight and silently kill in-progress animations.
 private struct HoloModifier: ViewModifier {
+    var enabled: Bool
     var strength: Double
     var sweep: Double
     var dir: CGPoint
 
     func body(content: Content) -> some View {
-        if strength > 0.001 {
+        if enabled {
             content.colorEffect(ShaderLibrary.holoShimmer(
                 .boundingRect,
                 .float(sweep),

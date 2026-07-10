@@ -39,12 +39,6 @@ struct CameraScreen: View {
                     .position(p)
                     .id("\(p.x)-\(p.y)")
             }
-
-            // Shutter blink.
-            Color.black
-                .opacity(model.isCapturing ? 0.88 : 0)
-                .animation(.easeOut(duration: 0.12), value: model.isCapturing)
-                .allowsHitTesting(false)
         }
         .frame(width: screenSize.width, height: screenSize.height)
         .background(Color.black)

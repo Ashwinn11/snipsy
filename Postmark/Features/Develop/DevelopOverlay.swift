@@ -13,6 +13,10 @@ struct DevelopOverlay: View {
     @State private var dissolveDone = false
     @State private var analysis: VisionService.Analysis? = nil
     @State private var advanced = false
+    /// Cancels the parent's transient ±4 pt proposal overshoot at capture
+    /// time (children land 4 pt high without it). Measured live; converges
+    /// to the true drift and commits behind the blackout.
+    @State private var drift: CGFloat = 0
 
     private let duration: TimeInterval = 1.5
 
@@ -20,9 +24,18 @@ struct DevelopOverlay: View {
         let vf = capture.viewfinderRect
 
         ZStack {
+            GeometryReader { g in
+                let minY = g.frame(in: .global).minY
+                Color.clear
+                    .onAppear { if abs(minY) > 0.5 { drift -= minY } }
+                    .onChange(of: minY) { _, new in
+                        if abs(new) > 0.5 { drift -= new }
+                    }
+            }
+
             PaperBackdrop()
 
-            TimelineView(.animation(paused: dissolveDone)) { timeline in
+            TimelineView(.animation(paused: start == nil || dissolveDone)) { timeline in
                 let elapsed = start.map { timeline.date.timeIntervalSince($0) } ?? 0
                 let raw = min(1.0, max(0.0, elapsed / duration))
                 // Ease the wave itself; grains add their own stagger.
@@ -67,16 +80,39 @@ struct DevelopOverlay: View {
                     .transition(.opacity)
             }
         }
+        // Pin to the window size like CameraScreen does, and cancel the
+        // measured drift so every layer lands exactly on the window — the
+        // develop → reveal handoff must be pixel-continuous.
+        .offset(y: drift)
+        .frame(width: screenSize.width, height: screenSize.height)
         .onAppear {
-            start = Date()
-            model.haptics.grains(duration: duration * 0.85)
+            dbgMark("develop.onAppear")
+            Task { @MainActor in
+                // Let the frozen frame's first commit land behind the
+                // blackout, then lift the curtain and start the wave — the
+                // dissolve clock must never race an expensive first frame.
+                await afterNextCommit()
+                dbgMark("develop.committed")
+                model.blackout = false
+                try? await Task.sleep(for: .seconds(0.06))
+                start = Date()
+                model.haptics.grains(duration: duration * 0.85)
+            }
         }
         .task {
-            let result = await VisionService.analyze(
+            var result = await VisionService.analyze(
                 capture.cropImage,
                 fallbackCutout: capture.fallbackCutout,
                 fallbackLabel: capture.fallbackLabel
             )
+            // Decode the reveal's textures now, while the grains are still
+            // falling — its first frame must not stall on bitmap decode.
+            result = await Task.detached(priority: .userInitiated) { [result] in
+                var r = result
+                r.cutout = r.cutout.map { $0.preparingForDisplay() ?? $0 }
+                r.sticker = r.sticker.map { $0.preparingForDisplay() ?? $0 }
+                return r
+            }.value
             analysis = result
             tryAdvance()
         }
@@ -96,6 +132,7 @@ struct DevelopOverlay: View {
             suggestedTitle: analysis.label,
             tint: analysis.tint
         )
+        dbgMark("develop.finished")
         model.developFinished(pending)
     }
 }

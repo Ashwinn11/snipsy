@@ -32,10 +32,12 @@ lives on warm paper.
 - **Shutter**: press = inner disc 0.86 scale; release fires; iris flash blink.
 - **Grain dissolve** (Metal): wave from viewfinder edge outward; pixels become grains
   that shrink, glint, drift up and die. 1.35 s. Haptic: soft continuous texture.
-- **Stamp assembly**: crop glides from viewfinder to center; second grain pass eats
-  everything but the Vision subject; a breath on the clean cutout, then the white
-  die-cut border *punches* in (spring 1.1→1 + tick haptic); perforated paper unfurls
-  behind; caption rises letter by letter; № and year fade in.
+- **Stamp assembly**: crop glides from viewfinder to center; the die cutter
+  *punches* the sticker outline into the photo (whole sheet dips 1.8%, outline
+  springs in, tick haptic); the waste sheet fades away leaving the die-cut
+  sticker; perforated paper unfurls behind; caption rises letter by letter;
+  № and year fade in. Every beat starts only after the previous frame has
+  committed; one-time render costs are pre-paid invisibly on static beats.
 - **Cancellation**: on Keep, postmark strikes (scale 1.6→1, rot −14°→−8°, heavy haptic),
   then the stamp arcs into the collection pill; pill bounces, count ticks.
 - **Album**: staggered entrance; cells rotated ±1.2° (organic); detail = matched

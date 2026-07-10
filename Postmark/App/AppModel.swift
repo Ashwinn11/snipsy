@@ -31,6 +31,10 @@ final class AppModel {
     var pillBump = 0
 
     var isCapturing = false
+    /// Shutter blackout curtain, rendered above every phase in RootView. Held
+    /// dark until DevelopOverlay's first frame has committed, so the heavy
+    /// frozen-frame setup happens behind it and never as an on-screen snap.
+    var blackout = false
 
     let camera = CameraController()
     let store = StampStore()
@@ -48,47 +52,69 @@ final class AppModel {
         isCapturing = true
         defer { isCapturing = false }
         haptics.shutter()
+        blackout = true
         let shutterMoment = Date()
+        dbgMark("capture.begin")
 
         do {
             let shot = try await camera.capture()
+            let image = shot.image
+            let drift = shot.drift
+            let fallback = shot.fallbackCutout
+
+            // Bake the on-screen presentation (aspect-fill + demo drift) into a
+            // screen-exact image so every later step shares one geometry.
+            // Cropping and bitmap decode are heavy — do them off the main
+            // thread, behind the blackout, so no frame is ever built late.
+            let baked = await Task.detached(priority: .userInitiated) {
+                () -> (screen: UIImage, crop: UIImage, cutout: UIImage?)? in
+                let screenRect = CGRect(origin: .zero, size: viewSize)
+                let screenPixels = FrameGeometry.imageCrop(
+                    imageSize: image.size, viewSize: viewSize,
+                    rectInView: screenRect, drift: drift
+                )
+                guard let screenImage = FrameGeometry.crop(image, to: screenPixels)
+                else { return nil }
+
+                let cropPixels = FrameGeometry.imageCrop(
+                    imageSize: image.size, viewSize: viewSize,
+                    rectInView: viewfinderRect, drift: drift
+                )
+                guard cropPixels.width > 16, cropPixels.height > 16,
+                      let cropImage = FrameGeometry.crop(image, to: cropPixels)
+                else { return nil }
+
+                let fallbackCutout = fallback.flatMap {
+                    FrameGeometry.crop($0, to: cropPixels)
+                }
+                return (screenImage.preparingForDisplay() ?? screenImage,
+                        cropImage.preparingForDisplay() ?? cropImage,
+                        fallbackCutout.map { $0.preparingForDisplay() ?? $0 })
+            }.value
+
+            guard let baked else {
+                blackout = false
+                return
+            }
+
             // Hold the shutter blink long enough to read as a beat.
             let elapsed = Date().timeIntervalSince(shutterMoment)
             if elapsed < 0.26 {
                 try? await Task.sleep(for: .seconds(0.26 - elapsed))
             }
-            let screenRect = CGRect(origin: .zero, size: viewSize)
 
-            // Bake the on-screen presentation (aspect-fill + demo drift) into a
-            // screen-exact image so every later step shares one geometry.
-            let screenPixels = FrameGeometry.imageCrop(
-                imageSize: shot.image.size, viewSize: viewSize,
-                rectInView: screenRect, drift: shot.drift
-            )
-            guard let screenImage = FrameGeometry.crop(shot.image, to: screenPixels)
-            else { return }
-
-            let cropPixels = FrameGeometry.imageCrop(
-                imageSize: shot.image.size, viewSize: viewSize,
-                rectInView: viewfinderRect, drift: shot.drift
-            )
-            guard cropPixels.width > 16, cropPixels.height > 16,
-                  let cropImage = FrameGeometry.crop(shot.image, to: cropPixels)
-            else { return }
-
-            let fallbackCutout = shot.fallbackCutout.flatMap {
-                FrameGeometry.crop($0, to: cropPixels)
-            }
-
+            dbgMark("capture.developing")
             phase = .developing(Capture(
-                screenImage: screenImage,
-                cropImage: cropImage,
+                screenImage: baked.screen,
+                cropImage: baked.crop,
                 viewfinderRect: viewfinderRect,
-                fallbackCutout: fallbackCutout,
+                fallbackCutout: baked.cutout,
                 fallbackLabel: shot.fallbackLabel
             ))
+            // DevelopOverlay lifts the blackout once its first frame is up.
         } catch {
             // Capture failed — remain in camera, no drama.
+            blackout = false
         }
     }
 
