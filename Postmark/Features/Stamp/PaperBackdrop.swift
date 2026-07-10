@@ -27,13 +27,10 @@ struct PaperBackdrop: View {
                     colors: meshColors(warmth: 0.05 + Double(drift) * 0.06)
                 )
             }
-
-            // Static grain pass multiplied over the drifting mesh — rendered
-            // once and cached, so the mesh ticks never re-run the shader.
-            Rectangle()
-                .fill(.white)
-                .colorEffect(ShaderLibrary.paperGrain(.float(0.31), .float(0.5)))
-                .blendMode(.multiply)
+            // 75her's structure verbatim: the one-hash dither rides the
+            // mesh directly. Heavier compositing (blend layers, groups)
+            // forces full re-rasters per tick and drags the main loop.
+            .colorEffect(ShaderLibrary.fineGrain(.float(0.045)))
 
             if showsGrid {
                 Canvas(opaque: false, rendersAsynchronously: true) { ctx, size in
@@ -60,8 +57,6 @@ struct PaperBackdrop: View {
                 center: .center, startRadius: 220, endRadius: 640
             )
         }
-        // Contain the grain's multiply blend within the backdrop.
-        .compositingGroup()
     }
 
     private func meshColors(warmth: Double) -> [Color] {

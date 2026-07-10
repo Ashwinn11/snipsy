@@ -82,6 +82,7 @@ struct RootView: View {
         ]
         let colorShaders = [
             ShaderLibrary.paperGrain(.float(0), .float(0.5)),
+            ShaderLibrary.fineGrain(.float(0.045)),
             ShaderLibrary.inkBleed(.float(0)),
             ShaderLibrary.holoShimmer(.boundingRect, .float(0), .float2(1, 0), .float(0.5)),
         ]

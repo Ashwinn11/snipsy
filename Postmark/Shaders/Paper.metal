@@ -43,6 +43,13 @@ static inline float vnoise(float2 p) {
     return color;
 }
 
+// fineGrain — the 75her backdrop grain: a single-pixel brightness dither,
+// far subtler than paperGrain (which is stamp stock, with tooth and flecks).
+[[ stitchable ]] half4 fineGrain(float2 position, half4 color, float intensity) {
+    float n = phash(floor(position)) - 0.5;
+    return half4(color.rgb + half3(half(n * intensity)) * color.a, color.a);
+}
+
 // Ink texture for the postmark — real cancellation ink never prints solid.
 // Erodes edges and opens pinholes in the strokes.
 [[ stitchable ]] half4 inkBleed(
