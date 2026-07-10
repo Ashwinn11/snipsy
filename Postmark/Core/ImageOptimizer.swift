@@ -29,6 +29,32 @@ enum ImageOptimizer {
         return scaled.pngData()
     }
 
+    /// Decode a photo at bounded size without ever materializing the full
+    /// bitmap — mandatory inside app extensions (~120 MB jetsam ceiling; a
+    /// 48 MP decode plus an orientation redraw is an instant kill). The
+    /// thumbnail transform applies EXIF orientation during decode.
+    static func downsampled(url: URL, maxPixel: CGFloat = 2000) -> UIImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        return downsampled(source: source, maxPixel: maxPixel)
+    }
+
+    static func downsampled(data: Data, maxPixel: CGFloat = 2000) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        return downsampled(source: source, maxPixel: maxPixel)
+    }
+
+    private static func downsampled(source: CGImageSource, maxPixel: CGFloat) -> UIImage? {
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        else { return nil }
+        return UIImage(cgImage: cg, scale: 1, orientation: .up)
+    }
+
     /// Library photos carry EXIF orientation; CGImage cropping ignores it.
     /// Redraw to .up before any pixel-space math.
     static func normalizedOrientation(_ image: UIImage) -> UIImage {

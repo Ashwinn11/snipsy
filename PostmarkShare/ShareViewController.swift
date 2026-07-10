@@ -11,7 +11,7 @@ final class ShareViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0.957, green: 0.937, blue: 0.902, alpha: 1)
+        view.backgroundColor = UIColor(red: 0.094, green: 0.082, blue: 0.059, alpha: 1)
 
         let host = UIHostingController(rootView: ShareComposerView(
             state: state,
@@ -40,14 +40,29 @@ final class ShareViewController: UIViewController {
             state.failed = true
             return
         }
-        provider.loadItem(forTypeIdentifier: UTType.image.identifier) { [weak self] item, _ in
-            let image: UIImage?
-            switch item {
-            case let url as URL: image = UIImage(contentsOfFile: url.path)
-            case let data as Data: image = UIImage(data: data)
-            case let direct as UIImage: image = direct
-            default: image = nil
+        // Decode bounded, never full-res: extensions live under a ~120 MB
+        // ceiling and a 12–48 MP decode is an instant jetsam (the app
+        // "opens and closes"). The thumbnail decode also applies EXIF
+        // orientation for free.
+        provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) {
+            [weak self] url, _ in
+            let image = url.flatMap { ImageOptimizer.downsampled(url: $0) }
+            if let image {
+                Task { @MainActor in
+                    guard let self else { return }
+                    await self.state.begin(with: image)
+                }
+                return
             }
+            // Some providers only vend data.
+            self?.loadFromData(provider)
+        }
+    }
+
+    private func loadFromData(_ provider: NSItemProvider) {
+        provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) {
+            [weak self] data, _ in
+            let image = data.flatMap { ImageOptimizer.downsampled(data: $0) }
             Task { @MainActor in
                 guard let self else { return }
                 if let image {
@@ -88,11 +103,7 @@ final class ShareComposerState {
 
     var nextNumber: Int { store.nextNumber }
 
-    func begin(with raw: UIImage) async {
-        // Keep the extension well under its memory ceiling.
-        let image = ImageOptimizer.downscaled(
-            ImageOptimizer.normalizedOrientation(raw), maxDimension: 2000)
-
+    func begin(with image: UIImage) async {
         // Center 4:5 crop — the shape a viewfinder capture would have.
         let px = CGSize(width: image.size.width * image.scale,
                         height: image.size.height * image.scale)
@@ -118,6 +129,7 @@ final class ShareComposerState {
             cutout: analysis.cutout,
             sticker: analysis.sticker,
             stickerBox: analysis.stickerBox,
+            stickerLabelAnchor: analysis.labelAnchor,
             suggestedTitle: analysis.label,
             tint: analysis.tint
         )
@@ -197,10 +209,12 @@ struct ShareComposerView: View {
                             variant: previewVariant,
                             stickerBox: pending.stickerBox,
                             rawCrop: pending.capture.cropImage,
+                            maskImage: pending.cutout,
+                            labelAnchor: pending.stickerLabelAnchor,
                             assembly: previewAssembly
                         )
                         .frame(width: 210)
-                        .shadow(color: Theme.ink.opacity(0.14), radius: 16, y: 9)
+                        .shadow(color: Theme.shadow.opacity(0.45), radius: 16, y: 9)
 
                         HStack(spacing: 11) {
                             if pending.style == .cutout, let sticker = pending.sticker {
