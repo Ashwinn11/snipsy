@@ -75,7 +75,7 @@ struct RootView: View {
             ShaderLibrary.grainDissolveRect(
                 .boundingRect, .float4(0, 0, 1, 1), .float(1), .float(0), .float(9)),
             ShaderLibrary.grainDissolveMask(
-                .boundingRect, .image(mask), .float(0), .float(9)),
+                .float2(1, 1), .image(mask), .float(0), .float(9)),
         ]
         let colorShaders = [
             ShaderLibrary.paperGrain(.float(0), .float(0.5)),

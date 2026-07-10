@@ -91,16 +91,22 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
 
 /// Everything the mask calls background (mask alpha < 0.5) dissolves,
 /// top → bottom. Used to lift the Vision subject out of the crop.
+///
+/// `size` is the *content* size in points, passed explicitly: for a
+/// layerEffect, `.boundingRect` reports the raster bounds expanded by
+/// maxSampleOffset, while `position` stays in content coordinates —
+/// normalizing by the padded rect shifts the mask (background chunks
+/// survive, subject edges get eaten).
 [[ stitchable ]] half4 grainDissolveMask(
     float2 position,
     SwiftUI::Layer layer,
-    float4 bounds,
+    float2 size,
     texture2d<half> mask,
     float progress,
     float cellSize
 ) {
     constexpr sampler s(coord::normalized, address::clamp_to_edge, filter::linear);
-    float2 uv = (position - bounds.xy) / bounds.zw;
+    float2 uv = position / size;
     half m = mask.sample(s, uv).a;
 
     if (m > 0.5) { return layer.sample(position); }
@@ -115,7 +121,7 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
 
     GrainSample g = grainMotion(position, cell, cellSize, local);
     // Never resurrect subject pixels while sampling for a dying grain.
-    float2 suv = (g.samplePos - bounds.xy) / bounds.zw;
+    float2 suv = g.samplePos / size;
     half sm = mask.sample(s, suv).a;
     half4 c = layer.sample(g.samplePos) * half(1.0 - float(sm > 0.5));
     c.rgb += half3(g.glint) * c.a;

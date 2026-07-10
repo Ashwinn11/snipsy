@@ -140,7 +140,7 @@ struct StampView: View {
                 rawView(raw, content: content)
                     .layerEffect(
                         ShaderLibrary.grainDissolveMask(
-                            .boundingRect,
+                            .float2(content.width, content.height),
                             .image(Image(uiImage: mask)),
                             .float(progress),
                             .float(max(4, w * 0.024))
