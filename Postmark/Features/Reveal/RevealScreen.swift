@@ -16,8 +16,11 @@ struct RevealScreen: View {
     @State private var centered = false
     /// Die-cut punch: the sticker outline pressed into the raw photo.
     @State private var border: Double = 0
-    /// The raw photo around the cut sticker; fades to 0 after the punch.
-    @State private var waste: Double = 1
+    /// Waste grain-dissolve progress (0 intact → 1 gone). Advanced per
+    /// display tick with a clamped dt (shader args don't tween, and a
+    /// main-thread hitch must pause the wave, never teleport it).
+    @State private var wasteProgress: Double = 0
+    @State private var wasteTarget: Double = 0
     /// The die cutter has run once (sticker path only).
     @State private var cutDone = false
     @State private var paper: Double = 0
@@ -99,13 +102,16 @@ struct RevealScreen: View {
             // Texture pre-warm: force the sticker bitmap through upload
             // during the entrance beat, so its first real composite costs
             // nothing. Tiny, invisible, and behind paper.
-            if let sticker = pending.sticker {
-                Image(uiImage: sticker)
-                    .resizable()
-                    .frame(width: 2, height: 2)
-                    .opacity(0.001)
-                    .allowsHitTesting(false)
+            Group {
+                if let sticker = pending.sticker {
+                    Image(uiImage: sticker).resizable().frame(width: 2, height: 2)
+                }
+                if let cutout = pending.cutout {
+                    Image(uiImage: cutout).resizable().frame(width: 2, height: 2)
+                }
             }
+            .opacity(0.001)
+            .allowsHitTesting(false)
 
             PaperBackdrop()
                 .opacity(flying ? 0 : 1)
@@ -139,7 +145,9 @@ struct RevealScreen: View {
     private var stampLayer: some View {
         let frame = stampFrame
 
-        TimelineView(.animation(paused: rippleStart == nil)) { timeline in
+        TimelineView(.animation(
+            paused: rippleStart == nil && wasteProgress == wasteTarget
+        )) { timeline in
             let rippleTime = rippleStart.map { timeline.date.timeIntervalSince($0) } ?? 10
 
             StampView(
@@ -155,6 +163,8 @@ struct RevealScreen: View {
                 postmarkScale: postmarkScale,
                 stickerBox: pending.stickerBox,
                 rawCrop: pending.capture.cropImage,
+                maskImage: pending.cutout,
+                labelAnchor: pending.stickerLabelAnchor,
                 assembly: assembly(),
                 holoEnabled: true,
                 holoStrength: holoStrength,
@@ -167,6 +177,16 @@ struct RevealScreen: View {
                 onSubmitTitle: { stopEditingTitle() },
                 onTapCaption: chromeVisible && !flying ? { startEditingTitle() } : nil
             )
+            .onChange(of: timeline.date) { old, new in
+                guard wasteProgress != wasteTarget else { return }
+                let dt = min(max(0, new.timeIntervalSince(old)), 1.0 / 30.0)
+                let duration = wasteTarget > wasteProgress ? 1.15 : 0.6
+                if wasteTarget > wasteProgress {
+                    wasteProgress = min(wasteTarget, wasteProgress + dt / duration)
+                } else {
+                    wasteProgress = max(wasteTarget, wasteProgress - dt / duration)
+                }
+            }
         }
         .frame(width: frame.width, height: frame.height)
         .gesture(
@@ -203,7 +223,7 @@ struct RevealScreen: View {
         a.caption = caption
         a.settle = settle
         a.border = border
-        a.waste = waste
+        a.waste = 1 - wasteProgress
         a.content = .raw
         return a
     }
@@ -236,6 +256,7 @@ struct RevealScreen: View {
         }
     }
 
+
     /// An option was tapped. Stickers run the die cutter (once); stamps
     /// frame the whole photo on paper — no cut. Every switch is reversible
     /// because both forms are opacity-driven over the same content.
@@ -260,31 +281,38 @@ struct RevealScreen: View {
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
                         border = 1
                     }
-                    try? await Task.sleep(for: .seconds(0.48))
-                    // …then the waste sheet fades away and the piece settles.
-                    withAnimation(.easeInOut(duration: 0.45)) {
-                        waste = 0
+                    try? await Task.sleep(for: .seconds(0.45))
+                    // …then the waste shatters off the cut line — a grain
+                    // wave radiating outward — and the piece settles.
+                    model.haptics.grains(duration: 0.8)
+                    wasteTarget = 1
+                    // The settle waits on the wave itself, not the clock: if
+                    // a stall pauses the grains, the piece must not shrink
+                    // out from beneath them.
+                    let waveStart = Date()
+                    while wasteProgress < 0.83,
+                          Date().timeIntervalSince(waveStart) < 3 {
+                        try? await Task.sleep(for: .seconds(0.05))
                     }
-                    try? await Task.sleep(for: .seconds(0.5))
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                         settle = 1
                         paper = 0.001
                         caption = 0.001
                     }
                 } else {
+                    wasteTarget = 1
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.8)) {
                         border = 1
-                        waste = 0
                         settle = 1
                         paper = 0.001
                         caption = 0.001
                     }
                 }
             case .paper:
-                // The whole photo, framed — the waste returns if it was cut.
+                // The whole photo, framed — cut waste reassembles in reverse.
+                wasteTarget = 0
                 withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
                     border = 0
-                    waste = 1
                     paper = 1
                     settle = 1
                 }
@@ -376,7 +404,7 @@ struct RevealScreen: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 52, height: 68)
-                            .shadow(color: Theme.ink.opacity(0.16), radius: 3, y: 2)
+                            .shadow(color: Theme.shadow.opacity(0.4), radius: 3, y: 2)
                     }
                 }
                 ForEach(StampVariant.allCases) { v in

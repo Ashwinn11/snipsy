@@ -54,6 +54,64 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
+/// The die-cut's waste: everything the mask calls background dissolves in a
+/// grain wave radiating OUTWARD from the sticker's box — the press cuts,
+/// the waste shatters off the cut line and drifts away. Runs in reverse
+/// (grains reassemble) when the user switches back to a paper.
+///
+/// `size` is the content size in points, passed explicitly: for a
+/// layerEffect, `.boundingRect` reports raster bounds expanded by
+/// maxSampleOffset while `position` stays in content coordinates —
+/// normalizing by the padded rect shifts the mask.
+/// `box` = sticker coverage rect (x, y, w, h) in content points.
+[[ stitchable ]] half4 grainDissolveWaste(
+    float2 position,
+    SwiftUI::Layer layer,
+    float2 size,
+    texture2d<half> mask,
+    float4 box,
+    float progress,
+    float cellSize
+) {
+    if (progress <= 0.0) { return layer.sample(position); }
+
+    constexpr sampler s(coord::normalized, address::clamp_to_edge, filter::linear);
+    float2 uv = position / size;
+    half m = mask.sample(s, uv).a;
+
+    // Kept pixels ride the matte's continuous alpha. They sit beneath the
+    // bordered sticker overlay while the wave runs, then fade at its tail —
+    // the overlay is about to settle away from this position, and nothing
+    // may remain behind it.
+    if (m > 0.5) {
+        half fade = half(1.0 - smoothstep(0.8, 0.97, progress));
+        return layer.sample(position) * m * fade;
+    }
+
+    float2 boxCenter = box.xy + box.zw * 0.5;
+    float sd = max(sdRoundRect(position, boxCenter, box.zw * 0.5, 8.0), 0.0);
+    float maxDist = length(size) * 0.45;
+
+    float2 cell = floor(position / cellSize);
+    float rnd = hash21(cell + 7.3);
+    // Wide spread + strong per-grain stagger: the front visibly TRAVELS
+    // outward from the cut line instead of melting all at once.
+    float delay = clamp(sd / maxDist, 0.0, 1.0) * 0.85 + rnd * 0.22;
+    float local = clamp((progress * 1.65 - delay) / 0.42, 0.0, 1.0);
+
+    if (local <= 0.0) { return layer.sample(position); }
+    if (local >= 1.0) { return half4(0.0); }
+
+    GrainSample g = grainMotion(position, cell, cellSize, local);
+    // Never resurrect subject pixels while sampling for a dying grain.
+    float2 suv = g.samplePos / size;
+    half sm = mask.sample(s, suv).a;
+    half4 c = layer.sample(g.samplePos) * half(1.0 - float(sm > 0.5));
+    c.rgb += half3(g.glint) * c.a;
+    c *= half(g.alpha);
+    return c;
+}
+
 /// Everything outside the viewfinder rounded-rect dissolves, edge-out.
 /// vfRect = (x, y, w, h) in view points; progress 0→1.
 [[ stitchable ]] half4 grainDissolveRect(

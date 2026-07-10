@@ -38,6 +38,7 @@ struct RootView: View {
                 }
                 .animation(.easeOut(duration: 0.2), value: model.phase.kind)
 
+
                 // Shutter blackout — above every phase, so the frozen frame's
                 // heavy first render happens behind it, never as a visible
                 // snap. Fades in fast on capture, eases out once the develop
@@ -78,12 +79,17 @@ struct RootView: View {
         .task { await Self.warmUpShaders() }
     }
 
+
     /// Precompile every Metal pipeline the capture moment needs — the first
     /// shutter press must never stall on shader compilation.
     private static func warmUpShaders() async {
+        let mask = Image(uiImage: UIImage())
         let layerShaders = [
             ShaderLibrary.grainDissolveRect(
                 .boundingRect, .float4(0, 0, 1, 1), .float(1), .float(0), .float(9)),
+            ShaderLibrary.grainDissolveWaste(
+                .float2(1, 1), .image(mask), .float4(0, 0, 1, 1),
+                .float(0.5), .float(9)),
         ]
         let colorShaders = [
             ShaderLibrary.paperGrain(.float(0), .float(0.5)),
@@ -102,3 +108,5 @@ struct RootView: View {
         ).compile(as: .distortionEffect)
     }
 }
+
+
