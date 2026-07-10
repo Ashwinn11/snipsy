@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Postmark uses the camera so you can turn what you see into collectible stamps.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Postmark saves the stamps and stickers you export to your photo library.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

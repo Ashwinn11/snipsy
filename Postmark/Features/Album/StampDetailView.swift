@@ -1,4 +1,5 @@
 import SwiftUI
+import Photos
 
 /// Full-bleed stamp inspection: 3D tilt with a holographic shimmer that
 /// follows your finger, inline rename, share, delete.
@@ -20,6 +21,7 @@ struct StampDetailView: View {
     @FocusState private var titleFocused: Bool
     @State private var confirmDelete = false
     @State private var shareImage: Image? = nil
+    @State private var shareUIImage: UIImage? = nil
     @State private var chooseShare = false
     /// Set when the user picks an artifact; drives the share sheet.
     @State private var shareItem: ShareArtifact? = nil
@@ -223,15 +225,14 @@ struct StampDetailView: View {
 
     /// The dressed stamp, flattened on paper.
     private var stampArtifact: ShareArtifact? {
-        guard let shareImage else { return nil }
-        return ShareArtifact(title: current.displayTitle, image: shareImage)
+        guard let ui = shareUIImage else { return nil }
+        return ShareArtifact(title: current.displayTitle, uiImage: ui)
     }
 
     /// The bare die-cut, alpha preserved.
     private var stickerArtifact: ShareArtifact? {
         guard let ui = model.store.image(for: current) else { return nil }
-        return ShareArtifact(title: "\(current.displayTitle) sticker",
-                             image: Image(uiImage: ui))
+        return ShareArtifact(title: "\(current.displayTitle) sticker", uiImage: ui)
     }
 
     @MainActor
@@ -242,6 +243,7 @@ struct StampDetailView: View {
         let renderer = ImageRenderer(content: view)
         renderer.scale = 3
         if let ui = renderer.uiImage {
+            shareUIImage = ui
             shareImage = Image(uiImage: ui)
         }
     }
@@ -251,13 +253,18 @@ struct StampDetailView: View {
 struct ShareArtifact: Identifiable {
     let id = UUID()
     let title: String
-    let image: Image
+    let uiImage: UIImage
+    var image: Image { Image(uiImage: uiImage) }
 }
 
-/// Minimal wrapper so a chosen artifact opens straight into ShareLink.
+/// Preview + Share + Save for a chosen artifact. Saving writes PNG data
+/// through the Photos API — the stock "Save Image" activity re-encodes to
+/// JPEG and would destroy the sticker's transparency.
 struct ShareArtifactSheet: View {
     let artifact: ShareArtifact
     @Environment(\.dismiss) private var dismiss
+    @State private var saved = false
+    @State private var saveDenied = false
 
     var body: some View {
         ZStack {
@@ -269,26 +276,74 @@ struct ShareArtifactSheet: View {
                     .scaledToFit()
                     .frame(maxWidth: 240, maxHeight: 300)
                     .shadow(color: Theme.ink.opacity(0.18), radius: 18, y: 10)
-                ShareLink(
-                    item: artifact.image,
-                    preview: SharePreview(artifact.title, image: artifact.image)
-                ) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 15, weight: .semibold))
-                        Text("Share")
-                            .font(.system(size: 17, weight: .semibold))
+
+                HStack(spacing: 14) {
+                    ShareLink(
+                        item: artifact.image,
+                        preview: SharePreview(artifact.title, image: artifact.image)
+                    ) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("Share")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 28)
+                        .frame(height: 52)
+                        .background(Theme.postalRed, in: Capsule())
                     }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 34)
-                    .frame(height: 52)
-                    .background(Theme.postalRed, in: Capsule())
+                    .buttonStyle(PressableButtonStyle())
+
+                    Button {
+                        save()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: saved ? "checkmark" : "square.and.arrow.down")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text(saved ? "Saved" : "Save")
+                                .font(.system(size: 17, weight: .semibold))
+                        }
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 24)
+                        .frame(height: 52)
+                    }
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .disabled(saved)
                 }
-                .buttonStyle(PressableButtonStyle())
+
+                if saveDenied {
+                    Text("Allow adding to Photos in Settings to save.")
+                        .font(.system(size: 12.5, design: .serif))
+                        .italic()
+                        .foregroundStyle(Theme.inkSoft)
+                }
             }
             .padding(.vertical, 30)
         }
         .presentationDetents([.medium])
         .presentationCornerRadius(28)
+    }
+
+    private func save() {
+        guard let png = artifact.uiImage.pngData() else { return }
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            DispatchQueue.main.async {
+                guard status == .authorized || status == .limited else {
+                    saveDenied = true
+                    return
+                }
+                PHPhotoLibrary.shared().performChanges({
+                    let request = PHAssetCreationRequest.forAsset()
+                    request.addResource(with: .photo, data: png, options: nil)
+                }) { success, _ in
+                    DispatchQueue.main.async {
+                        if success {
+                            withAnimation(Theme.springTight) { saved = true }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

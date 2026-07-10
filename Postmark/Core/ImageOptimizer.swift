@@ -29,6 +29,21 @@ enum ImageOptimizer {
         return scaled.pngData()
     }
 
+    /// Messages-drawer sticker: PNG (MSSticker cannot read HEIC) within
+    /// Apple's limits — ≤618 px and, critically, ≤500 KB or MSSticker
+    /// throws and the sticker silently vanishes from the drawer.
+    static func stickerPNG(_ image: UIImage) -> Data? {
+        var dimension: CGFloat = 618
+        while dimension >= 250 {
+            if let data = downscaled(image, maxDimension: dimension).pngData(),
+               data.count <= 480_000 {
+                return data
+            }
+            dimension -= 80
+        }
+        return nil
+    }
+
     /// Aspect-preserving downscale in pixel space; returns the original
     /// when it is already small enough. Alpha is preserved.
     static func downscaled(_ image: UIImage, maxDimension: CGFloat) -> UIImage {

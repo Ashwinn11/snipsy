@@ -30,6 +30,28 @@ final class StampStore {
         try? FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(at: stickersDir, withIntermediateDirectories: true)
         load()
+        backfillStickers()
+    }
+
+    /// Stamps kept before the Messages extension existed have no drawer
+    /// copies — generate any that are missing.
+    private func backfillStickers() {
+        let missing = stamps.filter {
+            $0.style == .cutout && !FileManager.default.fileExists(
+                atPath: stickersDir.appendingPathComponent("\($0.id.uuidString).png").path)
+        }
+        guard !missing.isEmpty else { return }
+        let pairs: [(URL, URL)] = missing.map {
+            (imagesDir.appendingPathComponent($0.imageFile),
+             stickersDir.appendingPathComponent("\($0.id.uuidString).png"))
+        }
+        Task.detached(priority: .utility) {
+            for (source, destination) in pairs {
+                guard let image = UIImage(contentsOfFile: source.path),
+                      let png = ImageOptimizer.stickerPNG(image) else { continue }
+                try? png.write(to: destination)
+            }
+        }
     }
 
     /// One-time move of pre-app-group collections (Documents/Postmark).
@@ -62,10 +84,8 @@ final class StampStore {
             if let data = ImageOptimizer.optimized(display) {
                 try? data.write(to: destination)
             }
-            // A small PNG copy for the Messages drawer (Apple's sticker
-            // limit is 618 px / 500 KB; MSSticker can't read HEIC).
-            if let stickerDestination,
-               let png = ImageOptimizer.downscaled(display, maxDimension: 618).pngData() {
+            // A small PNG copy for the Messages drawer.
+            if let stickerDestination, let png = ImageOptimizer.stickerPNG(display) {
                 try? png.write(to: stickerDestination)
             }
         }
