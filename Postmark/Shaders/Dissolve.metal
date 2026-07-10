@@ -89,8 +89,17 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     }
 
     float2 boxCenter = box.xy + box.zw * 0.5;
-    float sd = max(sdRoundRect(position, boxCenter, box.zw * 0.5, 8.0), 0.0);
-    float maxDist = length(size) * 0.45;
+    float2 half_ = box.zw * 0.5;
+    float sd = max(sdRoundRect(position, boxCenter, half_, 8.0), 0.0);
+    // Normalize the wave by the waste's own extent — the farthest content
+    // corner from the cut line — so the front spends the full window
+    // crossing whatever waste actually exists, however large the sticker.
+    float maxDist = max(
+        max(sdRoundRect(float2(0.0, 0.0), boxCenter, half_, 8.0),
+            sdRoundRect(float2(size.x, 0.0), boxCenter, half_, 8.0)),
+        max(sdRoundRect(float2(0.0, size.y), boxCenter, half_, 8.0),
+            sdRoundRect(size, boxCenter, half_, 8.0)));
+    maxDist = max(maxDist, 1.0);
 
     float2 cell = floor(position / cellSize);
     float rnd = hash21(cell + 7.3);

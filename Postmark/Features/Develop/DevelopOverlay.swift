@@ -50,7 +50,7 @@ struct DevelopOverlay: View {
                             .float4(vf.minX, vf.minY, vf.width, vf.height),
                             .float(12),
                             .float(progress),
-                            .float(9)
+                            .float(4.5)
                         ),
                         maxSampleOffset: CGSize(width: 52, height: 210)
                     )
