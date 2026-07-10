@@ -21,6 +21,10 @@ struct StampDetailView: View {
     @State private var confirmDelete = false
     @State private var shareImage: Image? = nil
 
+    // Liquid poke — same gesture language as the reveal.
+    @State private var rippleCenter: CGPoint = .zero
+    @State private var rippleStart: Date? = nil
+
     var body: some View {
         ZStack {
             Rectangle()
@@ -74,30 +78,53 @@ struct StampDetailView: View {
         let w = min(screenSize.width * 0.76, 350)
         let magnitude = min(1, Double(max(abs(tilt.width), abs(tilt.height))) / 56)
 
-        return StampView(
-            image: model.store.image(for: current),
-            style: current.style,
-            tint: current.tint.color,
-            title: editing ? localTitle : current.displayTitle,
-            number: current.number,
-            year: current.year,
-            date: current.date,
-            variant: current.variant,
-            showsPostmark: true,
-            holoEnabled: true,
-            holoStrength: magnitude * 0.75,
-            holoSweep: 0.5 + Double(tilt.width) / 220,
-            holoDir: holoDirection,
-            editableTitle: editing ? $localTitle : nil,
-            titleFocused: $titleFocused,
-            onSubmitTitle: commitRename
-        )
+        return TimelineView(.animation(paused: rippleStart == nil)) { timeline in
+            let rippleTime = rippleStart.map { timeline.date.timeIntervalSince($0) } ?? 10
+
+            StampView(
+                image: model.store.image(for: current),
+                style: current.style,
+                tint: current.tint.color,
+                title: editing ? localTitle : current.displayTitle,
+                number: current.number,
+                year: current.year,
+                date: current.date,
+                variant: current.variant,
+                showsPostmark: true,
+                holoEnabled: true,
+                holoStrength: magnitude * 0.75,
+                holoSweep: 0.5 + Double(tilt.width) / 220,
+                holoDir: holoDirection,
+                liquidEnabled: true,
+                liquidCenter: rippleCenter,
+                liquidTime: rippleTime,
+                editableTitle: editing ? $localTitle : nil,
+                titleFocused: $titleFocused,
+                onSubmitTitle: commitRename
+            )
+        }
         .frame(width: w)
         .matchedGeometryEffect(id: stamp.id, in: ns, isSource: true)
         .rotation3DEffect(.degrees(Double(-tilt.height) / 7), axis: (x: 1, y: 0, z: 0))
         .rotation3DEffect(.degrees(Double(tilt.width) / 8), axis: (x: 0, y: 1, z: 0))
         .shadow(color: Theme.ink.opacity(0.10 + magnitude * 0.08),
                 radius: 24 + magnitude * 10, y: 14)
+        .gesture(
+            SpatialTapGesture(coordinateSpace: .local).onEnded { value in
+                if editing {
+                    commitRename()
+                    return
+                }
+                rippleCenter = value.location
+                let start = Date()
+                rippleStart = start
+                model.haptics.tick()
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(1.6))
+                    if rippleStart == start { rippleStart = nil }
+                }
+            }
+        )
         .gesture(
             DragGesture()
                 .onChanged { value in
