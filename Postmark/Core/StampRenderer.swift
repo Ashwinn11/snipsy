@@ -11,12 +11,17 @@ enum StampRenderer {
         /// The sticker's coverage rect in the source image's raster space,
         /// normalized 0–1 (drives the reveal's settle animation).
         let box: CGRect
+        /// Fraction of the sticker image's height where the visible contour
+        /// actually sits within the central column band — where the name
+        /// label must anchor to fuse with the cut.
+        let labelAnchor: CGFloat
     }
 
     /// Trim transparent margins (with breathing room) and add the white
     /// sticker border — CapWords-style die-cut. Runs once at analysis time.
     static func sticker(from cg: CGImage, borderFraction: CGFloat = 0.035) -> StickerResult? {
-        guard let (trimmed, trimBox) = trimToAlpha(cg, paddingFraction: 0.09) else { return nil }
+        guard let (trimmed, trimBox, centralBottom) = trimToAlpha(cg, paddingFraction: 0.09)
+        else { return nil }
         let radius = max(3, CGFloat(max(trimmed.width, trimmed.height)) * borderFraction)
 
         let ci = CIImage(cgImage: trimmed)
@@ -46,15 +51,24 @@ enum StampRenderer {
             width: (trimBox.width + grow * 2) / CGFloat(cg.width),
             height: (trimBox.height + grow * 2) / CGFloat(cg.height)
         )
+        // Contour row → fraction of the FINAL image height (content sits
+        // grow points inside the rendered rect on every side).
+        let anchor = (grow + (centralBottom - trimBox.minY) + radius)
+            / (trimBox.height + grow * 2)
         return StickerResult(
             image: UIImage(cgImage: out, scale: 1, orientation: .up),
-            box: coverage
+            box: coverage,
+            labelAnchor: min(max(anchor, 0.2), 1.0)
         )
     }
 
     /// Bounding box of non-transparent pixels, padded, cropped to a new image.
-    /// Returns the crop plus its rect in the source raster space.
-    static func trimToAlpha(_ cg: CGImage, paddingFraction: CGFloat) -> (CGImage, CGRect)? {
+    /// Returns the crop, its rect in source raster space, and the lowest
+    /// opaque row within the central 50% of the subject's columns (source
+    /// raster px) — the true contour under a centered label.
+    static func trimToAlpha(
+        _ cg: CGImage, paddingFraction: CGFloat
+    ) -> (CGImage, CGRect, CGFloat)? {
         let side = 128
         var pixels = [UInt8](repeating: 0, count: side * side)
         guard let ctx = CGContext(
@@ -75,6 +89,22 @@ enum StampRenderer {
         }
         guard maxX >= minX, maxY >= minY else { return nil }
 
+        // Lowest opaque row within the central 50% of the subject's columns.
+        let bandLo = minX + (maxX - minX) / 4
+        let bandHi = maxX - (maxX - minX) / 4
+        var centralBottom = maxY
+        for y in stride(from: side - 1, through: 0, by: -1) {
+            var hit = false
+            for x in bandLo...max(bandLo, bandHi) where pixels[y * side + x] > 12 {
+                hit = true
+                break
+            }
+            if hit {
+                centralBottom = y
+                break
+            }
+        }
+
         // Context memory rows and CGImage.cropping both use raster space
         // (row 0 = top), so the box maps directly.
         let sx = CGFloat(cg.width) / CGFloat(side)
@@ -90,6 +120,6 @@ enum StampRenderer {
             .intersection(CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
             .integral
         guard let cropped = cg.cropping(to: box) else { return nil }
-        return (cropped, box)
+        return (cropped, box, (CGFloat(centralBottom) + 0.5) * sy)
     }
 }

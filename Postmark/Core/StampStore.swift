@@ -46,7 +46,17 @@ final class StampStore {
         let destination = stickersDir.appendingPathComponent("\(stamp.id.uuidString).png")
         let data: Data?
         if stamp.kind == .sticker {
-            data = ImageOptimizer.stickerPNG(display)
+            // Live label composite when we know the contour; legacy items
+            // already have it baked in.
+            if let anchor = stamp.labelAnchor {
+                let renderer = ImageRenderer(content: StickerArtifact(
+                    image: display, title: stamp.title, anchor: anchor))
+                renderer.scale = 1
+                renderer.isOpaque = false
+                data = renderer.uiImage.flatMap { ImageOptimizer.stickerPNG($0) }
+            } else {
+                data = ImageOptimizer.stickerPNG(display)
+            }
         } else {
             let renderer = ImageRenderer(content:
                 StampView(stamp: stamp, image: display)
@@ -101,30 +111,19 @@ final class StampStore {
 
     var nextNumber: Int { (stamps.map(\.number).max() ?? 0) + 1 }
 
-    /// Sticker artifacts bake the name tag into the die cut once, at keep
-    /// time, so every surface shows the same object.
-    private func compositedSticker(_ pending: PendingStamp, title: String) -> UIImage? {
-        guard let sticker = pending.sticker else { return nil }
-        let renderer = ImageRenderer(content: StickerArtifact(
-            image: sticker, title: title, tint: pending.tint.color))
-        renderer.scale = 1
-        renderer.isOpaque = false
-        return renderer.uiImage
-    }
-
     @discardableResult
     func add(_ pending: PendingStamp, title: String, variant: StampVariant,
              kind: ArtifactKind = .stamp) -> Stamp {
         let id = UUID()
         let file = "\(id.uuidString).heic"
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Stickers store the composited die cut (subject + name tag);
-        // stamps store the whole framed photo.
+        // Stickers store the RAW die cut — the name label is composited at
+        // render time (fixable, renamable). Stamps store the framed photo.
         let display: UIImage
         let style: Stamp.Style
         switch kind {
         case .sticker:
-            display = compositedSticker(pending, title: trimmed) ?? pending.displayImage
+            display = pending.displayImage
             style = .cutout
         case .stamp:
             display = pending.capture.cropImage
@@ -147,7 +146,8 @@ final class StampStore {
             tint: pending.tint,
             imageFile: file,
             variant: variant,
-            kind: kind
+            kind: kind,
+            labelAnchor: kind == .sticker ? (pending.stickerLabelAnchor ?? 0.945) : nil
         )
         cache.setObject(display, forKey: file as NSString)
         stamps.insert(stamp, at: 0)
@@ -188,6 +188,11 @@ final class StampStore {
         guard let i = stamps.firstIndex(where: { $0.id == stamp.id }) else { return }
         stamps[i].title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         save()
+        // A sticker's name is part of its artifact — refresh the drawer copy.
+        if stamps[i].kind == .sticker, stamps[i].labelAnchor != nil,
+           let display = image(for: stamps[i]) {
+            writeDrawerCopy(for: stamps[i], display: display)
+        }
     }
 
     func image(for stamp: Stamp) -> UIImage? {

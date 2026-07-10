@@ -44,6 +44,9 @@ struct Stamp: Identifiable, Codable, Equatable {
     var imageFile: String
     var variant: StampVariant = .tinted
     var kind: ArtifactKind = .stamp
+    /// Sticker items: contour fraction where the name label anchors.
+    /// nil = legacy item whose label was baked into the image.
+    var labelAnchor: CGFloat? = nil
 
     var displayTitle: String { title.isEmpty ? "Untitled" : title }
     var year: String { Stamp.yearFormatter.string(from: date) }
@@ -69,6 +72,7 @@ extension Stamp {
         imageFile = try c.decode(String.self, forKey: .imageFile)
         variant = (try? c.decodeIfPresent(StampVariant.self, forKey: .variant)) ?? .tinted
         kind = (try? c.decodeIfPresent(ArtifactKind.self, forKey: .kind)) ?? .stamp
+        labelAnchor = try? c.decodeIfPresent(CGFloat.self, forKey: .labelAnchor)
     }
 }
 
@@ -96,6 +100,8 @@ struct PendingStamp {
     var sticker: UIImage?
     /// Sticker coverage in the crop, normalized (reveal settle start frame).
     var stickerBox: CGRect?
+    /// Contour fraction for the sticker's name label.
+    var stickerLabelAnchor: CGFloat?
     var suggestedTitle: String?
     var tint: RGBValue
 

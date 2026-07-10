@@ -49,8 +49,12 @@ struct StampView: View {
     var postmarkScale: CGFloat = 1
     /// Normalized subject box within the crop (sticker start frame).
     var stickerBox: CGRect? = nil
-    /// Raw crop retained for the .raw / .unmasking stages.
+    /// Raw crop retained for the .raw stage.
     var rawCrop: UIImage? = nil
+    /// Subject matte for the waste grain-dissolve (reveal only).
+    var maskImage: UIImage? = nil
+    /// Contour fraction where the sticker's name label anchors.
+    var labelAnchor: CGFloat? = nil
 
     var assembly: Assembly = .dressed
 
@@ -81,8 +85,10 @@ struct StampView: View {
     }
 
     /// Caption / hairline / cancellation ink — prints light on ink paper.
+    /// Stamps keep light papers, so their internal ink stays dark even
+    /// though the app's screen ink is light (dark-only album).
     private var markInk: Color {
-        variant == .ink ? Color(red: 0.93, green: 0.90, blue: 0.84) : Theme.ink
+        variant == .ink ? Color(red: 0.93, green: 0.90, blue: 0.84) : Theme.stampInk
     }
 
     var editableTitle: Binding<String>? = nil
@@ -166,8 +172,8 @@ struct StampView: View {
             PerforatedRect()
                 .fill(paperFill)
                 .colorEffect(ShaderLibrary.paperGrain(.float(0.62), .float(0.55)))
-                .shadow(color: Theme.ink.opacity(0.22), radius: 0.05 * w, y: 0.024 * w)
-                .shadow(color: Theme.ink.opacity(0.12), radius: 0.009 * w, y: 0.005 * w)
+                .shadow(color: Theme.shadow.opacity(0.5), radius: 0.05 * w, y: 0.024 * w)
+                .shadow(color: Theme.shadow.opacity(0.25), radius: 0.009 * w, y: 0.005 * w)
 
             // Each paper has its own signature framing. All treatments stay
             // mounted; switching variants only animates opacity, never view
@@ -235,8 +241,20 @@ struct StampView: View {
             // exactly the sticker — the swap to .final is invisible.
             ZStack(alignment: .topLeading) {
                 if let raw = rawCrop ?? image {
+                    let boxRect = wasteBox(content: content)
                     rawView(raw, content: content)
-                        .opacity(assembly.waste)
+                        .layerEffect(
+                            ShaderLibrary.grainDissolveWaste(
+                                .float2(content.width, content.height),
+                                .image(Image(uiImage: maskImage ?? UIImage())),
+                                .float4(boxRect.minX, boxRect.minY,
+                                        boxRect.width, boxRect.height),
+                                .float(1 - assembly.waste),
+                                .float(max(4, w * 0.024))
+                            ),
+                            maxSampleOffset: CGSize(width: 44, height: 180),
+                            isEnabled: maskImage != nil
+                        )
                 }
                 stickerOverlay(w, content: content)
                 stickerTag(w, content: content)
@@ -244,7 +262,24 @@ struct StampView: View {
             .scaleEffect(1 - 0.018 * sin(min(1, max(0, assembly.border)) * .pi))
         case .final:
             finalContent(w, content: content)
+            if labelAnchor != nil {
+                stickerTag(w, content: content)
+            }
         }
+    }
+
+    /// The sticker's coverage rect in content coordinates — the grain
+    /// wave's origin.
+    private func wasteBox(content: CGRect) -> CGRect {
+        guard let box = stickerBox else {
+            return CGRect(x: content.midX - 1, y: content.midY - 1, width: 2, height: 2)
+        }
+        return CGRect(
+            x: content.minX + box.minX * content.width,
+            y: content.minY + box.minY * content.height,
+            width: box.width * content.width,
+            height: box.height * content.height
+        )
     }
 
     /// The sticker's name — part of its die cut, CapWords-style: a white
@@ -253,7 +288,7 @@ struct StampView: View {
     /// static previews only show a real name.
     @ViewBuilder
     private func stickerTag(_ w: CGFloat, content: CGRect) -> some View {
-        if style == .cutout, stickerBox != nil, let image,
+        if style == .cutout, stickerBox != nil || labelAnchor != nil, let image,
            !title.isEmpty || editableTitle != nil || onTapCaption != nil {
             let frame = stickerFrame(w, content: content, imageSize: image.size)
             Group {
@@ -276,18 +311,25 @@ struct StampView: View {
                     DieCutText(
                         text: title.isEmpty ? "Name it" : title,
                         fontSize: 0.068 * w,
-                        ink: title.isEmpty ? Theme.inkSoft.opacity(0.8) : .black
+                        ink: title.isEmpty ? Theme.stampInk.opacity(0.45) : .black
                     )
                     .contentShape(Rectangle())
                     .onTapGesture { onTapCaption?() }
                 }
             }
             .rotationEffect(.degrees(-3))
-            .position(x: frame.midX,
-                      y: frame.maxY - 0.055 * max(frame.width, frame.height)
-                         + 0.068 * w * 0.55)
+            .position(x: frame.midX, y: tagY(frame: frame, w: w))
             .opacity(max(0.001, assembly.border))
         }
+    }
+
+    /// The label rides the measured contour (anchor fraction of the sticker
+    /// frame), half on the subject, half off — fused with the cut. Falls
+    /// back to the analytic margin when no measurement exists.
+    private func tagY(frame: CGRect, w: CGFloat) -> CGFloat {
+        let contour = labelAnchor.map { frame.minY + $0 * frame.height }
+            ?? (frame.maxY - 0.055 * max(frame.width, frame.height))
+        return contour + 0.068 * w * 0.55
     }
 
     /// The die-cut sticker (white border + subject) over the raw photo. Its
@@ -324,7 +366,7 @@ struct StampView: View {
 
             // Contact shadow: arrives with the paper.
             Ellipse()
-                .fill(Theme.ink.opacity(0.16 * assembly.paper))
+                .fill(Theme.shadow.opacity(0.28 * assembly.paper))
                 .frame(width: frame.width * 0.62, height: 0.04 * w)
                 .blur(radius: 0.018 * w)
                 .position(x: frame.midX, y: frame.maxY - 0.004 * w)
@@ -335,7 +377,7 @@ struct StampView: View {
                 .frame(width: frame.width, height: frame.height)
                 .rotationEffect(.degrees(
                     variant == .airmail ? -2.5 * assembly.settle : 0))
-                .shadow(color: Theme.ink.opacity(0.12 * assembly.paper),
+                .shadow(color: Theme.shadow.opacity(0.22 * assembly.paper),
                         radius: 0.012 * w, y: 0.008 * w)
                 .position(x: frame.midX, y: frame.midY)
         } else if let image {
@@ -543,30 +585,29 @@ struct FocusedIfAvailable: ViewModifier {
 struct StickerArtifact: View {
     let image: UIImage
     let title: String
-    var tint: Color = Theme.ink
+    /// Contour fraction from the alpha scan — the label fuses to the real
+    /// silhouette, not the padded image edge.
+    var anchor: CGFloat = 0.945
 
     var body: some View {
         let w = min(image.size.width * image.scale, 1200)
         let scale = w / max(image.size.width * image.scale, 1)
         let h = image.size.height * image.scale * scale
-
-        // The generator pads the subject (9% trim margin, 3.5% border), so
-        // the visible contour sits ~5.5% of the long side above the image's
-        // bottom edge — anchor the name to the CONTOUR, half on, half off.
-        let margin = 0.055 * max(w, h)
         let fontSize = w * 0.085
 
-        ZStack(alignment: .bottom) {
+        ZStack(alignment: .topLeading) {
             Image(uiImage: image)
                 .resizable()
                 .frame(width: w, height: h)
             if !title.isEmpty {
                 DieCutText(text: title, fontSize: fontSize, ink: .black)
                     .rotationEffect(.degrees(-3))
-                    .offset(y: -margin + fontSize * 0.55)
+                    .position(x: w / 2, y: anchor * h + fontSize * 0.55)
             }
         }
+        .frame(width: w, height: h)
         .padding(w * 0.04)
+        .padding(.bottom, fontSize * 1.2)
     }
 }
 
@@ -678,6 +719,7 @@ extension StampView {
             date: stamp.date,
             variant: stamp.variant,
             showsPostmark: stamp.kind == .stamp,
+            labelAnchor: stamp.kind == .sticker ? stamp.labelAnchor : nil,
             assembly: stamp.kind == .sticker
                 ? Assembly(paper: 0, caption: 0, content: .final)
                 : .dressed

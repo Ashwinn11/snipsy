@@ -16,6 +16,8 @@ enum VisionService {
         var sticker: UIImage?
         /// The sticker's coverage in the crop, normalized 0–1 raster coords.
         var stickerBox: CGRect?
+        /// Contour-bottom fraction for the sticker's name label.
+        var labelAnchor: CGFloat?
         var label: String?
         var tint: RGBValue
     }
@@ -46,14 +48,16 @@ enum VisionService {
 
             var sticker: UIImage? = nil
             var stickerBox: CGRect? = nil
+            var labelAnchor: CGFloat? = nil
             if let c = cutout, let result = StampRenderer.sticker(from: c) {
                 sticker = result.image
                 stickerBox = result.box
+                labelAnchor = result.labelAnchor
             }
 
             let cutoutImage = cutout.map { UIImage(cgImage: $0, scale: 1, orientation: .up) }
             return Analysis(cutout: cutoutImage, sticker: sticker, stickerBox: stickerBox,
-                            label: label, tint: tint)
+                            labelAnchor: labelAnchor, label: label, tint: tint)
         }
         return await work.value
     }

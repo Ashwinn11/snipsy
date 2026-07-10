@@ -90,6 +90,7 @@ struct StampDetailView: View {
                 date: current.date,
                 variant: current.variant,
                 showsPostmark: current.kind == .stamp,
+                labelAnchor: current.kind == .sticker ? current.labelAnchor : nil,
                 assembly: current.kind == .sticker
                     ? StampView.Assembly(paper: 0, caption: 0, content: .final)
                     : .dressed,
@@ -109,7 +110,7 @@ struct StampDetailView: View {
         .matchedGeometryEffect(id: stamp.id, in: ns, isSource: true)
         .rotation3DEffect(.degrees(Double(-tilt.height) / 7), axis: (x: 1, y: 0, z: 0))
         .rotation3DEffect(.degrees(Double(tilt.width) / 8), axis: (x: 0, y: 1, z: 0))
-        .shadow(color: Theme.ink.opacity(0.10 + magnitude * 0.08),
+        .shadow(color: Theme.shadow.opacity(0.45 + magnitude * 0.2),
                 radius: 24 + magnitude * 10, y: 14)
         .gesture(
             SpatialTapGesture(coordinateSpace: .local).onEnded { value in
@@ -168,7 +169,7 @@ struct StampDetailView: View {
                 .glassEffect(.regular.interactive(), in: .circle)
             }
 
-            if current.kind == .stamp {
+            if current.kind == .stamp || current.labelAnchor != nil {
                 Button {
                     model.haptics.tick()
                     if editing {
@@ -225,11 +226,12 @@ struct StampDetailView: View {
 
     @MainActor
     private func renderShareImage() async {
+        // Transparent export: the stamp's perforated silhouette IS the edge.
         let view = StampView(stamp: current, image: model.store.image(for: current))
             .frame(width: 360, height: 472.5)
-            .background(Theme.paper)
         let renderer = ImageRenderer(content: view)
         renderer.scale = 3
+        renderer.isOpaque = false
         if let ui = renderer.uiImage {
             shareUIImage = ui
             shareImage = Image(uiImage: ui)
