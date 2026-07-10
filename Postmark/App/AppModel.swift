@@ -118,6 +118,47 @@ final class AppModel {
         }
     }
 
+    /// Bring an existing photo through the exact capture pipeline: bake a
+    /// screen-exact frame, crop the viewfinder, then dissolve → die-cut →
+    /// papers, identical to a live shot.
+    func importPhoto(_ raw: UIImage, viewfinderRect: CGRect, viewSize: CGSize) async {
+        guard inCameraPhase, !isCapturing else { return }
+        isCapturing = true
+        defer { isCapturing = false }
+        haptics.tick()
+        blackout = true
+
+        let image = ImageOptimizer.normalizedOrientation(raw)
+        let baked = await Task.detached(priority: .userInitiated) {
+            () -> (screen: UIImage, crop: UIImage)? in
+            let screenRect = CGRect(origin: .zero, size: viewSize)
+            let screenPixels = FrameGeometry.imageCrop(
+                imageSize: image.size, viewSize: viewSize, rectInView: screenRect)
+            guard let screenImage = FrameGeometry.crop(image, to: screenPixels)
+            else { return nil }
+            let cropPixels = FrameGeometry.imageCrop(
+                imageSize: image.size, viewSize: viewSize, rectInView: viewfinderRect)
+            guard cropPixels.width > 16, cropPixels.height > 16,
+                  let cropImage = FrameGeometry.crop(image, to: cropPixels)
+            else { return nil }
+            return (screenImage.preparingForDisplay() ?? screenImage,
+                    cropImage.preparingForDisplay() ?? cropImage)
+        }.value
+
+        guard let baked else {
+            blackout = false
+            return
+        }
+        try? await Task.sleep(for: .seconds(0.2))
+        phase = .developing(Capture(
+            screenImage: baked.screen,
+            cropImage: baked.crop,
+            viewfinderRect: viewfinderRect,
+            fallbackCutout: nil,
+            fallbackLabel: nil
+        ))
+    }
+
     func developFinished(_ pending: PendingStamp) {
         phase = .reveal(pending)
     }

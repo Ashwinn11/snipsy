@@ -21,6 +21,8 @@ targets:
     dependencies:
       - target: PostmarkStickers
         embed: true
+      - target: PostmarkShare
+        embed: true
     entitlements:
       path: Postmark/Postmark.entitlements
       properties:
@@ -71,6 +73,49 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark.stickers
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: "NO"
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0"
+  PostmarkShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PostmarkShare
+      - path: Postmark/App/Theme.swift
+      - path: Postmark/Core/Models.swift
+      - path: Postmark/Core/StampStore.swift
+      - path: Postmark/Core/VisionService.swift
+      - path: Postmark/Core/StampRenderer.swift
+      - path: Postmark/Core/ImageOptimizer.swift
+      - path: Postmark/Core/FrameGeometry.swift
+      - path: Postmark/Features/Stamp/StampView.swift
+      - path: Postmark/Features/Stamp/PerforatedRect.swift
+      - path: Postmark/Features/Stamp/PostmarkSeal.swift
+      - path: Postmark/Features/Stamp/PaperBackdrop.swift
+      - path: Postmark/Shaders/Paper.metal
+      - path: Postmark/Shaders/Holo.metal
+      - path: Postmark/Shaders/Liquid.metal
+    entitlements:
+      path: PostmarkShare/PostmarkShare.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.ashwinn.postmark
+    info:
+      path: PostmarkShare/Info.plist
+      properties:
+        CFBundleDisplayName: Postmark
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsImageWithMaxCount: 1
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark.share
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
         CURRENT_PROJECT_VERSION: "1"

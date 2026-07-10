@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import PhotosUI
 
 /// Root camera experience: full-bleed feed, stamp-shaped viewfinder, glass
 /// chrome. Always mounted; overlays (develop/reveal/album) sit above it.
@@ -10,6 +11,7 @@ struct CameraScreen: View {
 
     @State private var focusPoint: CGPoint? = nil
     @State private var focusPulse = false
+    @State private var pickedItem: PhotosPickerItem? = nil
 
     /// The stamp-to-be. 4:5, centered, slightly above middle. Shared by the
     /// capture path and the reveal handoff — single source of truth.
@@ -70,6 +72,30 @@ struct CameraScreen: View {
 
     @ViewBuilder
     private func chrome(viewfinder vf: CGRect) -> some View {
+        // Library import — an old photo takes the same ride as a live shot.
+        PhotosPicker(selection: $pickedItem, matching: .images) {
+            Image(systemName: "photo.on.rectangle")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.85))
+                .frame(width: 44, height: 44)
+        }
+        .glassEffect(.regular.interactive(), in: .circle)
+        .position(x: 46, y: safeArea.top + 24)
+        .onChange(of: pickedItem) { _, item in
+            guard let item else { return }
+            Task { @MainActor in
+                defer { pickedItem = nil }
+                guard let data = try? await item.loadTransferable(type: Data.self),
+                      let image = UIImage(data: data) else { return }
+                let size = screenSize
+                await model.importPhoto(
+                    image,
+                    viewfinderRect: Self.viewfinderRect(in: size),
+                    viewSize: size
+                )
+            }
+        }
+
         // Wordmark
         Text("POSTMARK")
             .font(Theme.engraved(15))

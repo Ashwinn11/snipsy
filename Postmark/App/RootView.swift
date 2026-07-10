@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @State private var model = AppModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var screenSize: CGSize = .zero
 
@@ -69,6 +70,10 @@ struct RootView: View {
         .onAppear {
             // The camera (and its permission prompt) waits for onboarding.
             if model.hasOnboarded { model.camera.start() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Stamps kept via the share extension land while we're away.
+            if phase == .active { model.store.reload() }
         }
         .task { await Self.warmUpShaders() }
     }

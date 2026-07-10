@@ -114,6 +114,12 @@ final class StampStore {
         save()
     }
 
+    /// Re-read the index — the share extension may have added stamps while
+    /// the app was backgrounded.
+    func reload() {
+        load()
+    }
+
     /// Settings → Delete All Data: every stamp, photo, sticker, the index.
     func deleteAll() {
         for stamp in stamps {

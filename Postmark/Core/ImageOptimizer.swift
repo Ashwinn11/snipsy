@@ -29,6 +29,18 @@ enum ImageOptimizer {
         return scaled.pngData()
     }
 
+    /// Library photos carry EXIF orientation; CGImage cropping ignores it.
+    /// Redraw to .up before any pixel-space math.
+    static func normalizedOrientation(_ image: UIImage) -> UIImage {
+        guard image.imageOrientation != .up else { return image }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        return UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
+    }
+
     /// Messages-drawer sticker: PNG (MSSticker cannot read HEIC) within
     /// Apple's limits — ≤618 px and, critically, ≤500 KB or MSSticker
     /// throws and the sticker silently vanishes from the drawer.
