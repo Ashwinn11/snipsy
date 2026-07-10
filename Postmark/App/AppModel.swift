@@ -31,6 +31,8 @@ final class AppModel {
     var pillBump = 0
 
     var isCapturing = false
+    /// First-run gate; deleting all data returns here.
+    var hasOnboarded = UserDefaults.standard.bool(forKey: "postmark.hasOnboarded")
     /// Shutter blackout curtain, rendered above every phase in RootView. Held
     /// dark until DevelopOverlay's first frame has committed, so the heavy
     /// frozen-frame setup happens behind it and never as an on-screen snap.
@@ -122,6 +124,24 @@ final class AppModel {
 
     func retake() {
         phase = .camera
+    }
+
+    func completeOnboarding() {
+        hasOnboarded = true
+        UserDefaults.standard.set(true, forKey: "postmark.hasOnboarded")
+        camera.start()
+        haptics.success()
+    }
+
+    /// Settings → Delete All Data: wipes the collection and returns to
+    /// onboarding, exactly like a fresh install.
+    func deleteAllData() {
+        store.deleteAll()
+        showAlbum = false
+        phase = .camera
+        hasOnboarded = false
+        UserDefaults.standard.set(false, forKey: "postmark.hasOnboarded")
+        haptics.thunk()
     }
 
     /// Called by the reveal screen after the stamp has flown into the pill.

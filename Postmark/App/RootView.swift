@@ -52,6 +52,13 @@ struct RootView: View {
                         .transition(.move(edge: .bottom))
                         .zIndex(10)
                 }
+
+                if !model.hasOnboarded {
+                    OnboardingScreen(model: model, screenSize: fullSize,
+                                     safeArea: insets)
+                        .transition(.opacity)
+                        .zIndex(30)
+                }
             }
             .frame(width: fullSize.width, height: fullSize.height)
             .ignoresSafeArea()
@@ -59,7 +66,10 @@ struct RootView: View {
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
-        .onAppear { model.camera.start() }
+        .onAppear {
+            // The camera (and its permission prompt) waits for onboarding.
+            if model.hasOnboarded { model.camera.start() }
+        }
         .task { await Self.warmUpShaders() }
     }
 

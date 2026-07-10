@@ -8,6 +8,7 @@ struct AlbumScreen: View {
 
     @Namespace private var ns
     @State private var selected: Stamp? = nil
+    @State private var showSettings = false
 
     var body: some View {
         GeometryReader { geo in
@@ -41,6 +42,16 @@ struct AlbumScreen: View {
             }
         }
         .ignoresSafeArea()
+        .sheet(isPresented: $showSettings) {
+            SettingsSheet(model: model) {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(0.35))
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        model.deleteAllData()
+                    }
+                }
+            }
+        }
     }
 
     // MARK: Header
@@ -56,6 +67,17 @@ struct AlbumScreen: View {
                     .foregroundStyle(Theme.inkSoft)
             }
             Spacer()
+            Button {
+                model.haptics.tick()
+                showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 42, height: 42)
+            }
+            .glassEffect(.regular.interactive(), in: .circle)
+
             Button {
                 model.haptics.tick()
                 withAnimation(Theme.spring) { model.showAlbum = false }

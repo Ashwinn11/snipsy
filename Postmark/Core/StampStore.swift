@@ -27,13 +27,13 @@ final class StampStore {
     @discardableResult
     func add(_ pending: PendingStamp, title: String, variant: StampVariant) -> Stamp {
         let id = UUID()
-        let file = "\(id.uuidString).png"
+        let file = "\(id.uuidString).heic"
         let display = pending.displayImage
-        // PNG encode + write off-main: done here it stalls the fly-out fade.
+        // Optimize + write off-main: done here it stalls the fly-out fade.
         // The in-memory cache serves reads until the file lands.
         let destination = imagesDir.appendingPathComponent(file)
         Task.detached(priority: .utility) {
-            if let data = display.pngData() {
+            if let data = ImageOptimizer.optimized(display) {
                 try? data.write(to: destination)
             }
         }
@@ -57,6 +57,17 @@ final class StampStore {
         stamps.removeAll { $0.id == stamp.id }
         try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(stamp.imageFile))
         cache.removeObject(forKey: stamp.imageFile as NSString)
+        save()
+    }
+
+    /// Settings → Delete All Data: every stamp, photo, and the index.
+    func deleteAll() {
+        for stamp in stamps {
+            try? FileManager.default.removeItem(
+                at: imagesDir.appendingPathComponent(stamp.imageFile))
+        }
+        stamps.removeAll()
+        cache.removeAllObjects()
         save()
     }
 
