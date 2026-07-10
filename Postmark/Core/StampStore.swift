@@ -60,16 +60,6 @@ final class StampStore {
         save()
     }
 
-    /// Debug/audit helper: clear everything.
-    func wipe() {
-        for stamp in stamps {
-            try? FileManager.default.removeItem(
-                at: imagesDir.appendingPathComponent(stamp.imageFile))
-        }
-        stamps.removeAll()
-        save()
-    }
-
     func rename(_ stamp: Stamp, to title: String) {
         guard let i = stamps.firstIndex(where: { $0.id == stamp.id }) else { return }
         stamps[i].title = title.trimmingCharacters(in: .whitespacesAndNewlines)

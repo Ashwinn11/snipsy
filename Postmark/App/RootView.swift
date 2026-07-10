@@ -86,7 +86,3 @@ struct RootView: View {
         ).compile(as: .distortionEffect)
     }
 }
-
-#Preview {
-    RootView()
-}

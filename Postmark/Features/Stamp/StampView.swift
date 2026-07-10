@@ -177,24 +177,34 @@ struct StampView: View {
                 .offset(x: fx, y: fy)
                 .opacity(variant == .tinted ? 1 : 0)
 
-            // Ivory — double plate rule, like an engraver's album page.
+            // Ivory — a Penny Black-style oval vignette: double engraved
+            // ring around the subject, rosettes in the spandrels.
             ZStack(alignment: .topLeading) {
-                Rectangle().strokeBorder(markInk.opacity(0.52), lineWidth: 1.6)
-                Rectangle()
-                    .strokeBorder(markInk.opacity(0.34), lineWidth: 0.8)
-                    .padding(0.014 * w)
+                Ellipse()
+                    .strokeBorder(markInk.opacity(0.55), lineWidth: 1.5)
+                Ellipse()
+                    .strokeBorder(markInk.opacity(0.30), lineWidth: 0.8)
+                    .padding(0.016 * w)
             }
-            .frame(width: fw, height: fh)
-            .offset(x: fx, y: fy)
+            .frame(width: content.width * 0.94, height: content.height * 0.90)
+            .offset(x: content.midX - content.width * 0.47,
+                    y: content.midY - content.height * 0.45)
             .opacity(variant == .ivory ? 1 : 0)
+            ForEach(0..<4, id: \.self) { i in
+                Text("✦")
+                    .font(.system(size: 0.042 * w))
+                    .foregroundStyle(markInk.opacity(0.5))
+                    .position(
+                        x: i % 2 == 0 ? content.minX + 0.028 * w
+                                      : content.maxX - 0.028 * w,
+                        y: i < 2 ? content.minY + 0.030 * w
+                                 : content.maxY - 0.030 * w
+                    )
+                    .opacity(variant == .ivory ? 1 : 0)
+            }
 
-            // Ink — corner brackets only, the viewfinder echoed in print.
-            PrintedBrackets(length: 0.085 * w)
-                .stroke(markInk.opacity(0.62),
-                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                .frame(width: fw, height: fh)
-                .offset(x: fx, y: fy)
-                .opacity(variant == .ink ? 1 : 0)
+            // Ink — no frame at all: a poster. The subject itself bleeds
+            // past the picture area and the type prints in light ink.
 
             // Airmail — striped border and the envelope mark.
             AirmailBorder(inset: 0.040 * w, band: 0.028 * w)
@@ -276,6 +286,8 @@ struct StampView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: frame.width, height: frame.height)
+                .rotationEffect(.degrees(
+                    variant == .airmail ? -2.5 * assembly.settle : 0))
                 .shadow(color: Theme.ink.opacity(0.12 * assembly.paper),
                         radius: 0.012 * w, y: 0.008 * w)
                 .position(x: frame.midX, y: frame.midY)
@@ -287,13 +299,21 @@ struct StampView: View {
     /// Interpolates the die-cut sticker between its captured position inside
     /// the crop (settle = 0) and its composed position (settle = 1).
     private func stickerFrame(_ w: CGFloat, content: CGRect, imageSize: CGSize) -> CGRect {
-        // Final: fit within 82% of the content area, optically centered.
-        let avail = CGSize(width: content.width * 0.82, height: content.height * 0.82)
+        // Each paper composes the subject differently: the definitive
+        // centers it, the vignette tucks it inside the oval, the poster
+        // bleeds it past the picture area, airmail pastes it a touch high.
+        let (fw, fh, dy): (CGFloat, CGFloat, CGFloat) = switch variant {
+        case .tinted: (0.82, 0.82, -0.012)
+        case .ivory: (0.64, 0.64, -0.020)
+        case .ink: (1.12, 0.97, 0.006)
+        case .airmail: (0.74, 0.74, -0.026)
+        }
+        let avail = CGSize(width: content.width * fw, height: content.height * fh)
         let fit = min(avail.width / imageSize.width, avail.height / imageSize.height)
         let finalSize = CGSize(width: imageSize.width * fit, height: imageSize.height * fit)
         let finalRect = CGRect(
             x: content.midX - finalSize.width / 2,
-            y: content.midY - finalSize.height / 2 - 0.012 * w,
+            y: content.midY - finalSize.height / 2 + dy * w,
             width: finalSize.width, height: finalSize.height
         )
         guard let box = stickerBox, assembly.settle < 1 else { return finalRect }
@@ -427,24 +447,6 @@ struct StampView: View {
         } else {
             field
         }
-    }
-}
-
-/// Four corner brackets around a rect — the ink paper's frame.
-struct PrintedBrackets: Shape {
-    var length: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        let l = min(length, min(rect.width, rect.height) / 3)
-        for (x, dx) in [(rect.minX, 1.0), (rect.maxX, -1.0)] {
-            for (y, dy) in [(rect.minY, 1.0), (rect.maxY, -1.0)] {
-                p.move(to: CGPoint(x: x, y: y + dy * l))
-                p.addLine(to: CGPoint(x: x, y: y))
-                p.addLine(to: CGPoint(x: x + dx * l, y: y))
-            }
-        }
-        return p
     }
 }
 
