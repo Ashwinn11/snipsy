@@ -242,10 +242,10 @@ struct StampView: View {
                     .overlay(alignment: .bottom) {
                         // Rename affordance: a faint dashed rule under the title.
                         Line()
-                            .stroke(Theme.ink.opacity(0.28 * assembly.caption),
+                            .stroke(Theme.ink.opacity(0.38 * assembly.caption),
                                     style: StrokeStyle(lineWidth: 1, dash: [2.5, 3]))
                             .frame(height: 1)
-                            .offset(y: 0.016 * w)
+                            .offset(y: 0.022 * w)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onTapCaption)

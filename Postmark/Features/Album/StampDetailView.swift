@@ -9,6 +9,11 @@ struct StampDetailView: View {
     let screenSize: CGSize
     var onClose: () -> Void
 
+    /// Live copy — renames elsewhere must reflect immediately.
+    private var current: Stamp {
+        model.store.stamps.first(where: { $0.id == stamp.id }) ?? stamp
+    }
+
     @State private var tilt: CGSize = .zero
     @State private var editing = false
     @State private var localTitle = ""
@@ -45,7 +50,7 @@ struct StampDetailView: View {
             }
             .padding(.bottom, 16)
         }
-        .onAppear { localTitle = stamp.title }
+        .onAppear { localTitle = current.title }
         .confirmationDialog(
             "Remove this stamp from your collection?",
             isPresented: $confirmDelete,
@@ -70,13 +75,13 @@ struct StampDetailView: View {
         let magnitude = min(1, Double(max(abs(tilt.width), abs(tilt.height))) / 56)
 
         return StampView(
-            image: model.store.image(for: stamp),
-            style: stamp.style,
-            tint: stamp.tint.color,
-            title: editing ? localTitle : stamp.displayTitle,
-            number: stamp.number,
-            year: stamp.year,
-            date: stamp.date,
+            image: model.store.image(for: current),
+            style: current.style,
+            tint: current.tint.color,
+            title: editing ? localTitle : current.displayTitle,
+            number: current.number,
+            year: current.year,
+            date: current.date,
             showsPostmark: true,
             holoStrength: magnitude * 0.75,
             holoSweep: 0.5 + Double(tilt.width) / 220,
@@ -115,7 +120,7 @@ struct StampDetailView: View {
     private var metaLine: String {
         let df = DateFormatter()
         df.dateFormat = "MMMM d, yyyy · h:mm a"
-        return "Collected \(df.string(from: stamp.date))"
+        return "Collected \(df.string(from: current.date))"
     }
 
     // MARK: Actions
@@ -137,6 +142,7 @@ struct StampDetailView: View {
                 if editing {
                     commitRename()
                 } else {
+                    localTitle = current.title
                     editing = true
                     titleFocused = true
                 }
@@ -167,15 +173,15 @@ struct StampDetailView: View {
         editing = false
         titleFocused = false
         let trimmed = localTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed != stamp.title {
-            model.store.rename(stamp, to: trimmed)
+        if trimmed != current.title {
+            model.store.rename(current, to: trimmed)
             model.haptics.success()
         }
     }
 
     @MainActor
     private func renderShareImage() async {
-        let view = StampView(stamp: stamp, image: model.store.image(for: stamp))
+        let view = StampView(stamp: current, image: model.store.image(for: current))
             .frame(width: 360, height: 472.5)
             .background(Theme.paper)
         let renderer = ImageRenderer(content: view)

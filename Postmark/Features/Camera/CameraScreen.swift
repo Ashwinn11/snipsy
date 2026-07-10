@@ -99,8 +99,8 @@ struct CameraScreen: View {
             .position(x: screenSize.width - 46, y: safeArea.top + 24)
         }
 
-        // Demo hint
-        if CameraController.isDemo {
+        // Demo hint — retire it once the first stamp is collected.
+        if CameraController.isDemo && model.store.stamps.isEmpty {
             Text("Swipe for another scene")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.white.opacity(0.75))

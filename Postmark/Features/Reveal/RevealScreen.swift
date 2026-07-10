@@ -201,7 +201,7 @@ struct RevealScreen: View {
             chromeVisible = true
         }
         // Holographic sweep across the fresh stamp.
-        holoStrength = 0.55
+        holoStrength = 0.4
         withAnimation(.easeInOut(duration: 1.15).delay(0.35)) {
             holoSweep = 1.4
         }

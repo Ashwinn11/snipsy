@@ -4,6 +4,7 @@ import SwiftUI
 /// tilted stamps on dot-grid paper, matched-geometry morph into detail.
 struct AlbumScreen: View {
     let model: AppModel
+    let safeArea: EdgeInsets
 
     @Namespace private var ns
     @State private var selected: Stamp? = nil
@@ -14,12 +15,12 @@ struct AlbumScreen: View {
                 PaperBackdrop()
 
                 VStack(spacing: 0) {
-                    header(topInset: geo.safeAreaInsets.top)
+                    header(topInset: safeArea.top)
                     if model.store.stamps.isEmpty {
                         EmptyAlbumView()
                             .frame(maxHeight: .infinity)
                     } else {
-                        grid(bottomInset: geo.safeAreaInsets.bottom)
+                        grid(bottomInset: safeArea.bottom)
                     }
                 }
 
