@@ -269,21 +269,21 @@ struct StampView: View {
                         .onSubmit(onSubmitTitle)
                         .frame(width: 0.4 * w)
                         .modifier(FocusedIfAvailable(focus: titleFocused))
+                        .padding(.horizontal, 0.04 * w)
+                        .padding(.vertical, 0.02 * w)
+                        .background(Capsule().fill(.white.opacity(0.95)))
                 } else {
-                    Text(title.isEmpty ? "NAME IT" : title.uppercased())
-                        .font(Theme.engraved(0.05 * w))
-                        .tracking(0.05 * w * 0.08)
-                        .foregroundStyle(title.isEmpty
-                            ? Theme.inkSoft.opacity(0.75)
-                            : Theme.ink.opacity(0.85))
-                        .lineLimit(1)
-                        .contentShape(Capsule())
-                        .onTapGesture { onTapCaption?() }
+                    DieCutText(
+                        text: title.isEmpty ? "NAME IT" : title.uppercased(),
+                        fontSize: 0.05 * w,
+                        ink: title.isEmpty
+                            ? Theme.inkSoft.opacity(0.8)
+                            : Theme.ink.opacity(0.85)
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture { onTapCaption?() }
                 }
             }
-            .padding(.horizontal, 0.05 * w)
-            .padding(.vertical, 0.023 * w)
-            .background(Capsule().fill(.white))
             .shadow(color: Theme.ink.opacity(0.16), radius: 0.012 * w, y: 0.006 * w)
             .rotationEffect(.degrees(-2))
             .position(x: frame.midX, y: frame.maxY - 0.006 * w)
@@ -498,6 +498,39 @@ struct StampView: View {
     }
 }
 
+/// Letterforms cut like the sticker itself: ink glyphs wearing the same
+/// white die-cut contour as the subject (offset-stacked copies build the
+/// outline).
+struct DieCutText: View {
+    var text: String
+    var fontSize: CGFloat
+    var ink: Color = Theme.ink.opacity(0.85)
+
+    var body: some View {
+        let base = Text(text)
+            .font(Theme.engraved(fontSize))
+            .tracking(fontSize * 0.08)
+            .lineLimit(1)
+        let r = fontSize * 0.24
+
+        return ZStack {
+            ForEach(0..<12, id: \.self) { i in
+                let a = Double(i) / 12 * 2 * .pi
+                base
+                    .foregroundStyle(.white)
+                    .offset(x: cos(a) * r, y: sin(a) * r)
+            }
+            ForEach(0..<8, id: \.self) { i in
+                let a = Double(i) / 8 * 2 * .pi + 0.35
+                base
+                    .foregroundStyle(.white)
+                    .offset(x: cos(a) * r * 0.55, y: sin(a) * r * 0.55)
+            }
+            base.foregroundStyle(ink)
+        }
+    }
+}
+
 /// Applies .focused only when a binding exists.
 struct FocusedIfAvailable: ViewModifier {
     var focus: FocusState<Bool>.Binding?
@@ -518,23 +551,16 @@ struct StickerArtifact: View {
         let scale = w / max(image.size.width * image.scale, 1)
         let h = image.size.height * image.scale * scale
 
-        VStack(spacing: -w * 0.03) {
+        VStack(spacing: -w * 0.015) {
             Image(uiImage: image)
                 .resizable()
                 .frame(width: w, height: h)
             if !title.isEmpty {
-                Text(title.uppercased())
-                    .font(Theme.engraved(w * 0.055))
-                    .tracking(w * 0.055 * 0.08)
-                    .foregroundStyle(Theme.ink.opacity(0.85))
-                    .lineLimit(1)
-                    .padding(.horizontal, w * 0.055)
-                    .padding(.vertical, w * 0.026)
-                    .background(Capsule().fill(.white))
+                DieCutText(text: title.uppercased(), fontSize: w * 0.055)
                     .rotationEffect(.degrees(-2))
             }
         }
-        .padding(w * 0.03)
+        .padding(w * 0.04)
     }
 }
 
