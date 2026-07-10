@@ -18,7 +18,7 @@ struct DevelopOverlay: View {
     /// to the true drift and commits behind the blackout.
     @State private var drift: CGFloat = 0
 
-    private let duration: TimeInterval = 1.5
+    private let duration: TimeInterval = 1.05
 
     var body: some View {
         let vf = capture.viewfinderRect

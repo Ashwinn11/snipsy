@@ -214,12 +214,15 @@ struct RevealScreen: View {
             // (a big texture + shader raster) finish on this static frame
             // instead of inside the glide.
             await afterNextCommit()
-            try? await Task.sleep(for: .seconds(0.3))
+            try? await Task.sleep(for: .seconds(0.2))
             await afterNextCommit()
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.82)) {
+            withAnimation(.spring(response: 0.52, dampingFraction: 0.82)) {
                 centered = true
             }
-            try? await Task.sleep(for: .seconds(0.62))
+            // The punch starts on the glide's settling tail — beats overlap
+            // instead of queueing, so the cut arrives while the piece still
+            // has momentum.
+            try? await Task.sleep(for: .seconds(0.42))
             await afterNextCommit()
             if pending.style == .cutout, pending.sticker != nil {
                 // Die cut first: the press dips the sheet and the outline
@@ -229,12 +232,12 @@ struct RevealScreen: View {
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
                     border = 1
                 }
-                try? await Task.sleep(for: .seconds(0.55))
+                try? await Task.sleep(for: .seconds(0.48))
                 // …then the waste sheet fades away, leaving the sticker.
-                withAnimation(.easeInOut(duration: 0.5)) {
+                withAnimation(.easeInOut(duration: 0.45)) {
                     waste = 0
                 }
-                try? await Task.sleep(for: .seconds(0.62))
+                try? await Task.sleep(for: .seconds(0.52))
                 // Waste 0 and .final render identical pixels — swap quietly,
                 // then pre-render the dressed layers invisibly (paper shader,
                 // path shadows, caption glyphs) on this static beat.
@@ -242,7 +245,6 @@ struct RevealScreen: View {
                 paper = 0.001
                 caption = 0.001
                 await afterNextCommit()
-                try? await Task.sleep(for: .seconds(0.1))
                 offerPapers()
             } else {
                 assembled = true
