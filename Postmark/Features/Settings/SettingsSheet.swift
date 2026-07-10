@@ -17,6 +17,7 @@ struct SettingsSheet: View {
     var body: some View {
         ZStack {
             PaperBackdrop(showsGrid: false)
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header
@@ -123,6 +124,7 @@ struct LegalDocView: View {
     var body: some View {
         ZStack {
             PaperBackdrop(showsGrid: false)
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack {

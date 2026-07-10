@@ -27,9 +27,7 @@ struct StampDetailView: View {
 
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(.regularMaterial)
-                .ignoresSafeArea()
+            PaperBackdrop()
                 .onTapGesture {
                     if editing { commitRename() } else { onClose() }
                 }
