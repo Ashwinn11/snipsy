@@ -260,7 +260,7 @@ struct StampView: View {
                 if let binding = editableTitle {
                     TextField("Name it", text: binding)
                         .font(.system(size: 0.055 * w, weight: .heavy, design: .rounded))
-                        .foregroundStyle(tint.vividLabel)
+                        .foregroundStyle(.black)
                         .tint(Theme.postalRed)
                         .multilineTextAlignment(.center)
                         .textInputAutocapitalization(.words)
@@ -276,17 +276,14 @@ struct StampView: View {
                     DieCutText(
                         text: title.isEmpty ? "Name it" : title,
                         fontSize: 0.06 * w,
-                        ink: title.isEmpty
-                            ? Theme.inkSoft.opacity(0.8)
-                            : tint.vividLabel
+                        ink: title.isEmpty ? Theme.inkSoft.opacity(0.8) : .black
                     )
                     .contentShape(Rectangle())
                     .onTapGesture { onTapCaption?() }
                 }
             }
-            .shadow(color: Theme.ink.opacity(0.16), radius: 0.012 * w, y: 0.006 * w)
             .rotationEffect(.degrees(-3))
-            .position(x: frame.midX, y: frame.maxY - 0.012 * w)
+            .position(x: frame.midX, y: frame.maxY - 0.045 * w)
             .opacity(max(0.001, assembly.border))
         }
     }
@@ -551,12 +548,12 @@ struct StickerArtifact: View {
         let scale = w / max(image.size.width * image.scale, 1)
         let h = image.size.height * image.scale * scale
 
-        VStack(spacing: -w * 0.015) {
+        VStack(spacing: -w * 0.075) {
             Image(uiImage: image)
                 .resizable()
                 .frame(width: w, height: h)
             if !title.isEmpty {
-                DieCutText(text: title, fontSize: w * 0.066, ink: tint.vividLabel)
+                DieCutText(text: title, fontSize: w * 0.066, ink: .black)
                     .rotationEffect(.degrees(-3))
             }
         }
