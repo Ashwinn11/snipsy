@@ -53,7 +53,7 @@ struct PaperBackdrop: View {
 
             // Soft vignette keeps focus centered without reading as "effect".
             RadialGradient(
-                colors: [.clear, Theme.ink.opacity(0.055)],
+                colors: [.clear, Theme.shadow.opacity(0.30)],
                 center: .center, startRadius: 220, endRadius: 640
             )
         }

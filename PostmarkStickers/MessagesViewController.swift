@@ -9,7 +9,7 @@ final class MessagesViewController: MSMessagesAppViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0.957, green: 0.937, blue: 0.902, alpha: 1)
+        view.backgroundColor = UIColor(red: 0.094, green: 0.082, blue: 0.059, alpha: 1)
 
         addChild(browser)
         browser.view.frame = view.bounds
@@ -32,7 +32,7 @@ final class StickerBrowserViewController: MSStickerBrowserViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         stickerBrowserView.backgroundColor = UIColor(
-            red: 0.957, green: 0.937, blue: 0.902, alpha: 1)
+            red: 0.094, green: 0.082, blue: 0.059, alpha: 1)
 
         emptyLabel.text = "Keep a stamp in Postmark\nand its sticker appears here."
         emptyLabel.numberOfLines = 0
@@ -40,7 +40,7 @@ final class StickerBrowserViewController: MSStickerBrowserViewController {
         emptyLabel.font = UIFont(descriptor: UIFont.systemFont(
             ofSize: 15).fontDescriptor.withDesign(.serif)
             ?? UIFont.systemFont(ofSize: 15).fontDescriptor, size: 15)
-        emptyLabel.textColor = UIColor(red: 0.51, green: 0.49, blue: 0.43, alpha: 1)
+        emptyLabel.textColor = UIColor(red: 0.61, green: 0.58, blue: 0.51, alpha: 1)
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(emptyLabel)
         NSLayoutConstraint.activate([

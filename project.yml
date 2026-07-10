@@ -16,6 +16,7 @@ targets:
   Postmark:
     type: application
     platform: iOS
+    scheme: {}
     sources:
       - path: Postmark
     dependencies:
@@ -39,7 +40,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UILaunchScreen:
           UIColorName: LaunchBackground
-        UIUserInterfaceStyle: Light
+        UIUserInterfaceStyle: Dark
         UIStatusBarHidden: true
         UIViewControllerBasedStatusBarAppearance: false
         UIRequiresFullScreen: true

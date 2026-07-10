@@ -127,6 +127,7 @@ struct DevelopOverlay: View {
             cutout: analysis.cutout,
             sticker: analysis.sticker,
             stickerBox: analysis.stickerBox,
+            stickerLabelAnchor: analysis.labelAnchor,
             suggestedTitle: analysis.label,
             tint: analysis.tint
         )

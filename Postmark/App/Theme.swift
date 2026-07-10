@@ -3,12 +3,20 @@ import UIKit
 
 /// Postmark design tokens. See docs/DESIGN.md.
 enum Theme {
-    // MARK: Palette
-    static let paper      = Color(hex: 0xF4EFE6)
-    static let paperDeep  = Color(hex: 0xEAE2D3)
-    static let ink        = Color(hex: 0x221F1A)
-    static let inkSoft    = Color(hex: 0x837C6E)
-    static let postalRed  = Color(hex: 0xC7402D)
+    // MARK: Palette — the collector's black album (dark-only).
+    /// Screen "paper": deep warm charcoal pages.
+    static let paper      = Color(hex: 0x18150F)
+    static let paperDeep  = Color(hex: 0x0F0D0A)
+    /// Screen ink: warm light for text/marks ON the dark pages.
+    static let ink        = Color(hex: 0xEBE4D6)
+    static let inkSoft    = Color(hex: 0x9C9482)
+    static let postalRed  = Color(hex: 0xD6503A)
+
+    /// Ink INSIDE stamp artifacts — stamps keep their light papers, so
+    /// their captions/frames/marks still print dark.
+    static let stampInk   = Color(hex: 0x221F1A)
+    /// True shadow color (screen ink is light now; it would glow).
+    static let shadow     = Color.black
 
     // MARK: Springs
     static let spring       = Animation.spring(response: 0.45, dampingFraction: 0.78)
