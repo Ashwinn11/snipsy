@@ -239,31 +239,48 @@ struct StampView: View {
             // the cut sticker. sin(border·π) is 0 at both ends, so the crop
             // is pixel-exact before and after the punch, and waste 0 leaves
             // exactly the sticker — the swap to .final is invisible.
+            //
+            // The raw photo, its waste and the cut outline are ONE sheet:
+            // everything rides a single box→frame mapping (identity while
+            // the sheet is whole, the composed sticker frame once the die
+            // has cut), so no state combination — mid-switch, stalled wave,
+            // reversed wave — can show the photo and the sticker at two
+            // different scales.
+            let boxRect = wasteBox(content: content)
+            let sheet = sheetTargetRect(w, content: content, box: boxRect)
+            let sx = boxRect.width > 0 ? sheet.width / boxRect.width : 1
+            let sy = boxRect.height > 0 ? sheet.height / boxRect.height : 1
             ZStack(alignment: .topLeading) {
-                if let raw = rawCrop ?? image {
-                    let boxRect = wasteBox(content: content)
-                    rawView(raw, content: content)
-                        .layerEffect(
-                            ShaderLibrary.grainDissolveWaste(
-                                .float2(content.width, content.height),
-                                .image(Image(uiImage: maskImage ?? UIImage())),
-                                .float4(boxRect.minX, boxRect.minY,
-                                        boxRect.width, boxRect.height),
-                                .float(1 - assembly.waste),
-                                .float(max(4, w * 0.024))
-                            ),
-                            maxSampleOffset: CGSize(width: 44, height: 180),
-                            isEnabled: maskImage != nil
-                        )
+                ZStack(alignment: .topLeading) {
+                    if let raw = rawCrop ?? image {
+                        rawView(raw, content: content)
+                            .layerEffect(
+                                ShaderLibrary.grainDissolveWaste(
+                                    .float2(content.width, content.height),
+                                    .image(Image(uiImage: maskImage ?? UIImage())),
+                                    .float4(boxRect.minX, boxRect.minY,
+                                            boxRect.width, boxRect.height),
+                                    .float(1 - assembly.waste),
+                                    .float(max(2.5, w * 0.011))
+                                ),
+                                maxSampleOffset: CGSize(width: 44, height: 180),
+                                isEnabled: maskImage != nil
+                            )
+                    }
+                    stickerOverlay(w, content: content, box: boxRect)
                 }
-                stickerOverlay(w, content: content)
-                stickerTag(w, content: content)
+                .scaleEffect(x: sx, y: sy, anchor: .topLeading)
+                .offset(x: sheet.minX - boxRect.minX * sx,
+                        y: sheet.minY - boxRect.minY * sy)
+                stickerTag(w, content: content, frame: sheet)
             }
             .scaleEffect(1 - 0.018 * sin(min(1, max(0, assembly.border)) * .pi))
         case .final:
             finalContent(w, content: content)
-            if labelAnchor != nil {
-                stickerTag(w, content: content)
+            if labelAnchor != nil, let image {
+                stickerTag(w, content: content,
+                           frame: stickerFrame(w, content: content,
+                                               imageSize: image.size))
             }
         }
     }
@@ -282,15 +299,31 @@ struct StampView: View {
         )
     }
 
+    /// Where the sticker's coverage box is headed: pinned to itself while
+    /// the sheet is whole (border 0), the composed sticker frame once the
+    /// die has cut (border 1). The interpolation is what a switch animates
+    /// through — the whole sheet shrinks or grows as one piece.
+    private func sheetTargetRect(_ w: CGFloat, content: CGRect, box: CGRect) -> CGRect {
+        guard style == .cutout, stickerBox != nil, let image else { return box }
+        let t = min(1, max(0, assembly.border))
+        guard t > 0 else { return box }
+        let frame = stickerFrame(w, content: content, imageSize: image.size)
+        return CGRect(
+            x: box.minX + (frame.minX - box.minX) * t,
+            y: box.minY + (frame.minY - box.minY) * t,
+            width: box.width + (frame.width - box.width) * t,
+            height: box.height + (frame.height - box.height) * t
+        )
+    }
+
     /// The sticker's name — part of its die cut, CapWords-style: a white
     /// tag pressed onto the subject's lower edge. Interactive contexts
     /// (reveal) always show it, with a NAME IT placeholder when empty;
     /// static previews only show a real name.
     @ViewBuilder
-    private func stickerTag(_ w: CGFloat, content: CGRect) -> some View {
-        if style == .cutout, stickerBox != nil || labelAnchor != nil, let image,
+    private func stickerTag(_ w: CGFloat, content: CGRect, frame: CGRect) -> some View {
+        if style == .cutout, stickerBox != nil || labelAnchor != nil, image != nil,
            !title.isEmpty || editableTitle != nil || onTapCaption != nil {
-            let frame = stickerFrame(w, content: content, imageSize: image.size)
             Group {
                 if let binding = editableTitle {
                     TextField("Name it", text: binding)
@@ -338,14 +371,13 @@ struct StampView: View {
     /// reveal's first frame — its one-time composite must never land
     /// mid-choreography.
     @ViewBuilder
-    private func stickerOverlay(_ w: CGFloat, content: CGRect) -> some View {
+    private func stickerOverlay(_ w: CGFloat, content: CGRect, box: CGRect) -> some View {
         if style == .cutout, stickerBox != nil, let image {
-            let frame = stickerFrame(w, content: content, imageSize: image.size)
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
-                .frame(width: frame.width, height: frame.height)
-                .position(x: frame.midX, y: frame.midY)
+                .frame(width: box.width, height: box.height)
+                .position(x: box.midX, y: box.midY)
                 .opacity(max(0.001, assembly.border))
         }
     }
