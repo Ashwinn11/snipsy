@@ -82,6 +82,7 @@ struct StampDetailView: View {
             number: current.number,
             year: current.year,
             date: current.date,
+            variant: current.variant,
             showsPostmark: true,
             holoEnabled: true,
             holoStrength: magnitude * 0.75,

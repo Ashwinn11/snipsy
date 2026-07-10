@@ -25,6 +25,14 @@ struct RevealScreen: View {
     @State private var settle: Double = 0
     @State private var chromeVisible = false
 
+    // Paper chooser
+    @State private var chooser = false
+    @State private var selectedVariant: StampVariant? = nil
+
+    // Liquid poke on the die-cut sticker
+    @State private var rippleCenter: CGPoint = .zero
+    @State private var rippleStart: Date? = nil
+
     // Holo sweep on dress
     @State private var holoSweep: Double = -0.4
     @State private var holoStrength: Double = 0
@@ -100,6 +108,8 @@ struct RevealScreen: View {
 
             stampLayer
 
+            variantChooser
+
             chrome
         }
         // Same pinning as CameraScreen/DevelopOverlay: placement must not
@@ -131,32 +141,62 @@ struct RevealScreen: View {
     private var stampLayer: some View {
         let frame = stampFrame
 
-        StampView(
-            image: pending.displayImage,
-            style: pending.style,
-            tint: pending.tint.color,
-            title: title,
-            number: model.store.nextNumber,
-            year: String(Calendar.current.component(.year, from: Date())),
-            date: .now,
-            showsPostmark: postmarked,
-            postmarkScale: postmarkScale,
-            stickerBox: pending.stickerBox,
-            rawCrop: pending.capture.cropImage,
-            assembly: assembly(),
-            holoEnabled: true,
-            holoStrength: holoStrength,
-            holoSweep: holoSweep,
-            editableTitle: editingTitle ? $title : nil,
-            titleFocused: $titleFocused,
-            onSubmitTitle: { stopEditingTitle() },
-            onTapCaption: chromeVisible && !flying ? { startEditingTitle() } : nil
-        )
+        TimelineView(.animation(paused: rippleStart == nil)) { timeline in
+            let rippleTime = rippleStart.map { timeline.date.timeIntervalSince($0) } ?? 10
+
+            StampView(
+                image: pending.displayImage,
+                style: pending.style,
+                tint: pending.tint.color,
+                title: title,
+                number: model.store.nextNumber,
+                year: String(Calendar.current.component(.year, from: Date())),
+                date: .now,
+                variant: selectedVariant ?? .tinted,
+                showsPostmark: postmarked,
+                postmarkScale: postmarkScale,
+                stickerBox: pending.stickerBox,
+                rawCrop: pending.capture.cropImage,
+                assembly: assembly(),
+                holoEnabled: true,
+                holoStrength: holoStrength,
+                holoSweep: holoSweep,
+                liquidEnabled: true,
+                liquidCenter: rippleCenter,
+                liquidTime: rippleTime,
+                editableTitle: editingTitle ? $title : nil,
+                titleFocused: $titleFocused,
+                onSubmitTitle: { stopEditingTitle() },
+                onTapCaption: chromeVisible && !flying ? { startEditingTitle() } : nil
+            )
+        }
         .frame(width: frame.width, height: frame.height)
+        .gesture(
+            SpatialTapGesture(coordinateSpace: .local).onEnded { value in
+                pokeStamp(at: value.location)
+            }
+        )
         .position(x: frame.midX, y: frame.midY)
         .rotationEffect(.degrees(flying ? -8 : 0))
         .opacity(stampGone ? 0 : 1)
         .animation(Theme.spring, value: flying)
+    }
+
+    /// Poke the die-cut: a liquid ripple rolls out from the touch point.
+    private func pokeStamp(at point: CGPoint) {
+        guard !flying, !stampGone else { return }
+        if editingTitle {
+            stopEditingTitle()
+            return
+        }
+        rippleCenter = point
+        let start = Date()
+        rippleStart = start
+        model.haptics.tick()
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.6))
+            if rippleStart == start { rippleStart = nil }
+        }
     }
 
     private func assembly() -> StampView.Assembly {
@@ -214,15 +254,35 @@ struct RevealScreen: View {
                 caption = 0.001
                 await afterNextCommit()
                 try? await Task.sleep(for: .seconds(0.1))
-                dress()
+                offerPapers()
             } else {
                 assembled = true
                 paper = 0.001
                 caption = 0.001
                 await afterNextCommit()
-                dress()
+                offerPapers()
             }
         }
+    }
+
+    /// The die-cut floats bare; four papers rise beneath it. Dressing waits
+    /// for the user's pick — until then, poking the sticker ripples it.
+    private func offerPapers() {
+        dbgMark("reveal.chooser")
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            chooser = true
+        }
+        #if DEBUG
+        let autokeep = ProcessInfo.processInfo.environment["POSTMARK_AUTOKEEP"]
+        if autokeep == "1" || autokeep == "2" {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(0.5))
+                pokeStamp(at: CGPoint(x: 140, y: 180))
+                try? await Task.sleep(for: .seconds(1.1))
+                choose(.airmail)
+            }
+        }
+        #endif
     }
 
     private func dress() {
@@ -283,7 +343,79 @@ struct RevealScreen: View {
                 stampGone = true
             }
             try? await Task.sleep(for: .seconds(0.52))
-            model.keep(pending, title: title)
+            model.keep(pending, title: title, variant: selectedVariant ?? .tinted)
+        }
+    }
+
+    // MARK: Paper chooser
+
+    /// Four papers to pick from. Mounted from the reveal's first frame at
+    /// near-zero opacity so its one-time render cost (four mini paper
+    /// shaders + the sticker texture) is pre-paid, never inside its spring.
+    private var variantChooser: some View {
+        let shown = chooser && !flying && !editingTitle
+        let rowY = screenSize.height - max(safeArea.bottom, 16) - 158
+        let year = String(Calendar.current.component(.year, from: Date()))
+
+        return VStack(spacing: 14) {
+            Text("Choose its paper")
+                .font(.system(size: 14, design: .serif))
+                .italic()
+                .foregroundStyle(Theme.inkSoft)
+                .opacity(selectedVariant == nil ? 1 : 0)
+
+            HStack(spacing: 16) {
+                ForEach(StampVariant.allCases) { v in
+                    Button {
+                        choose(v)
+                    } label: {
+                        StampView(
+                            image: pending.displayImage,
+                            style: pending.style,
+                            tint: pending.tint.color,
+                            title: "",
+                            number: model.store.nextNumber,
+                            year: year,
+                            variant: v,
+                            stickerBox: pending.stickerBox,
+                            assembly: thumbAssembly
+                        )
+                        .frame(width: 56)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 5)
+                                .strokeBorder(Theme.postalRed, lineWidth: 1.6)
+                                .padding(-5)
+                                .opacity(selectedVariant == v ? 1 : 0)
+                        }
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                    .scaleEffect(selectedVariant == v ? 1.07 : 1)
+                }
+            }
+        }
+        .position(x: screenSize.width / 2, y: rowY)
+        .opacity(shown ? 1 : 0.001)
+        .offset(y: shown ? 0 : 18)
+        .allowsHitTesting(shown)
+        .animation(.easeOut(duration: 0.2), value: editingTitle)
+    }
+
+    /// Dressed, caption hidden — the minis are about the paper, not the text.
+    private var thumbAssembly: StampView.Assembly {
+        var a = StampView.Assembly()
+        a.caption = 0
+        return a
+    }
+
+    private func choose(_ v: StampVariant) {
+        model.haptics.tick()
+        if selectedVariant == nil {
+            withAnimation(Theme.spring) { selectedVariant = v }
+            dress()
+        } else if selectedVariant != v {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                selectedVariant = v
+            }
         }
     }
 
@@ -297,12 +429,6 @@ struct RevealScreen: View {
         let barY = screenSize.height - max(safeArea.bottom, 16) - 50
 
         Group {
-            Text("№ \(model.store.nextNumber) in your collection")
-                .font(.system(size: 14, design: .serif))
-                .italic()
-                .foregroundStyle(Theme.inkSoft)
-                .position(x: screenSize.width / 2, y: barY - 64)
-
             HStack(spacing: 14) {
                 Button {
                     model.haptics.tick()

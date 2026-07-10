@@ -127,8 +127,8 @@ final class AppModel {
     }
 
     /// Called by the reveal screen after the stamp has flown into the pill.
-    func keep(_ pending: PendingStamp, title: String) {
-        store.add(pending, title: title)
+    func keep(_ pending: PendingStamp, title: String, variant: StampVariant) {
+        store.add(pending, title: title, variant: variant)
         phase = .camera
         pillBump += 1
         haptics.success()

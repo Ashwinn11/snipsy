@@ -44,6 +44,7 @@ struct StampView: View {
     var number: Int
     var year: String
     var date: Date = .now
+    var variant: StampVariant = .tinted
     var showsPostmark = false
     var postmarkScale: CGFloat = 1
     /// Normalized subject box within the crop (sticker start frame).
@@ -59,6 +60,27 @@ struct StampView: View {
     var holoStrength: Double = 0
     var holoSweep: Double = 0.5
     var holoDir: CGPoint = CGPoint(x: 1, y: 0.35)
+
+    /// Liquid poke (reveal only). `liquidEnabled` must be constant for the
+    /// view's lifetime; center/time drive the ripple.
+    var liquidEnabled: Bool = false
+    var liquidCenter: CGPoint = .zero
+    var liquidTime: Double = 10
+
+    /// Paper fill for the current variant.
+    private var paperFill: Color {
+        switch variant {
+        case .tinted: tint
+        case .ivory: Color(red: 0.925, green: 0.885, blue: 0.795)
+        case .ink: Color(red: 0.165, green: 0.150, blue: 0.130)
+        case .airmail: Color(red: 0.975, green: 0.960, blue: 0.930)
+        }
+    }
+
+    /// Caption / hairline / cancellation ink — prints light on ink paper.
+    private var markInk: Color {
+        variant == .ink ? Color(red: 0.93, green: 0.90, blue: 0.84) : Theme.ink
+    }
 
     var editableTitle: Binding<String>? = nil
     var titleFocused: FocusState<Bool>.Binding? = nil
@@ -97,22 +119,34 @@ struct StampView: View {
             captionLayer(w)
                 .opacity(assembly.paper)
 
-            // ── Postmark cancellation ────────────────────────────────
+            // ── Cancellation: rubber-stamped date, nothing more ─────
             if showsPostmark {
-                let d = 0.42 * w
-                PostmarkSeal(date: date)
-                    .frame(width: d * 2, height: d)
-                    .blendMode(.multiply)
-                    .opacity(0.8)
-                    .scaleEffect(postmarkScale, anchor: UnitPoint(x: 0.25, y: 0.5))
-                    .rotationEffect(.degrees(-9), anchor: UnitPoint(x: 0.25, y: 0.5))
-                    .position(x: 0.80 * w, y: 0.115 * w)
-                    .allowsHitTesting(false)
+                DateStamp(
+                    date: date,
+                    fontSize: 0.052 * w,
+                    ink: variant == .ink
+                        ? Color(red: 0.94, green: 0.52, blue: 0.42)
+                        : Theme.postalRed
+                )
+                .blendMode(variant == .ink ? .normal : .multiply)
+                .opacity(0.88)
+                .scaleEffect(postmarkScale)
+                .rotationEffect(.degrees(-7))
+                .position(x: 0.72 * w, y: 0.135 * w)
+                .allowsHitTesting(false)
             }
         }
         .compositingGroup()
-        .modifier(HoloModifier(enabled: holoEnabled, strength: holoStrength,
+        // Shader effects cannot rasterize platform-backed views: with the
+        // rename TextField mounted they render as a yellow prohibition
+        // placeholder. Drop them during editing — the identity change is
+        // confined to the edit-mode boundary, where nothing is in flight.
+        .modifier(HoloModifier(enabled: holoEnabled && editableTitle == nil,
+                               strength: holoStrength,
                                sweep: holoSweep, dir: holoDir))
+        .modifier(LiquidModifier(enabled: liquidEnabled && editableTitle == nil,
+                                 center: liquidCenter,
+                                 time: liquidTime))
     }
 
     // MARK: Paper
@@ -122,14 +156,19 @@ struct StampView: View {
         let content = contentRect(w)
         ZStack(alignment: .topLeading) {
             PerforatedRect()
-                .fill(tint)
+                .fill(paperFill)
                 .colorEffect(ShaderLibrary.paperGrain(.float(0.62), .float(0.55)))
                 .shadow(color: Theme.ink.opacity(0.16), radius: 0.045 * w, y: 0.02 * w)
                 .shadow(color: Theme.ink.opacity(0.10), radius: 0.008 * w, y: 0.004 * w)
 
+            // Par avion border — always mounted so switching variants only
+            // animates opacity, never view identity.
+            AirmailBorder(inset: 0.040 * w, band: 0.028 * w)
+                .opacity(variant == .airmail ? 1 : 0)
+
             // Engraved hairline around the picture area.
             Rectangle()
-                .strokeBorder(Theme.ink.opacity(0.28), lineWidth: 1)
+                .strokeBorder(markInk.opacity(variant == .ink ? 0.40 : 0.28), lineWidth: 1)
                 .frame(width: content.width + 0.032 * w, height: content.height + 0.032 * w)
                 .offset(x: content.minX - 0.016 * w, y: content.minY - 0.016 * w)
         }
@@ -250,12 +289,12 @@ struct StampView: View {
         ZStack {
             Text("№\u{2009}\(number)")
                 .font(cornerFont)
-                .foregroundStyle(Theme.ink.opacity(0.55))
+                .foregroundStyle(markInk.opacity(0.55))
                 .position(x: 0.135 * w, y: lineY)
 
             Text(year)
                 .font(cornerFont)
-                .foregroundStyle(Theme.ink.opacity(0.55))
+                .foregroundStyle(markInk.opacity(0.55))
                 .position(x: w - 0.135 * w, y: lineY)
 
             if let binding = editableTitle {
@@ -269,7 +308,7 @@ struct StampView: View {
                     .overlay(alignment: .bottom) {
                         // Rename affordance: a faint dashed rule under the title.
                         Line()
-                            .stroke(Theme.ink.opacity(
+                            .stroke(markInk.opacity(
                                 onTapCaption == nil ? 0 : 0.38 * assembly.caption),
                                     style: StrokeStyle(lineWidth: 1, dash: [2.5, 3]))
                             .frame(height: 1)
@@ -291,7 +330,7 @@ struct StampView: View {
                 let p = letterProgress(i, of: n)
                 Text(String(ch))
                     .font(font)
-                    .foregroundStyle(Theme.ink.opacity(0.82))
+                    .foregroundStyle(markInk.opacity(0.82))
                     .opacity(p)
                     .offset(y: (1 - p) * 0.03 * w)
                     .blur(radius: (1 - p) * 1.5)
@@ -315,7 +354,7 @@ struct StampView: View {
     ) -> some View {
         let field = TextField("NAME IT", text: binding)
             .font(font)
-            .foregroundStyle(Theme.ink.opacity(0.82))
+            .foregroundStyle(markInk.opacity(0.82))
             .tint(Theme.postalRed)
             .multilineTextAlignment(.center)
             .textInputAutocapitalization(.characters)
@@ -364,6 +403,67 @@ private struct HoloModifier: ViewModifier {
     }
 }
 
+/// Applies the liquid poke ripple. `enabled` must be constant for a view's
+/// lifetime — branching on live values would change the stamp's identity and
+/// silently kill in-flight animations.
+private struct LiquidModifier: ViewModifier {
+    var enabled: Bool
+    var center: CGPoint
+    var time: Double
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.distortionEffect(
+                ShaderLibrary.liquidPoke(
+                    .float2(center),
+                    .float(time),
+                    .float(13)
+                ),
+                maxSampleOffset: CGSize(width: 15, height: 15)
+            )
+        } else {
+            content
+        }
+    }
+}
+
+/// Par avion border: alternating red/blue slanted dashes in a ring just
+/// inside the perforations — the classic airmail envelope edge.
+struct AirmailBorder: View {
+    var inset: CGFloat
+    var band: CGFloat
+
+    var body: some View {
+        Canvas(rendersAsynchronously: false) { ctx, size in
+            let outer = CGRect(origin: .zero, size: size)
+                .insetBy(dx: inset, dy: inset)
+            let inner = outer.insetBy(dx: band, dy: band)
+            var ring = Path(outer)
+            ring.addPath(Path(inner))
+            ctx.clip(to: ring, style: FillStyle(eoFill: true))
+
+            let red = Theme.postalRed.opacity(0.82)
+            let blue = Color(red: 0.17, green: 0.29, blue: 0.60).opacity(0.82)
+            let stripe = band * 1.9
+            let gap = stripe * 0.62
+            var x = -size.height - stripe
+            var i = 0
+            while x < size.width + size.height {
+                var p = Path()
+                p.move(to: CGPoint(x: x, y: size.height))
+                p.addLine(to: CGPoint(x: x + size.height, y: 0))
+                p.addLine(to: CGPoint(x: x + size.height + stripe, y: 0))
+                p.addLine(to: CGPoint(x: x + stripe, y: size.height))
+                p.closeSubpath()
+                ctx.fill(p, with: .color(i % 2 == 0 ? red : blue))
+                i += 1
+                x += stripe + gap
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 /// Convenience for album rendering.
 extension StampView {
     init(stamp: Stamp, image: UIImage?) {
@@ -375,6 +475,7 @@ extension StampView {
             number: stamp.number,
             year: stamp.year,
             date: stamp.date,
+            variant: stamp.variant,
             showsPostmark: true
         )
     }

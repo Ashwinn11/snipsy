@@ -1,6 +1,21 @@
 import SwiftUI
 import UIKit
 
+/// A stamp dressing — the paper world the die-cut sticker lands in. The
+/// user picks one from the chooser after the die cut.
+enum StampVariant: String, Codable, CaseIterable, Identifiable {
+    /// Paper tinted from the photo's own palette (the signature look).
+    case tinted
+    /// Warm gallery cream.
+    case ivory
+    /// Deep ink paper; caption and marks print in paper white.
+    case ink
+    /// Par avion: pale sheet with the red/blue airmail border.
+    case airmail
+
+    var id: String { rawValue }
+}
+
 /// A collected stamp.
 struct Stamp: Identifiable, Codable, Equatable {
     enum Style: String, Codable {
@@ -19,6 +34,7 @@ struct Stamp: Identifiable, Codable, Equatable {
     /// PNG in the store's images directory: the die-cut sticker (cutout style)
     /// or the viewfinder crop (classic style).
     var imageFile: String
+    var variant: StampVariant = .tinted
 
     var displayTitle: String { title.isEmpty ? "Untitled" : title }
     var year: String { Stamp.yearFormatter.string(from: date) }
@@ -28,6 +44,22 @@ struct Stamp: Identifiable, Codable, Equatable {
         f.dateFormat = "yyyy"
         return f
     }()
+}
+
+extension Stamp {
+    /// Backward-compatible decoding: stamps saved before variants existed
+    /// decode as .tinted instead of failing (and losing the album).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        date = try c.decode(Date.self, forKey: .date)
+        number = try c.decode(Int.self, forKey: .number)
+        style = try c.decode(Style.self, forKey: .style)
+        tint = try c.decode(RGBValue.self, forKey: .tint)
+        imageFile = try c.decode(String.self, forKey: .imageFile)
+        variant = (try? c.decodeIfPresent(StampVariant.self, forKey: .variant)) ?? .tinted
+    }
 }
 
 /// Result of a shutter press, before Vision has run.

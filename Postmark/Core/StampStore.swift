@@ -25,12 +25,17 @@ final class StampStore {
     var nextNumber: Int { (stamps.map(\.number).max() ?? 0) + 1 }
 
     @discardableResult
-    func add(_ pending: PendingStamp, title: String) -> Stamp {
+    func add(_ pending: PendingStamp, title: String, variant: StampVariant) -> Stamp {
         let id = UUID()
         let file = "\(id.uuidString).png"
         let display = pending.displayImage
-        if let data = display.pngData() {
-            try? data.write(to: imagesDir.appendingPathComponent(file))
+        // PNG encode + write off-main: done here it stalls the fly-out fade.
+        // The in-memory cache serves reads until the file lands.
+        let destination = imagesDir.appendingPathComponent(file)
+        Task.detached(priority: .utility) {
+            if let data = display.pngData() {
+                try? data.write(to: destination)
+            }
         }
         let stamp = Stamp(
             id: id,
@@ -39,7 +44,8 @@ final class StampStore {
             number: nextNumber,
             style: pending.style,
             tint: pending.tint,
-            imageFile: file
+            imageFile: file,
+            variant: variant
         )
         cache.setObject(display, forKey: file as NSString)
         stamps.insert(stamp, at: 0)

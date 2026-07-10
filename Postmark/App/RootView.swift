@@ -37,6 +37,24 @@ struct RootView: View {
                 }
                 .animation(.easeOut(duration: 0.2), value: model.phase.kind)
 
+                #if DEBUG
+                // Unmissable marker whenever the automated test driver is
+                // running, so scripted captures/keeps are never mistaken
+                // for real app behavior.
+                if ProcessInfo.processInfo.environment["POSTMARK_AUTOCAPTURE"] != nil
+                    || ProcessInfo.processInfo.environment["POSTMARK_AUTOKEEP"] != nil {
+                    Text("TEST DRIVE")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.red, in: Capsule())
+                        .position(x: 56, y: insets.top + 24)
+                        .allowsHitTesting(false)
+                        .zIndex(20)
+                }
+                #endif
+
                 // Shutter blackout — above every phase, so the frozen frame's
                 // heavy first render happens behind it, never as a visible
                 // snap. Fades in fast on capture, eases out once the develop
@@ -103,6 +121,9 @@ struct RootView: View {
         for shader in colorShaders {
             try? await shader.compile(as: .colorEffect)
         }
+        try? await ShaderLibrary.liquidPoke(
+            .float2(CGPoint.zero), .float(10), .float(13)
+        ).compile(as: .distortionEffect)
     }
 
     /// Deterministic flow driver for simulator audits (screenshots/videos).
