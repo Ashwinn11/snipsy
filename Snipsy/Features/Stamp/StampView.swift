@@ -57,11 +57,8 @@ struct StampView: View {
     var tint: Color
     var title: String
     var number: Int
-    var year: String
     var date: Date = .now
     var variant: StampVariant = .tinted
-    var showsDateStamp = false
-    var dateStampScale: CGFloat = 1
     /// Normalized subject box within the crop (sticker start frame).
     var stickerBox: CGRect? = nil
     /// Raw crop retained for the .raw stage.
@@ -86,24 +83,53 @@ struct StampView: View {
     var liquidCenter: CGPoint = .zero
     var liquidTime: Double = 10
 
-    /// Paper fill for the current variant.
+    /// Paper stock per edition. Every sheet keeps clear tonal separation
+    /// from the cream album page behind it.
     private var paperFill: Color {
         switch variant {
-        // Every paper keeps clear tonal separation from the album backdrop
-        // (#F4EFE6): tinted and ivory sit deeper, ink far darker, airmail
-        // brighter — a white envelope on cream, carried by its stripes.
         case .tinted: tint
-        case .ivory: Color(red: 0.885, green: 0.830, blue: 0.700)
-        case .ink: Color(red: 0.165, green: 0.150, blue: 0.130)
-        case .airmail: Color(red: 0.995, green: 0.990, blue: 0.980)
+        case .ivory: Color(hex: 0xB7A6D6)
+        case .ink: Color(hex: 0x2A2621)
+        case .airmail: Color(hex: 0xFCFBF6)
+        case .commemorative: Color(hex: 0x8A6AA8)
+        case .foil: Color(hex: 0x6E5A34)
+        case .revenue: Color(hex: 0x2A8390)
+        case .botanical: Color(hex: 0x6FA84F)
+        case .night: Color(hex: 0x1B2740)
+        case .sweetheart: Color(hex: 0xE39AA6)
         }
     }
 
-    /// Caption / hairline / cancellation ink — prints light on ink paper.
-    /// Stamps keep light papers with their own dark ink, independent of
-    /// the app's screen ink, so stored artifacts never shift with the theme.
+    /// Perceived lightness of the tinted paper — legacy pale tints keep
+    /// dark ink; the new deep tints print cream.
+    private var tintLuminance: Double {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(tint).getRed(&r, green: &g, blue: &b, alpha: &a)
+        return 0.299 * r + 0.587 * g + 0.114 * b
+    }
+
+    /// Caption / motif ink per edition — the stamp's own printed ink,
+    /// independent of the app theme, so stored artifacts never shift.
     private var markInk: Color {
-        variant == .ink ? Color(red: 0.93, green: 0.90, blue: 0.84) : Theme.stampInk
+        switch variant {
+        case .tinted: tintLuminance < 0.62
+            ? Color(red: 0.97, green: 0.95, blue: 0.90)
+            : Theme.stampInk
+        case .ivory, .airmail: Theme.stampInk
+        case .ink: Color(hex: 0xEDE6D6)
+        case .commemorative: Color(hex: 0xF4EEE1)
+        case .foil: Color(hex: 0xFBEFC4)
+        case .revenue: Color(hex: 0xECF4F3)
+        case .botanical: Color(hex: 0x15331A)
+        case .night: Color(hex: 0x8FEEFF)
+        case .sweetheart: Color(hex: 0x7A3A3C)
+        }
+    }
+
+    /// № / date ink — sweetheart's meta stays neutral so the rose title
+    /// carries the romance alone.
+    private var metaInk: Color {
+        variant == .sweetheart ? Theme.stampInk : markInk
     }
 
     var editableTitle: Binding<String>? = nil
@@ -139,29 +165,18 @@ struct StampView: View {
             // ── Content ──────────────────────────────────────────────
             contentLayer(w, content: content)
 
+            // ── Edition dressing printed over the picture ────────────
+            dressing(w)
+                .opacity(assembly.paper)
+                .scaleEffect(0.94 + 0.06 * assembly.paper)
+                .allowsHitTesting(false)
+
             // ── Caption strip ────────────────────────────────────────
             captionLayer(w)
                 .opacity(assembly.paper)
                 // Invisible in sticker form (paper 0.001) but still laid
                 // out — it must not catch rename taps there.
                 .allowsHitTesting(assembly.paper > 0.5)
-
-            // ── Cancellation: rubber-stamped date, nothing more ─────
-            if showsDateStamp {
-                DateStamp(
-                    date: date,
-                    fontSize: 0.052 * w,
-                    ink: variant == .ink
-                        ? Color(red: 0.94, green: 0.52, blue: 0.42)
-                        : Theme.postalRed
-                )
-                .blendMode(variant == .ink ? .normal : .multiply)
-                .opacity(0.88)
-                .scaleEffect(dateStampScale)
-                .rotationEffect(.degrees(-7))
-                .position(x: 0.72 * w, y: 0.135 * w)
-                .allowsHitTesting(false)
-            }
         }
         .compositingGroup()
         // Shader effects cannot rasterize platform-backed views: with the
@@ -180,12 +195,6 @@ struct StampView: View {
 
     @ViewBuilder
     private func paper(_ w: CGFloat) -> some View {
-        let content = contentRect(w)
-        let fw = content.width + 0.032 * w
-        let fh = content.height + 0.032 * w
-        let fx = content.minX - 0.016 * w
-        let fy = content.minY - 0.016 * w
-
         ZStack(alignment: .topLeading) {
             PerforatedRect()
                 .fill(paperFill)
@@ -193,57 +202,208 @@ struct StampView: View {
                 .shadow(color: Theme.shadow.opacity(0.30), radius: 0.05 * w, y: 0.024 * w)
                 .shadow(color: Theme.shadow.opacity(0.16), radius: 0.009 * w, y: 0.005 * w)
 
-            // Each paper has its own signature framing. All treatments stay
-            // mounted; switching variants only animates opacity, never view
-            // identity.
+            // Under-picture plates. Like every treatment they stay mounted;
+            // switching variants only animates opacity, never view identity.
 
-            // Tinted — the engraved hairline.
+            // Foil — the gold plate the picture is set into.
+            RoundedRectangle(cornerRadius: 2)
+                .fill(LinearGradient(
+                    colors: [Color(hex: 0xB8862F), Color(hex: 0xF6E7B0),
+                             Color(hex: 0xC9A24B), Color(hex: 0xF8EFCB),
+                             Color(hex: 0xA9791F)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: 0.90 * w, height: 1.11 * w)
+                .offset(x: 0.05 * w, y: 0.05 * w)
+                .opacity(variant == .foil ? 1 : 0)
+
+            // Night — the aurora glow the picture floats on.
+            RadialGradient(
+                colors: [Color(hex: 0x6FE9FF).opacity(0.45),
+                         Color(hex: 0xB478FF).opacity(0.16), .clear],
+                center: UnitPoint(x: 0.5, y: 0.45),
+                startRadius: 0, endRadius: 0.62 * w
+            )
+            .frame(width: 0.96 * w, height: 1.17 * w)
+            .offset(x: 0.02 * w, y: 0.02 * w)
+            .blur(radius: 3)
+            .opacity(variant == .night ? 1 : 0)
+        }
+    }
+
+    // MARK: Edition dressing
+
+    /// Everything an edition prints OVER the picture: keylines, bars,
+    /// scrims, marks. All treatments stay mounted; switching variants only
+    /// animates opacity, never view identity.
+    @ViewBuilder
+    private func dressing(_ w: CGFloat) -> some View {
+        let content = contentRect(w)
+        let pic = pictureRect(w)
+
+        ZStack(alignment: .topLeading) {
+            // Tinted — white keyline on the picture edge + engraved hairline.
             Rectangle()
-                .strokeBorder(markInk.opacity(0.28), lineWidth: 1)
-                .frame(width: fw, height: fh)
-                .offset(x: fx, y: fy)
+                .strokeBorder(Color(red: 0.97, green: 0.94, blue: 0.88).opacity(0.7),
+                              lineWidth: 1)
+                .frame(width: content.width, height: content.height)
+                .offset(x: content.minX, y: content.minY)
                 .opacity(variant == .tinted ? 1 : 0)
+            Rectangle()
+                .strokeBorder(Theme.stampInk.opacity(0.34), lineWidth: 1)
+                .frame(width: content.width - 0.04 * w,
+                       height: content.height - 0.04 * w)
+                .offset(x: content.minX + 0.02 * w, y: content.minY + 0.02 * w)
+                .opacity(variant == .tinted && tintLuminance >= 0.62 ? 1 : 0)
 
-            // Ivory — a Penny Black-style oval vignette: double engraved
-            // ring around the subject, rosettes in the spandrels.
-            ZStack(alignment: .topLeading) {
-                Ellipse()
-                    .strokeBorder(markInk.opacity(0.55), lineWidth: 1.5)
-                Ellipse()
-                    .strokeBorder(markInk.opacity(0.30), lineWidth: 0.8)
-                    .padding(0.016 * w)
-            }
-            .frame(width: content.width * 0.94, height: content.height * 0.90)
-            .offset(x: content.midX - content.width * 0.47,
-                    y: content.midY - content.height * 0.45)
-            .opacity(variant == .ivory ? 1 : 0)
+            // Ivory — the engraved cameo: double oval ring + spandrel rosettes.
+            Ellipse()
+                .strokeBorder(Theme.stampInk.opacity(0.55), lineWidth: 1.5)
+                .frame(width: 0.70 * w, height: 0.90 * w)
+                .offset(x: 0.15 * w, y: 0.57 * w - 0.45 * w)
+                .opacity(variant == .ivory ? 1 : 0)
+            Ellipse()
+                .strokeBorder(Theme.stampInk.opacity(0.28), lineWidth: 0.8)
+                .frame(width: 0.64 * w, height: 0.82 * w)
+                .offset(x: 0.18 * w, y: 0.57 * w - 0.41 * w)
+                .opacity(variant == .ivory ? 1 : 0)
             ForEach(0..<4, id: \.self) { i in
                 Text("✦")
-                    .font(.system(size: 0.042 * w))
-                    .foregroundStyle(markInk.opacity(0.5))
-                    .position(
-                        x: i % 2 == 0 ? content.minX + 0.028 * w
-                                      : content.maxX - 0.028 * w,
-                        y: i < 2 ? content.minY + 0.030 * w
-                                 : content.maxY - 0.030 * w
-                    )
+                    .font(.system(size: 0.05 * w))
+                    .foregroundStyle(Theme.stampInk.opacity(0.5))
+                    .position(x: i % 2 == 0 ? 0.135 * w : 0.865 * w,
+                              y: i < 2 ? 0.145 * w : 0.945 * w)
                     .opacity(variant == .ivory ? 1 : 0)
             }
 
-            // Ink — no frame at all: a poster. The subject itself bleeds
-            // past the picture area and the type prints in light ink.
+            // Ink — the poster scrim the picture melts into, and a red tick.
+            LinearGradient(
+                colors: [.clear, Color(hex: 0x2A2621)],
+                startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.66)
+            )
+            .frame(width: w, height: 0.58 * w)
+            .offset(y: 0.74 * w)
+            .opacity(variant == .ink ? 1 : 0)
+            Rectangle()
+                .fill(Color(hex: 0xE0644A))
+                .frame(width: 0.07 * w, height: max(1.5, 0.0076 * w))
+                .position(x: 0.5 * w, y: 1.05 * w)
+                .opacity(variant == .ink ? 1 : 0)
 
-            // Airmail — striped border and the envelope mark.
-            AirmailBorder(inset: 0.040 * w, band: 0.028 * w)
+            // Airmail — chevron ring + the par avion mark.
+            AirmailBorder(inset: 0.038 * w, band: 0.028 * w)
                 .opacity(variant == .airmail ? 1 : 0)
             Text("PAR AVION")
-                .font(.system(size: 0.032 * w, weight: .semibold, design: .serif))
+                .font(.system(size: 0.036 * w, weight: .semibold, design: .serif))
                 .italic()
-                .kerning(0.032 * w * 0.28)
-                .foregroundStyle(Color(red: 0.17, green: 0.29, blue: 0.60).opacity(0.75))
-                .position(x: content.minX + 0.17 * w, y: content.minY + 0.045 * w)
+                .kerning(0.036 * w * 0.12)
+                .foregroundStyle(Color(hex: 0x274896))
+                .shadow(color: Color(hex: 0xFCFBF6), radius: 1.5)
+                .shadow(color: Color(hex: 0xFCFBF6), radius: 1.5)
+                .position(x: 0.5 * w, y: 0.13 * w)
                 .opacity(variant == .airmail ? 1 : 0)
+
+            // Commemorative — red keyline + the denomination bar at the foot.
+            Rectangle()
+                .strokeBorder(Theme.postalRed, lineWidth: 2)
+                .frame(width: content.width, height: content.height)
+                .offset(x: content.minX, y: content.minY)
+                .opacity(variant == .commemorative ? 1 : 0)
+
+            // Foil — hairline around the picture, the edition mark, and a
+            // frozen sheen (the live shimmer rides the holo shader).
+            Rectangle()
+                .strokeBorder(Color(red: 0.24, green: 0.17, blue: 0.12).opacity(0.4),
+                              lineWidth: 1)
+                .frame(width: 0.844 * w, height: 1.054 * w)
+                .offset(x: 0.078 * w, y: 0.078 * w)
+                .opacity(variant == .foil ? 1 : 0)
+            LinearGradient(
+                stops: [.init(color: .clear, location: 0.30),
+                        .init(color: .white.opacity(0.28), location: 0.46),
+                        .init(color: Color(hex: 0xBEE6FF).opacity(0.20), location: 0.50),
+                        .init(color: Color(hex: 0xFFCDEB).opacity(0.22), location: 0.54),
+                        .init(color: .clear, location: 0.70)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+            .frame(width: 0.90 * w, height: 1.11 * w)
+            .offset(x: 0.05 * w, y: 0.05 * w)
+            .blendMode(.screen)
+            .opacity(variant == .foil ? 1 : 0)
+            Text("SPECIAL EDITION ✦")
+                .font(.system(size: 0.03 * w, weight: .semibold).width(.condensed))
+                .kerning(0.03 * w * 0.3)
+                .foregroundStyle(Color(hex: 0xFBEFC4))
+                .shadow(color: Color(red: 0.24, green: 0.16, blue: 0.06).opacity(0.6),
+                        radius: 1, y: 1)
+                .position(x: 0.5 * w, y: 0.115 * w)
+                .opacity(variant == .foil ? 1 : 0)
+
+            // Revenue — double rule, revenue strip, duty bar.
+            Rectangle()
+                .strokeBorder(Color(hex: 0x2A3C52), lineWidth: 1.2)
+                .frame(width: content.width, height: content.height)
+                .offset(x: content.minX, y: content.minY)
+                .opacity(variant == .revenue ? 1 : 0)
+            Rectangle()
+                .strokeBorder(Color(hex: 0x2A3C52).opacity(0.8), lineWidth: 1)
+                .frame(width: content.width - 0.024 * w,
+                       height: content.height - 0.024 * w)
+                .offset(x: content.minX + 0.012 * w, y: content.minY + 0.012 * w)
+                .opacity(variant == .revenue ? 1 : 0)
+
+            // Botanical — fine double rule + the series line.
+            Rectangle()
+                .strokeBorder(Color(hex: 0x2E422C).opacity(0.5), lineWidth: 1)
+                .frame(width: content.width, height: content.height)
+                .offset(x: content.minX, y: content.minY)
+                .opacity(variant == .botanical ? 1 : 0)
+            Rectangle()
+                .strokeBorder(Color(hex: 0x2E422C).opacity(0.3), lineWidth: 0.8)
+                .frame(width: content.width - 0.046 * w,
+                       height: content.height - 0.046 * w)
+                .offset(x: content.minX + 0.023 * w, y: content.minY + 0.023 * w)
+                .opacity(variant == .botanical ? 1 : 0)
+            Text("DEFINITIVE SERIES")
+                .font(.system(size: 0.028 * w, weight: .semibold, design: .serif))
+                .kerning(0.028 * w * 0.22)
+                .foregroundStyle(Color(hex: 0x2E422C).opacity(0.85))
+                .position(x: 0.5 * w, y: 0.12 * w)
+                .opacity(variant == .botanical ? 1 : 0)
+
+            // Night — the neon keyline glowing around the picture.
+            RoundedRectangle(cornerRadius: 2)
+                .strokeBorder(Color(hex: 0x6FE9FF), lineWidth: 1.5)
+                .frame(width: content.width, height: content.height)
+                .offset(x: content.minX, y: content.minY)
+                .shadow(color: Color(hex: 0x6FE9FF).opacity(0.7), radius: 0.038 * w)
+                .shadow(color: Color(hex: 0x6FE9FF).opacity(0.45), radius: 0.012 * w)
+                .opacity(variant == .night ? 1 : 0)
+
+            // Sweetheart — white + rose hairlines and the corner florets.
+            Rectangle()
+                .strokeBorder(Color(red: 1.0, green: 0.96, blue: 0.95).opacity(0.72),
+                              lineWidth: 1)
+                .frame(width: content.width, height: content.height)
+                .offset(x: content.minX, y: content.minY)
+                .opacity(variant == .sweetheart ? 1 : 0)
+            Rectangle()
+                .strokeBorder(Color(hex: 0x7A3A3C).opacity(0.42), lineWidth: 1)
+                .frame(width: content.width - 0.046 * w,
+                       height: content.height - 0.046 * w)
+                .offset(x: content.minX + 0.023 * w, y: content.minY + 0.023 * w)
+                .opacity(variant == .sweetheart ? 1 : 0)
+            ForEach(0..<2, id: \.self) { i in
+                Text("✦")
+                    .font(.system(size: 0.04 * w))
+                    .foregroundStyle(Color(hex: 0x7A3A3C).opacity(0.6))
+                    .position(x: i == 0 ? 0.13 * w : 0.87 * w, y: 0.12 * w)
+                    .opacity(variant == .sweetheart ? 1 : 0)
+            }
         }
+        // The dressing never outlines the raw punch stage — it rides the
+        // paper's own fade via the caller's opacity, so nothing here needs
+        // per-piece assembly gating.
+        .frame(width: w, height: 1.3125 * w, alignment: .topLeading)
     }
 
     // MARK: Content
@@ -443,6 +603,70 @@ struct StampView: View {
             .offset(x: content.minX, y: content.minY)
     }
 
+    // MARK: Picture window
+
+    /// Where the classic photo prints, per edition: the poster bleeds, the
+    /// cameo sits in its oval, airmail and foil pull inside their rings.
+    private func pictureRect(_ w: CGFloat) -> CGRect {
+        switch variant {
+        case .ink:     CGRect(x: 0, y: 0, width: w, height: 1.05 * w)
+        case .airmail: CGRect(x: 0.10 * w, y: 0.115 * w, width: 0.80 * w, height: 1.00 * w)
+        case .foil:    CGRect(x: 0.078 * w, y: 0.078 * w, width: 0.844 * w, height: 1.054 * w)
+        case .ivory:   CGRect(x: 0.18 * w, y: 0.16 * w, width: 0.64 * w, height: 0.82 * w)
+        default:       contentRect(w)
+        }
+    }
+
+    /// Print treatments as continuous values — variant switches animate
+    /// numbers on ONE image view, never its identity, so the switch
+    /// choreography survives mid-flight.
+    private var pictureGrayscale: Double { variant == .botanical ? 1 : 0 }
+    private var pictureSaturation: Double {
+        switch variant {
+        case .ivory: 0.72
+        case .revenue: 0.6
+        default: 1
+        }
+    }
+    private var pictureContrast: Double {
+        switch variant {
+        case .botanical: 1.3
+        case .ivory: 1.02
+        default: 1
+        }
+    }
+    /// Multiply wash: sepia warmth for the cameo, single green ink for the
+    /// definitive. White is the identity.
+    private var pictureWash: Color {
+        switch variant {
+        case .ivory: Color(red: 1.0, green: 0.94, blue: 0.84)
+        case .botanical: Color(hex: 0xCDE8B4)
+        default: .white
+        }
+    }
+
+    /// The classic photo, printed per edition.
+    private func classicPicture(_ img: UIImage, _ w: CGFloat) -> some View {
+        let rect = pictureRect(w)
+        return Image(uiImage: img)
+            .resizable()
+            .scaledToFill()
+            .frame(width: rect.width, height: rect.height)
+            .grayscale(pictureGrayscale)
+            .saturation(pictureSaturation)
+            .contrast(pictureContrast)
+            .colorMultiply(pictureWash)
+            .mask {
+                ZStack {
+                    RoundedRectangle(cornerRadius: rect.width * 0.01)
+                        .opacity(variant == .ivory ? 0 : 1)
+                    Ellipse()
+                        .opacity(variant == .ivory ? 1 : 0)
+                }
+            }
+            .offset(x: rect.minX, y: rect.minY)
+    }
+
     @ViewBuilder
     private func finalContent(_ w: CGFloat, content: CGRect) -> some View {
         if style == .cutout, let image {
@@ -465,7 +689,7 @@ struct StampView: View {
                         radius: 0.012 * w, y: 0.008 * w)
                 .position(x: frame.midX, y: frame.midY)
         } else if let image {
-            rawView(image, content: content)
+            classicPicture(image, w)
         }
     }
 
@@ -477,9 +701,15 @@ struct StampView: View {
         // bleeds it past the picture area, airmail pastes it a touch high.
         let (fw, fh, dy): (CGFloat, CGFloat, CGFloat) = switch variant {
         case .tinted: (0.82, 0.82, -0.012)
-        case .ivory: (0.64, 0.64, -0.020)
+        case .ivory: (0.60, 0.60, -0.055)
         case .ink: (1.12, 0.97, 0.006)
         case .airmail: (0.74, 0.74, -0.026)
+        case .commemorative: (0.80, 0.74, -0.055)
+        case .foil: (0.76, 0.76, -0.012)
+        case .revenue: (0.78, 0.68, -0.010)
+        case .botanical: (0.78, 0.78, -0.012)
+        case .night: (0.80, 0.80, -0.012)
+        case .sweetheart: (0.80, 0.80, -0.012)
         }
         let avail = CGSize(width: content.width * fw, height: content.height * fh)
         let fit = min(avail.width / imageSize.width, avail.height / imageSize.height)
@@ -508,53 +738,161 @@ struct StampView: View {
 
     // MARK: Caption
 
-    /// Each paper sets the caption's voice: engraved caps (tinted/airmail),
-    /// italic serif title case (ivory), airy tracked caps (ink).
-    private func titleFont(_ w: CGFloat) -> Font {
+    /// Each edition sets the caption's voice: engraved caps (tinted, foil,
+    /// botanical), italic serif title case (ivory, sweetheart), airy
+    /// tracked caps (ink, night), condensed (commemorative), mono (revenue).
+    private func titleSize(_ w: CGFloat) -> CGFloat {
         switch variant {
-        case .ivory: .system(size: 0.054 * w, weight: .medium, design: .serif).italic()
-        case .ink: Theme.stampEngraved(0.048 * w)
-        default: Theme.stampEngraved(0.052 * w)
+        case .ivory, .sweetheart: 0.055 * w
+        case .ink: 0.046 * w
+        case .commemorative: 0.050 * w
+        case .night: 0.048 * w
+        case .revenue: 0.044 * w
+        default: 0.052 * w
         }
+    }
+
+    private func titleFont(size: CGFloat) -> Font {
+        switch variant {
+        case .ivory: .system(size: size, weight: .medium, design: .serif).italic()
+        case .sweetheart: .system(size: size, weight: .semibold, design: .serif).italic()
+        case .ink: .system(size: size, weight: .regular, design: .serif)
+        case .commemorative: .system(size: size, weight: .semibold).width(.condensed)
+        case .night: .system(size: size, weight: .medium).width(.condensed)
+        case .revenue: .system(size: size, weight: .bold, design: .monospaced)
+        default: Theme.stampEngraved(size)
+        }
+    }
+
+    private func titleFont(_ w: CGFloat) -> Font { titleFont(size: titleSize(w)) }
+
+    /// № and the struck date share the line's quieter voice.
+    private func metaFont(_ w: CGFloat) -> Font {
+        switch variant {
+        case .ivory: .system(size: 0.036 * w, weight: .medium, design: .serif).italic()
+        case .sweetheart: .system(size: 0.035 * w, weight: .medium, design: .serif)
+        case .commemorative, .revenue: .system(size: 0.033 * w, design: .monospaced)
+        case .night: .system(size: 0.033 * w).width(.condensed)
+        default: .system(size: 0.035 * w, weight: .medium, design: .serif)
+        }
+    }
+
+    private var lowercaseTitle: Bool {
+        variant == .ivory || variant == .sweetheart
     }
 
     private var titleDisplay: String {
-        let base = title.isEmpty ? (variant == .ivory ? "Untitled" : "UNTITLED")
+        let base = title.isEmpty ? (lowercaseTitle ? "Untitled" : "UNTITLED")
                                  : title
-        return variant == .ivory ? base : base.uppercased()
+        return lowercaseTitle ? base : base.uppercased()
     }
 
-    private func titleSpacing(_ w: CGFloat) -> CGFloat {
+    /// Letter tracking as an em fraction of the title size.
+    private var titleTracking: CGFloat {
         switch variant {
-        case .ivory: 0.052 * w * 0.02
-        case .ink: 0.052 * w * 0.34
-        default: 0.052 * w * 0.14
+        case .ivory, .sweetheart: 0.015
+        case .ink: 0.34
+        case .night: 0.24
+        case .commemorative: 0.14
+        case .revenue: 0.08
+        case .airmail: 0.10
+        default: 0.13
         }
+    }
+
+    private static let struckDate: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
+
+    private var dateText: String {
+        let s = Self.struckDate.string(from: date)
+        return lowercaseTitle ? s : s.uppercased()
+    }
+
+    /// Commemorative and revenue print their caption inside a filled bar
+    /// sitting in the band below the picture — no separate caption line.
+    private var barCaptioned: Bool {
+        variant == .commemorative || variant == .revenue
+    }
+
+    /// The caption bar: title left (tappable to rename, editable in
+    /// place), struck date right, on the edition's bar stock.
+    private func captionBar(_ w: CGFloat) -> some View {
+        let barColor = variant == .commemorative
+            ? Theme.postalRed : Color(hex: 0x2A3C52)
+        let dateFont: Font = variant == .commemorative
+            ? .system(size: 0.032 * w, weight: .semibold).width(.condensed)
+            : .system(size: 0.030 * w, design: .monospaced)
+        let dateInk = variant == .commemorative
+            ? Color(hex: 0xFCEDE4) : Color(hex: 0xB9C6A6)
+
+        return HStack {
+            if let binding = editableTitle {
+                TextField("NAME IT", text: binding)
+                    .font(titleFont(w))
+                    .foregroundStyle(markInk)
+                    .tint(.white)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                    .onSubmit(onSubmitTitle)
+                    .modifier(FocusedIfAvailable(focus: titleFocused))
+            } else {
+                staggeredTitle(font: titleFont(w), width: w)
+                    .overlay(alignment: .bottom) {
+                        // Rename affordance, same dashed rule as the line.
+                        Line()
+                            .stroke(markInk.opacity(
+                                onTapCaption == nil ? 0 : 0.38 * assembly.caption),
+                                    style: StrokeStyle(lineWidth: 1, dash: [2.5, 3]))
+                            .frame(height: 1)
+                            .offset(y: 0.018 * w)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { onTapCaption?() }
+            }
+            Spacer(minLength: 0.03 * w)
+            Text(dateText)
+                .font(dateFont)
+                .foregroundStyle(dateInk)
+        }
+        .padding(.horizontal, 0.045 * w)
+        .frame(width: 0.85 * w, height: 0.12 * w)
+        .background(barColor)
+        .position(x: 0.5 * w, y: 1.205 * w)
     }
 
     @ViewBuilder
     private func captionLayer(_ w: CGFloat) -> some View {
-        let lineY = 1.225 * w
+        let lineY = variant == .ink ? 1.135 * w : 1.19 * w
         let titleFont = titleFont(w)
-        let cornerFont = Font.system(size: 0.036 * w, weight: .medium, design: .serif)
 
         ZStack {
-            Text("№\u{2009}\(number)")
-                .font(cornerFont)
-                .italic(variant == .ivory)
-                .foregroundStyle(markInk.opacity(0.55))
-                .position(x: 0.135 * w, y: lineY)
+            if barCaptioned {
+                captionBar(w)
+            }
 
-            Text(year)
-                .font(cornerFont)
-                .italic(variant == .ivory)
-                .foregroundStyle(markInk.opacity(0.55))
-                .position(x: w - 0.135 * w, y: lineY)
+            // № holds the left of the line, the struck date the right.
+            if !barCaptioned {
+                HStack {
+                    Text("№\u{2009}\(number)")
+                    Spacer()
+                    Text(dateText)
+                }
+                .font(metaFont(w))
+                .foregroundStyle(metaInk.opacity(0.6))
+                .padding(.horizontal, 0.075 * w)
+                .frame(width: w)
+                .position(x: w / 2, y: lineY)
+            }
 
-            if let binding = editableTitle {
+            if let binding = editableTitle, !barCaptioned {
                 editableCaption(binding, font: titleFont, width: w)
                     .position(x: w / 2, y: lineY)
-            } else {
+            } else if editableTitle == nil, !barCaptioned {
                 // One stable branch whether or not renaming is available —
                 // conditional branches here would re-mount the title
                 // mid-letter-stagger when chrome appears.
@@ -576,14 +914,25 @@ struct StampView: View {
     }
 
     private func staggeredTitle(font: Font, width w: CGFloat) -> some View {
+        // The stagger renders every glyph as its own Text, so no scale
+        // factor can fit the line — size the type analytically to the
+        // span the № and date leave free.
         let chars = Array(titleDisplay.prefix(18))
         let n = max(chars.count, 1)
-        return HStack(spacing: titleSpacing(w)) {
+        let base = titleSize(w)
+        let condensed = variant == .commemorative || variant == .night
+        let estimated = CGFloat(n) * base * ((condensed ? 0.55 : 0.72) + titleTracking)
+        let fit = min(1, 0.40 * w / max(estimated, 1))
+        let size = base * fit
+        return HStack(spacing: size * titleTracking) {
             ForEach(Array(chars.enumerated()), id: \.offset) { i, ch in
                 let p = letterProgress(i, of: n)
                 Text(String(ch))
-                    .font(font)
-                    .foregroundStyle(markInk.opacity(0.82))
+                    .font(titleFont(size: size))
+                    .foregroundStyle(markInk.opacity(variant == .night ? 1 : 0.82))
+                    .shadow(color: variant == .night
+                                ? Color(hex: 0x6FE9FF).opacity(0.8) : .clear,
+                            radius: variant == .night ? 0.03 * w : 0)
                     .opacity(p)
                     .offset(y: (1 - p) * 0.03 * w)
                     .blur(radius: (1 - p) * 1.5)
@@ -591,8 +940,6 @@ struct StampView: View {
         }
         .lineLimit(1)
         .fixedSize()
-        .frame(maxWidth: 0.62 * w)
-        .minimumScaleFactor(0.5)
     }
 
     private func letterProgress(_ i: Int, of n: Int) -> Double {
@@ -803,10 +1150,8 @@ extension StampView {
             tint: stamp.tint.color,
             title: stamp.displayTitle,
             number: stamp.number,
-            year: stamp.year,
             date: stamp.date,
             variant: stamp.variant,
-            showsDateStamp: stamp.kind == .stamp,
             labelAnchor: stamp.kind == .sticker ? stamp.labelAnchor : nil,
             assembly: stamp.kind == .sticker
                 ? Assembly(paper: 0, caption: 0, content: .final)

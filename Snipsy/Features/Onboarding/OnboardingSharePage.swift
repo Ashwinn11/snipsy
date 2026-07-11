@@ -281,7 +281,6 @@ struct OnboardingSharePage: View {
                     tint: OnboardingDemo.shareTint.color,
                     title: subject.title,
                     number: 1,
-                    year: String(Calendar.current.component(.year, from: Date())),
                     variant: .airmail,
                     stickerBox: subject.box,
                     rawCrop: subject.photo,
@@ -332,14 +331,13 @@ struct OnboardingSharePage: View {
                         .opacity(stickerSelected ? 1 : 0)
                 }
 
-            ForEach(StampVariant.allCases) { v in
+            ForEach(Array(StampVariant.allCases.prefix(4))) { v in
                 StampView(
                     image: subject.sticker,
                     style: .cutout,
                     tint: OnboardingDemo.shareTint.color,
                     title: "",
                     number: 1,
-                    year: "",
                     variant: v,
                     stickerBox: subject.box,
                     rawCrop: subject.photo,

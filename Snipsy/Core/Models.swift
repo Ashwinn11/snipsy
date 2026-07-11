@@ -6,12 +6,24 @@ import UIKit
 enum StampVariant: String, Codable, CaseIterable, Identifiable {
     /// Paper tinted from the photo's own palette (the signature look).
     case tinted
-    /// Warm gallery cream.
+    /// Heirloom cameo: lavender sheet, the picture in an engraved oval.
     case ivory
-    /// Deep ink paper; caption and marks print in paper white.
+    /// Poster: deep ink sheet, the picture bleeds, type prints airy and light.
     case ink
-    /// Par avion: pale sheet with the red/blue airmail border.
+    /// Par avion: near-white sheet ringed by the red/blue chevron border.
     case airmail
+    /// National issue: plum sheet, red keyline, denomination bar at the foot.
+    case commemorative
+    /// Special edition: gold-foil plate frame with a holographic sheen.
+    case foil
+    /// Official document: teal sheet, duty bars, monospace voice.
+    case revenue
+    /// Definitive series: the picture printed as a single green ink.
+    case botanical
+    /// After dark: midnight sheet, a neon keyline glowing around the picture.
+    case night
+    /// Keepsake: rose sheet, delicate engraved hairlines, italic caption.
+    case sweetheart
 
     var id: String { rawValue }
 }
@@ -49,13 +61,6 @@ struct Stamp: Identifiable, Codable, Equatable {
     var labelAnchor: CGFloat? = nil
 
     var displayTitle: String { title.isEmpty ? "Untitled" : title }
-    var year: String { Stamp.yearFormatter.string(from: date) }
-
-    private static let yearFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy"
-        return f
-    }()
 }
 
 extension Stamp {

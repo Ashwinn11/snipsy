@@ -85,10 +85,8 @@ struct StampDetailView: View {
                 tint: current.tint.color,
                 title: editing ? localTitle : current.displayTitle,
                 number: current.number,
-                year: current.year,
                 date: current.date,
                 variant: current.variant,
-                showsDateStamp: current.kind == .stamp,
                 labelAnchor: current.kind == .sticker ? current.labelAnchor : nil,
                 assembly: current.kind == .sticker
                     ? StampView.Assembly(paper: 0, caption: 0, content: .final)

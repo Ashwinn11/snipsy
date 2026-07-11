@@ -65,8 +65,8 @@ struct RevealScreen: View {
     @State private var holoStrength: Double = 0
 
     // Keep flow
-    @State private var dateStamped = false
-    @State private var dateStampScale: CGFloat = 1.7
+    /// Set the moment Keep is accepted — re-entry guard for the flight.
+    @State private var keeping = false
     @State private var flying = false
     @State private var stampGone = false
 
@@ -181,11 +181,8 @@ struct RevealScreen: View {
                 tint: pending.tint.color,
                 title: title,
                 number: model.store.nextNumber,
-                year: String(Calendar.current.component(.year, from: Date())),
                 date: .now,
                 variant: selectedVariant,
-                showsDateStamp: dateStamped,
-                dateStampScale: dateStampScale,
                 stickerBox: pending.stickerBox,
                 rawCrop: pending.capture.cropImage,
                 maskImage: pending.cutout,
@@ -434,7 +431,7 @@ struct RevealScreen: View {
     }
 
     private func keepTapped() {
-        guard !flying, !dateStamped else { return }
+        guard !flying, !keeping else { return }
         stopEditingTitle()
         model.haptics.thunk()
         // Supersede any in-flight switch choreography and land the current
@@ -471,13 +468,10 @@ struct RevealScreen: View {
             paper = 1
             caption = 1
         }
-        dateStamped = true   // seal mounts at 1.7
+        keeping = true
         Task { @MainActor in
             await afterNextCommit()
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.62)) {
-                dateStampScale = 1
-            }
-            try? await Task.sleep(for: .seconds(0.75))
+            try? await Task.sleep(for: .seconds(0.55))
             withAnimation(Theme.spring) {
                 flying = true
                 chromeVisible = false
@@ -492,7 +486,7 @@ struct RevealScreen: View {
 
     // MARK: Options
 
-    /// One row, five options: sticker first, then the four papers. Mounted
+    /// One scrolling row: sticker first, then the ten editions. Mounted
     /// from the reveal's first frame at near-zero opacity so the one-time
     /// render cost (mini paper shaders + textures) is pre-paid, never
     /// inside its spring.
@@ -506,6 +500,7 @@ struct RevealScreen: View {
                 .foregroundStyle(Theme.inkSoft)
                 .opacity(selection == nil ? 1 : 0)
 
+            ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 13) {
                 if pending.style == .cutout, let sticker = pending.sticker {
                     optionButton(.sticker, selected: selection == .sticker) {
@@ -524,7 +519,6 @@ struct RevealScreen: View {
                             tint: pending.tint.color,
                             title: "",
                             number: model.store.nextNumber,
-                            year: "",
                             variant: v,
                             stickerBox: pending.stickerBox,
                             rawCrop: pending.capture.cropImage,
@@ -534,6 +528,10 @@ struct RevealScreen: View {
                     }
                 }
             }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 8)
+            }
+            .frame(width: screenSize.width)
         }
         .position(x: screenSize.width / 2, y: rowY)
         .opacity(shown ? 1 : 0.001)

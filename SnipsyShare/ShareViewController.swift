@@ -224,7 +224,6 @@ struct ShareComposerView: View {
                             tint: pending.tint.color,
                             title: pending.suggestedTitle ?? "",
                             number: state.nextNumber,
-                            year: String(Calendar.current.component(.year, from: Date())),
                             date: .now,
                             variant: previewVariant,
                             stickerBox: pending.stickerBox,
@@ -236,6 +235,7 @@ struct ShareComposerView: View {
                         .frame(width: 210)
                         .shadow(color: Theme.shadow.opacity(0.22), radius: 16, y: 9)
 
+                        ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 11) {
                             if pending.style == .cutout, let sticker = pending.sticker {
                                 optionButton(.sticker) {
@@ -271,7 +271,6 @@ struct ShareComposerView: View {
                                         tint: pending.tint.color,
                                         title: "",
                                         number: state.nextNumber,
-                                        year: "",
                                         variant: v,
                                         stickerBox: pending.stickerBox,
                                         rawCrop: pending.capture.cropImage,
@@ -280,6 +279,9 @@ struct ShareComposerView: View {
                                     .frame(width: 44)
                                 }
                             }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 6)
                         }
 
                         if state.stickerDeferred, state.choice == .sticker {

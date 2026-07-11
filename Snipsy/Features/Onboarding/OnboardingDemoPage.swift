@@ -23,8 +23,6 @@ struct OnboardingDemoPage: View {
     @State private var settle: Double = 0
     @State private var paper: Double = 0.001
     @State private var caption: Double = 0.001
-    @State private var showsDateStamp = false
-    @State private var dateStampScale: CGFloat = 1.7
     @State private var holoSweep: Double = -0.4
     @State private var holoStrength: Double = 0
     @State private var stampOpacity: Double = 1
@@ -86,11 +84,8 @@ struct OnboardingDemoPage: View {
                 tint: OnboardingDemo.heroTint.color,
                 title: demo.hero?.title ?? "",
                 number: 1,
-                year: String(Calendar.current.component(.year, from: Date())),
                 date: .now,
                 variant: .tinted,
-                showsDateStamp: showsDateStamp,
-                dateStampScale: dateStampScale,
                 stickerBox: assets.box,
                 rawCrop: assets.photo,
                 maskImage: assets.cutout,
@@ -174,9 +169,7 @@ struct OnboardingDemoPage: View {
             paper = 1
             caption = 1
             settle = 1
-            showsDateStamp = true
-            dateStampScale = 1
-            phaseLine = "Cut, dressed, and struck — on device."
+            phaseLine = "Cut, dressed, and dated — on device."
             return
         }
 
@@ -191,13 +184,12 @@ struct OnboardingDemoPage: View {
         stickerness = 0; press = 0; flight = 0; settle = 0
         paper = 0.001; caption = 0.001
         wasteProgress = 0
-        showsDateStamp = false; dateStampScale = 1.7
         holoSweep = -0.4; holoStrength = 0
         stampOpacity = 1
     }
 
     /// One full cycle: raw photo → punch → shatter → sticker → stamp →
-    /// cancellation mark → hold → fade out and reset. ~9s.
+    /// hold → fade out and reset. ~8s.
     private func runCycle(_ g: Int) async {
         phaseLine = "Your subject is lifted and die-cut…"
         await afterNextCommit()
@@ -248,16 +240,10 @@ struct OnboardingDemoPage: View {
         guard gen == g else { return }
         withAnimation(.easeOut(duration: 0.4)) { holoStrength = 0 }
 
-        // Date-stamp strike.
-        showsDateStamp = true
-        await afterNextCommit()
-        guard gen == g else { return }
+        // The struck date already sits in the caption line — land the beat.
         haptics.thunk()
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.62)) {
-            dateStampScale = 1
-        }
-        phaseLine = "Struck, dated, kept forever."
-        try? await Task.sleep(for: .seconds(1.8))
+        phaseLine = "Dated and kept forever."
+        try? await Task.sleep(for: .seconds(1.6))
         guard gen == g else { return }
 
         // Loop seam: fade, reset off-screen, fade back.

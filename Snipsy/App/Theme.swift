@@ -55,16 +55,18 @@ struct RGBValue: Codable, Equatable {
 
     static let paper = RGBValue(r: 0.957, g: 0.937, b: 0.902)
 
-    /// Mute an arbitrary color toward collectible stamp paper:
-    /// clamp saturation + lift brightness so photos of anything yield a
-    /// harmonious album.
+    /// Perceived lightness — decides whether a tinted paper takes dark or
+    /// cream caption ink (legacy pale tints stay dark-inked and readable).
+    var luminance: Double { 0.299 * r + 0.587 * g + 0.114 * b }
+
+    /// Pull an arbitrary color toward rich stamp-paper stock: saturation
+    /// floored high and brightness pulled deep, so every photo yields a
+    /// saturated collectible that stands off the cream album page.
     static func stampTint(from color: UIColor) -> RGBValue {
         var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
         color.getHue(&h, saturation: &s, brightness: &v, alpha: &a)
-        // Floor saturation and cap brightness so the stamp always sits
-        // clearly deeper than the album paper behind it (S≈0.06, V≈0.96).
-        let mutedS = min(max(s * 0.6, 0.16), 0.34)
-        let mutedV = min(max(v, 0.84), 0.90)
+        let mutedS = min(max(s * 0.85, 0.42), 0.68)
+        let mutedV = min(max(v * 0.85, 0.55), 0.74)
         let out = UIColor(hue: h, saturation: mutedS, brightness: mutedV, alpha: 1)
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
         out.getRed(&r, green: &g, blue: &b, alpha: &a)

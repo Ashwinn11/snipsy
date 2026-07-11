@@ -100,7 +100,6 @@ targets:
       - path: Snipsy/Core/FrameGeometry.swift
       - path: Snipsy/Features/Stamp/StampView.swift
       - path: Snipsy/Features/Stamp/PerforatedRect.swift
-      - path: Snipsy/Features/Stamp/DateStamp.swift
       - path: Snipsy/Features/Stamp/PaperBackdrop.swift
       - path: Snipsy/Shaders/Paper.metal
       - path: Snipsy/Shaders/Holo.metal
