@@ -47,6 +47,7 @@ targets:
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIUserInterfaceStyle: Light
+        ITSAppUsesNonExemptEncryption: false
         UIStatusBarHidden: true
         UIViewControllerBasedStatusBarAppearance: false
         UIRequiresFullScreen: true

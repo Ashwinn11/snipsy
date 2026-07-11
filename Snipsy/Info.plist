@@ -20,6 +20,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Snipsy uses the camera so you can turn your moments into collectible stamps and stickers.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
