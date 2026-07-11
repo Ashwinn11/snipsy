@@ -22,17 +22,28 @@ enum VisionService {
         var tint: RGBValue
     }
 
+    /// `subjectLift: false` skips the foreground-mask model entirely.
+    /// The share extension passes this when its jetsam budget cannot
+    /// hold the net (measured: it cannot on A14-class devices, even on
+    /// downscaled input) — those shares park the photo in ShareInbox
+    /// and the app lifts the subject on its next launch instead.
     static func analyze(
         _ image: UIImage,
         fallbackCutout: UIImage?,
-        fallbackLabel: String?
+        fallbackLabel: String?,
+        subjectLift: Bool = true
     ) async -> Analysis {
+        // The pool matters in the share extension: Vision and CoreImage
+        // park sizeable buffers in the autorelease pool between steps, and
+        // a detached task's default pool drains far too late for a ~120 MB
+        // jetsam ceiling.
         let work = Task.detached(priority: .userInitiated) { () -> Analysis in
+            autoreleasepool { () -> Analysis in
             guard let cg = image.cgImage else {
                 return Analysis(tint: .paper)
             }
 
-            var cutout = subjectCutout(from: cg)
+            var cutout = subjectLift ? subjectCutout(from: cg) : nil
             if cutout == nil, let fallback = fallbackCutout?.cgImage,
                alphaCoverage(of: fallback) > 0.02 {
                 cutout = fallback
@@ -58,6 +69,7 @@ enum VisionService {
             let cutoutImage = cutout.map { UIImage(cgImage: $0, scale: 1, orientation: .up) }
             return Analysis(cutout: cutoutImage, sticker: sticker, stickerBox: stickerBox,
                             labelAnchor: labelAnchor, label: label, tint: tint)
+            }
         }
         return await work.value
     }

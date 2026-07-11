@@ -20,6 +20,22 @@ struct StampView: View {
         /// Die-cut punch: the white sticker outline pressed into the raw
         /// photo (0 → not cut yet, 1 → cut).
         var border: Double = 1
+        /// The cut piece's flight to its composed frame (0 → the sheet
+        /// stands at the photo's own position, 1 → flown). Separate from
+        /// `border` so the press can strike in place — cut, shatter and
+        /// flight are three clocks, and the sheet must never travel on
+        /// the punch alone, still wearing its waste.
+        var flight: Double = 0
+        /// Post-cut photo presence: the plain (unshaded) raw layer under
+        /// the wave layer. The reveal drives it complementary to `border`
+        /// (one spring), so the overlay + plain photo always cover the
+        /// subject through any crossfade. Inert pre-cut: the wave layer at
+        /// progress 0 occludes it with identical pixels.
+        var photoFade: Double = 0
+        /// Die-press dip, swept 0→1 by the first cut only. sin(press·π)
+        /// is 0 at both ends, so it parks harmlessly at 1 and switches
+        /// never re-dip.
+        var press: Double = 0
         /// The waste around the cut sticker (the raw photo). 1 → present,
         /// 0 → faded away, leaving only the sticker.
         var waste: Double = 1
@@ -34,7 +50,6 @@ struct StampView: View {
         }
 
         static let dressed = Assembly()
-        static let bare = Assembly(paper: 0, caption: 0, settle: 0, border: 0, content: .raw)
     }
 
     var image: UIImage?
@@ -127,6 +142,9 @@ struct StampView: View {
             // ── Caption strip ────────────────────────────────────────
             captionLayer(w)
                 .opacity(assembly.paper)
+                // Invisible in sticker form (paper 0.001) but still laid
+                // out — it must not catch rename taps there.
+                .allowsHitTesting(assembly.paper > 0.5)
 
             // ── Cancellation: rubber-stamped date, nothing more ─────
             if showsPostmark {
@@ -241,9 +259,9 @@ struct StampView: View {
             // exactly the sticker — the swap to .final is invisible.
             //
             // The raw photo, its waste and the cut outline are ONE sheet:
-            // everything rides a single box→frame mapping (identity while
-            // the sheet is whole, the composed sticker frame once the die
-            // has cut), so no state combination — mid-switch, stalled wave,
+            // everything rides a single box→frame mapping (identity until
+            // the cut piece takes flight, the composed sticker frame once
+            // flown), so no state combination — mid-switch, stalled wave,
             // reversed wave — can show the photo and the sticker at two
             // different scales.
             let boxRect = wasteBox(content: content)
@@ -253,19 +271,36 @@ struct StampView: View {
             ZStack(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) {
                     if let raw = rawCrop ?? image {
+                        // Plain layer — the post-cut photo. Sits BELOW the
+                        // wave layer: pre-cut, the wave layer's progress-0
+                        // passthrough occludes it with identical pixels;
+                        // during an interrupted cut the photo heals BEHIND
+                        // the dying grains. 0.001 floor = pre-warm pattern.
+                        rawView(raw, content: content)
+                            .opacity(max(0.001, assembly.photoFade))
+                        // Wave layer — the first cut's shatter, one-shot.
                         rawView(raw, content: content)
                             .layerEffect(
                                 ShaderLibrary.grainDissolveWaste(
                                     .float2(content.width, content.height),
+                                    .float2(content.minX, content.minY),
                                     .image(Image(uiImage: maskImage ?? UIImage())),
                                     .float4(boxRect.minX, boxRect.minY,
                                             boxRect.width, boxRect.height),
                                     .float(1 - assembly.waste),
                                     .float(max(2.5, w * 0.011))
                                 ),
-                                maxSampleOffset: CGSize(width: 44, height: 180),
+                                // Width bound: wind (≤48pt) + a cell, before
+                                // the in-cell test kills anything farther.
+                                maxSampleOffset: CGSize(width: 64, height: 180),
                                 isEnabled: maskImage != nil
                             )
+                            // Cull, never disable: isEnabled false would
+                            // resurrect the photo unshaded. The shader is
+                            // provably blank for waste < 0.03 (kept-pixel
+                            // fade ends at progress 0.97, all waste dead by
+                            // 0.903), so the discrete flip is invisible.
+                            .opacity(maskImage == nil || assembly.waste >= 0.03 ? 1 : 0)
                     }
                     stickerOverlay(w, content: content, box: boxRect)
                 }
@@ -274,7 +309,7 @@ struct StampView: View {
                         y: sheet.minY - boxRect.minY * sy)
                 stickerTag(w, content: content, frame: sheet)
             }
-            .scaleEffect(1 - 0.018 * sin(min(1, max(0, assembly.border)) * .pi))
+            .scaleEffect(1 - 0.018 * sin(min(1, max(0, assembly.press)) * .pi))
         case .final:
             finalContent(w, content: content)
             if labelAnchor != nil, let image {
@@ -299,13 +334,13 @@ struct StampView: View {
         )
     }
 
-    /// Where the sticker's coverage box is headed: pinned to itself while
-    /// the sheet is whole (border 0), the composed sticker frame once the
-    /// die has cut (border 1). The interpolation is what a switch animates
+    /// Where the sticker's coverage box is headed: pinned to itself until
+    /// the cut piece takes flight (flight 0), the composed sticker frame
+    /// once flown (flight 1). The interpolation is what the flight animates
     /// through — the whole sheet shrinks or grows as one piece.
     private func sheetTargetRect(_ w: CGFloat, content: CGRect, box: CGRect) -> CGRect {
         guard style == .cutout, stickerBox != nil, let image else { return box }
-        let t = min(1, max(0, assembly.border))
+        let t = min(1, max(0, assembly.flight))
         guard t > 0 else { return box }
         let frame = stickerFrame(w, content: content, imageSize: image.size)
         return CGRect(
@@ -326,20 +361,30 @@ struct StampView: View {
            !title.isEmpty || editableTitle != nil || onTapCaption != nil {
             Group {
                 if let binding = editableTitle {
-                    TextField("Name it", text: binding)
-                        .font(.system(size: 0.055 * w, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.black)
-                        .tint(Theme.postalRed)
-                        .multilineTextAlignment(.center)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled()
-                        .submitLabel(.done)
-                        .onSubmit(onSubmitTitle)
-                        .frame(width: 0.44 * w)
-                        .modifier(FocusedIfAvailable(focus: titleFocused))
-                        .padding(.horizontal, 0.04 * w)
-                        .padding(.vertical, 0.02 * w)
-                        .background(Capsule().fill(.white.opacity(0.95)))
+                    // The editor keeps the die-cut idiom: the white contour
+                    // mirrors the live text beneath a bare field — same
+                    // font, same cut, no pill, no style jump. The mirror's
+                    // clear core lets the field supply the ink glyphs (and
+                    // the caret); the fat contour forgives sub-pixel drift.
+                    ZStack {
+                        DieCutText(
+                            text: binding.wrappedValue.isEmpty
+                                ? "Name it" : binding.wrappedValue,
+                            fontSize: 0.068 * w,
+                            ink: .clear
+                        )
+                        TextField("Name it", text: binding)
+                            .font(.system(size: 0.068 * w, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.black)
+                            .tint(Theme.postalRed)
+                            .multilineTextAlignment(.center)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .submitLabel(.done)
+                            .onSubmit(onSubmitTitle)
+                            .fixedSize()
+                            .modifier(FocusedIfAvailable(focus: titleFocused))
+                    }
                 } else {
                     DieCutText(
                         text: title.isEmpty ? "Name it" : title,
@@ -352,7 +397,14 @@ struct StampView: View {
             }
             .rotationEffect(.degrees(-3))
             .position(x: frame.midX, y: tagY(frame: frame, w: w))
-            .opacity(max(0.001, assembly.border))
+            // Sharper than the outline: dies in the bottom half of every
+            // melt, appears in the top half of every punch — the tag must
+            // be gone before the paper caption rises, while `border`
+            // itself stays complementary to the photo fade.
+            .opacity(max(0.001, 2 * assembly.border - 1))
+            // At rest in paper form this sits at 0.001 opacity over the
+            // subject — it must not swallow taps meant for the stamp.
+            .allowsHitTesting(assembly.border > 0.5)
         }
     }
 
@@ -583,20 +635,24 @@ struct DieCutText: View {
         let base = Text(text)
             .font(.system(size: fontSize, weight: .heavy, design: .rounded))
             .lineLimit(1)
+        // Color glyphs (emoji) ignore foregroundStyle, so the contour
+        // copies must be true silhouettes: white masked by the glyph
+        // alpha, or an emoji title stacks as a smeared ring of 26 full-
+        // color copies instead of a cut line.
+        let ghost = base
+            .foregroundStyle(.clear)
+            .overlay(Color.white)
+            .mask(base)
         let r = fontSize * 0.34
 
         return ZStack {
             ForEach(0..<16, id: \.self) { i in
                 let a = Double(i) / 16 * 2 * .pi
-                base
-                    .foregroundStyle(.white)
-                    .offset(x: cos(a) * r, y: sin(a) * r)
+                ghost.offset(x: cos(a) * r, y: sin(a) * r)
             }
             ForEach(0..<10, id: \.self) { i in
                 let a = Double(i) / 10 * 2 * .pi + 0.3
-                base
-                    .foregroundStyle(.white)
-                    .offset(x: cos(a) * r * 0.6, y: sin(a) * r * 0.6)
+                ghost.offset(x: cos(a) * r * 0.6, y: sin(a) * r * 0.6)
             }
             base.foregroundStyle(ink)
         }

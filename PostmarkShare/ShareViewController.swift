@@ -1,6 +1,7 @@
 import UIKit
 import SwiftUI
 import UniformTypeIdentifiers
+import OSLog
 
 /// The share-sheet entry: any image, from any app, becomes a stamp. Vision
 /// lifts the subject, the user picks a paper, Keep drops it straight into
@@ -43,10 +44,13 @@ final class ShareViewController: UIViewController {
         // Decode bounded, never full-res: extensions live under a ~120 MB
         // ceiling and a 12–48 MP decode is an instant jetsam (the app
         // "opens and closes"). The thumbnail decode also applies EXIF
-        // orientation for free.
+        // orientation for free. 1400 px (not the app's 2000): the subject-
+        // lift model alone eats most of the ceiling on device, and every
+        // Vision/CoreImage buffer downstream scales with this bound —
+        // stored output tops out at 1600 px anyway.
         provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) {
             [weak self] url, _ in
-            let image = url.flatMap { ImageOptimizer.downsampled(url: $0) }
+            let image = url.flatMap { ImageOptimizer.downsampled(url: $0, maxPixel: 1400) }
             if let image {
                 Task { @MainActor in
                     guard let self else { return }
@@ -62,7 +66,7 @@ final class ShareViewController: UIViewController {
     private func loadFromData(_ provider: NSItemProvider) {
         provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) {
             [weak self] data, _ in
-            let image = data.flatMap { ImageOptimizer.downsampled(data: $0) }
+            let image = data.flatMap { ImageOptimizer.downsampled(data: $0, maxPixel: 1400) }
             Task { @MainActor in
                 guard let self else { return }
                 if let image {
@@ -93,20 +97,32 @@ final class ShareComposerState {
         case paper(StampVariant)
     }
 
+    private static let log = Logger(
+        subsystem: "com.ashwinn.postmark.share", category: "compose")
+
     var failed = false
     var analyzing = true
     var kept = false
     var choice: Choice? = nil
+    /// The sticker can't be cut here (no memory budget for the model) —
+    /// choosing it parks the photo for the app to finish.
+    var stickerDeferred = false
 
     private(set) var pending: PendingStamp? = nil
     private let store = StampStore()
 
     var nextNumber: Int { store.nextNumber }
 
+    /// Remaining jetsam budget in MB; 0 means "not limited" (main app).
+    private static var availableMB: Int {
+        Int(os_proc_available_memory() >> 20)
+    }
+
     func begin(with image: UIImage) async {
         // Center 4:5 crop — the shape a viewfinder capture would have.
         let px = CGSize(width: image.size.width * image.scale,
                         height: image.size.height * image.scale)
+        Self.log.log("begin: \(Int(px.width))x\(Int(px.height)) px, budget \(Self.availableMB) MB")
         let target = min(px.width / 4, px.height / 5)
         let cropRect = CGRect(
             x: (px.width - target * 4) / 2,
@@ -118,8 +134,18 @@ final class ShareComposerState {
             return
         }
 
+        // Subject lifting loads Vision's segmentation net in-process —
+        // it does NOT fit this extension's jetsam budget on A14-class
+        // devices (measured: killed even on downscaled input). Where it
+        // can't run, the sticker option stays available but hands the
+        // photo to the app via ShareInbox instead of dying mid-sheet.
+        let budget = Self.availableMB
+        let lift = budget == 0 || budget >= 150
+        stickerDeferred = !lift
+        Self.log.log("budget \(budget) MB → lift \(lift ? "in-extension" : "deferred to app")")
         let analysis = await VisionService.analyze(
-            crop, fallbackCutout: nil, fallbackLabel: nil)
+            crop, fallbackCutout: nil, fallbackLabel: nil, subjectLift: lift)
+        Self.log.log("analysis done: cutout \(analysis.cutout != nil), sticker \(analysis.sticker != nil), budget \(Self.availableMB) MB")
         let hasSubject = analysis.cutout != nil && analysis.sticker != nil
         pending = PendingStamp(
             capture: Capture(
@@ -139,6 +165,9 @@ final class ShareComposerState {
     func keep() {
         guard let pending, let choice, !kept else { return }
         switch choice {
+        case .sticker where stickerDeferred:
+            // The app cuts it on next launch — park the full crop.
+            ShareInbox.deposit(pending.capture.cropImage)
         case .sticker:
             store.add(pending, title: pending.suggestedTitle ?? "",
                       variant: .tinted, kind: .sticker)
@@ -224,6 +253,24 @@ struct ShareComposerView: View {
                                         .scaledToFit()
                                         .frame(width: 44, height: 56)
                                 }
+                            } else if state.stickerDeferred {
+                                // No cutout to preview here — the scissors
+                                // badge marks a sticker the app will cut.
+                                optionButton(.sticker) {
+                                    Image(uiImage: pending.capture.cropImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 44, height: 56)
+                                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                                        .overlay(alignment: .bottomTrailing) {
+                                            Image(systemName: "scissors")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .foregroundStyle(.white)
+                                                .padding(4)
+                                                .background(Theme.postalRed, in: Circle())
+                                                .offset(x: 5, y: 5)
+                                        }
+                                }
                             }
                             ForEach(StampVariant.allCases) { v in
                                 optionButton(.paper(v)) {
@@ -242,6 +289,13 @@ struct ShareComposerView: View {
                                     .frame(width: 44)
                                 }
                             }
+                        }
+
+                        if state.stickerDeferred, state.choice == .sticker {
+                            Text("The sticker finishes in Postmark — open the app to find it.")
+                                .font(.system(size: 12, design: .serif))
+                                .italic()
+                                .foregroundStyle(Theme.inkSoft)
                         }
                     }
                 }
@@ -282,8 +336,10 @@ struct ShareComposerView: View {
             return StampView.Assembly(paper: 0, caption: 0, settle: 0,
                                       border: 0, waste: 1, content: .raw)
         case .sticker:
+            // flight composes the cut piece at its frame; border alone no
+            // longer moves the sheet (it only draws the outline).
             return StampView.Assembly(paper: 0, caption: 0, settle: 1,
-                                      border: 1, waste: 0, content: .raw)
+                                      border: 1, flight: 1, waste: 0, content: .raw)
         case .paper:
             return StampView.Assembly(paper: 1, caption: 1, settle: 1,
                                       border: 0, waste: 1, content: .raw)

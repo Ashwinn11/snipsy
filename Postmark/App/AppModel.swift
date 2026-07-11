@@ -193,4 +193,39 @@ final class AppModel {
         pillBump += 1
         haptics.success()
     }
+
+    /// Stickers the share extension couldn't cut in-process (its memory
+    /// budget can't hold the subject-lift model on older devices): finish
+    /// them here, where the model has room. Consumes the inbox.
+    func drainShareInbox() {
+        let images = ShareInbox.drain()
+        guard !images.isEmpty else { return }
+        Task { @MainActor in
+            for image in images {
+                let analysis = await VisionService.analyze(
+                    image, fallbackCutout: nil, fallbackLabel: nil)
+                let pending = PendingStamp(
+                    capture: Capture(
+                        screenImage: image, cropImage: image,
+                        viewfinderRect: .zero,
+                        fallbackCutout: nil, fallbackLabel: nil),
+                    style: analysis.cutout != nil && analysis.sticker != nil
+                        ? .cutout : .classic,
+                    cutout: analysis.cutout,
+                    sticker: analysis.sticker,
+                    stickerBox: analysis.stickerBox,
+                    stickerLabelAnchor: analysis.labelAnchor,
+                    suggestedTitle: analysis.label,
+                    tint: analysis.tint
+                )
+                // No liftable subject → keep the photo as a classic stamp
+                // rather than dropping the share silently.
+                let kind: ArtifactKind =
+                    pending.style == .cutout ? .sticker : .stamp
+                store.add(pending, title: analysis.label ?? "",
+                          variant: .tinted, kind: kind)
+                pillBump += 1
+            }
+        }
+    }
 }

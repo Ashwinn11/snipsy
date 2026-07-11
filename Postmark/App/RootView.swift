@@ -73,10 +73,28 @@ struct RootView: View {
             if model.hasOnboarded { model.camera.start() }
         }
         .onChange(of: scenePhase) { _, phase in
-            // Stamps kept via the share extension land while we're away.
-            if phase == .active { model.store.reload() }
+            // Stamps kept via the share extension land while we're away —
+            // and shares whose sticker couldn't be cut in the extension
+            // wait in the inbox for this process to finish them.
+            if phase == .active {
+                model.store.reload()
+                model.drainShareInbox()
+            }
         }
         .task { await Self.warmUpShaders() }
+        .task { await qaDrive() }   // TEMPQA
+    }
+
+    // TEMPQA — local verification driver, never committed.
+    private func qaDrive() async {
+        guard ProcessInfo.processInfo.environment["PMQA"] != nil else { return }
+        try? await Task.sleep(for: .seconds(3.0))
+        let size = screenSize
+        guard size != .zero else { return }
+        await model.capture(
+            viewfinderRect: CameraScreen.viewfinderRect(in: size),
+            viewSize: size
+        )
     }
 
 
@@ -88,7 +106,7 @@ struct RootView: View {
             ShaderLibrary.grainDissolveRect(
                 .boundingRect, .float4(0, 0, 1, 1), .float(1), .float(0), .float(9)),
             ShaderLibrary.grainDissolveWaste(
-                .float2(1, 1), .image(mask), .float4(0, 0, 1, 1),
+                .float2(1, 1), .float2(0, 0), .image(mask), .float4(0, 0, 1, 1),
                 .float(0.5), .float(9)),
         ]
         let colorShaders = [

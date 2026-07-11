@@ -2,6 +2,43 @@ import SwiftUI
 import UIKit
 import Observation
 
+/// Hand-off lane from the share extension to the app. Devices whose
+/// extension memory budget cannot hold Vision's subject-lift model
+/// (measured: A14-class cannot, even on downscaled input) park the
+/// shared photo here; the app finishes the sticker on its next launch,
+/// where the model has room.
+enum ShareInbox {
+    private static var dir: URL? {
+        FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: StampStore.appGroup)?
+            .appendingPathComponent("Postmark/inbox", isDirectory: true)
+    }
+
+    /// Park a crop for the app to finish as a sticker.
+    static func deposit(_ image: UIImage) {
+        guard let dir else { return }
+        try? FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true)
+        guard let data = ImageOptimizer.optimized(image) else { return }
+        try? data.write(
+            to: dir.appendingPathComponent("\(UUID().uuidString).heic"),
+            options: .atomic)
+    }
+
+    /// Every parked crop, consuming the files.
+    static func drain() -> [UIImage] {
+        guard let dir,
+              let files = try? FileManager.default.contentsOfDirectory(
+                  at: dir, includingPropertiesForKeys: nil)
+        else { return [] }
+        return files.compactMap { url in
+            defer { try? FileManager.default.removeItem(at: url) }
+            guard let data = try? Data(contentsOf: url) else { return nil }
+            return ImageOptimizer.downsampled(data: data)
+        }
+    }
+}
+
 /// Owns the collection: stamps.json + one PNG per stamp under Documents.
 @MainActor
 @Observable
@@ -11,7 +48,7 @@ final class StampStore {
 
     @ObservationIgnored private let cache = NSCache<NSString, UIImage>()
 
-    static let appGroup = "group.com.ashwinn.postmark"
+    nonisolated static let appGroup = "group.com.ashwinn.postmark"
 
     /// Shared with the Messages sticker extension. Falls back to Documents
     /// if the group container is unavailable.

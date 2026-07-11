@@ -14,16 +14,34 @@ struct RevealScreen: View {
 
     // Stage state
     @State private var centered = false
-    /// Die-cut punch: the sticker outline pressed into the raw photo.
-    @State private var border: Double = 0
-    /// Waste grain-dissolve progress (0 intact → 1 gone). Advanced per
-    /// display tick with a clamped dt (shader args don't tween, and a
-    /// main-thread hitch must pause the wave, never teleport it).
+    /// How much sticker the artifact is right now: one spring owns the
+    /// whole crossfade. The outline rides it directly and the plain photo
+    /// rides its complement, so overlay + photo always cover the subject
+    /// through any switch — no curve combination can blank or double it.
+    @State private var stickerness: Double = 0
+    /// Waste grain-dissolve progress (0 intact → 1 gone), one-shot and
+    /// FORWARD-ONLY: switches never reverse it. Advanced per display tick
+    /// with a clamped dt (shader args don't tween, and a main-thread hitch
+    /// must pause the wave, never teleport it).
     @State private var wasteProgress: Double = 0
-    @State private var wasteTarget: Double = 0
+    /// Seconds for a full 0→1 sweep; 0.25 when an interrupt finishes the
+    /// shatter early.
+    @State private var waveDuration: Double = 1.15
     @State private var waveDriver = DisplayLinkDriver()
-    /// The die cutter has run once (sticker path only).
-    @State private var cutDone = false
+    /// The first cut's wave has been committed (target 1, forever). Set
+    /// immediately before driveWave — a punch-phase abort leaves this
+    /// false, so the next sticker tap replays the full first cut.
+    @State private var waveCommitted = false
+    /// The cut piece's flight to its composed frame (Assembly.flight).
+    @State private var flight: Double = 0
+    /// Die-press dip, swept 0→1 by the first cut only (Assembly.press).
+    @State private var press: Double = 0
+    /// Bumped on every select (and Keep); a choreography that awakes from
+    /// an await into a different generation must not touch the stage.
+    @State private var switchGen = 0
+    /// Rename entry swaps shader-modifier identity, which snaps every
+    /// in-flight spring — hold it off while a switch settles.
+    @State private var lastSelectAt = Date.distantPast
     @State private var paper: Double = 0
     @State private var caption: Double = 0
     @State private var settle: Double = 0
@@ -136,6 +154,10 @@ struct RevealScreen: View {
     }
 
     private func startEditingTitle() {
+        // Edit mode drops the holo/liquid shader modifiers (identity swap),
+        // which snaps every in-flight presentation value — not while a
+        // switch is still settling.
+        guard Date().timeIntervalSince(lastSelectAt) > 0.6 else { return }
         model.haptics.tick()
         editingTitle = true
         titleFocused = true
@@ -213,20 +235,18 @@ struct RevealScreen: View {
     /// The grain wave's integrator: per display frame, clamped dt, so a
     /// hitch pauses the wave rather than teleporting it — and, unlike a
     /// timeline `.onChange`, it cannot starve mid-wave under load.
+    /// Forward-only by construction: there is no reverse branch to race.
     private func wireWaveDriver() {
         waveDriver.onTick = { dt in
-            let duration = wasteTarget > wasteProgress ? 1.15 : 0.6
-            if wasteTarget > wasteProgress {
-                wasteProgress = min(wasteTarget, wasteProgress + dt / duration)
-            } else if wasteTarget < wasteProgress {
-                wasteProgress = max(wasteTarget, wasteProgress - dt / duration)
-            }
-            return wasteProgress != wasteTarget
+            wasteProgress = min(1, wasteProgress + dt / waveDuration)
+            return wasteProgress < 1
         }
     }
 
-    private func driveWaste(to target: Double) {
-        wasteTarget = target
+    /// Run the wave toward 1 at the given full-range rate. Re-invoking
+    /// only retunes the rate — progress never rewinds.
+    private func driveWave(duration: Double) {
+        waveDuration = duration
         waveDriver.start()
     }
 
@@ -235,10 +255,25 @@ struct RevealScreen: View {
         a.paper = paper
         a.caption = caption
         a.settle = settle
-        a.border = border
+        a.border = stickerness
+        a.photoFade = 1 - stickerness
+        a.press = press
+        a.flight = flight
         a.waste = 1 - wasteProgress
         a.content = .raw
         return a
+    }
+
+    /// Wait until the grain wave has consumed most of the waste (or a
+    /// stall timeout passes). Flights are gated on the wave itself, not
+    /// the clock: if a hitch pauses the grains, the piece must not fly
+    /// out from beneath them.
+    private func waveReached(_ threshold: Double) async {
+        let start = Date()
+        while wasteProgress < threshold,
+              Date().timeIntervalSince(start) < 3 {
+            try? await Task.sleep(for: .seconds(0.05))
+        }
     }
 
     // MARK: Choreography
@@ -266,17 +301,107 @@ struct RevealScreen: View {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 options = true
             }
+            await qaDrive()   // TEMPQA
+        }
+    }
+
+    // TEMPQA — local verification driver, never committed.
+    private func qaDrive() async {
+        guard let mode = ProcessInfo.processInfo.environment["PMQA"] else { return }
+        try? await Task.sleep(for: .seconds(0.8))
+        switch mode {
+        case "sticker":
+            select(.sticker)
+            try? await Task.sleep(for: .seconds(4.5))
+            keepTapped()
+        case "paper":
+            select(.paper(.ivory))
+            try? await Task.sleep(for: .seconds(3.5))
+            keepTapped()
+        case "bisect":
+            select(.paper(.ivory))
+            try? await Task.sleep(for: .seconds(3.0))
+            withAnimation(Theme.spring) { chromeVisible = false }   // step 1
+            try? await Task.sleep(for: .seconds(1.0))
+            postmarked = true                                        // step 2
+            postmarkScale = 1
+            try? await Task.sleep(for: .seconds(1.0))
+            withAnimation(Theme.spring) { flying = true }            // step 3
+        case "switch":
+            select(.sticker)
+            try? await Task.sleep(for: .seconds(3.4))
+            select(.paper(.airmail))
+            try? await Task.sleep(for: .seconds(2.8))
+            select(.sticker)
+            try? await Task.sleep(for: .seconds(3.0))
+            select(.paper(.ivory))
+        case "rename":
+            select(.sticker)
+            try? await Task.sleep(for: .seconds(3.2))
+            startEditingTitle()
+            try? await Task.sleep(for: .seconds(1.2))
+            title = "Robo 🤖"
+            try? await Task.sleep(for: .seconds(2.0))
+            stopEditingTitle()
+            try? await Task.sleep(for: .seconds(2.0))
+        case "stress":
+            // Deterministic interrupt prefix: punch-abort, full first cut,
+            // wave-abort (accelerated shatter), morph during the wave tail.
+            select(.sticker)
+            try? await Task.sleep(for: .seconds(0.25))
+            select(.paper(.ivory))                       // interrupts the PUNCH
+            try? await Task.sleep(for: .seconds(0.9))
+            select(.sticker)                             // full first cut replays
+            try? await Task.sleep(for: .seconds(1.0))
+            select(.paper(.airmail))                     // interrupts the WAVE
+            try? await Task.sleep(for: .seconds(0.45))
+            select(.sticker)                             // morph in the wave tail
+            try? await Task.sleep(for: .seconds(1.2))
+            // Seeded soak: reproducible rapid toggling across all forms.
+            var rng = SplitMix64(seed: ProcessInfo.processInfo
+                .environment["PMQA_SEED"].flatMap(UInt64.init) ?? 7)
+            let all: [ArtifactChoice] = [.sticker, .paper(.tinted), .paper(.ivory),
+                                         .paper(.ink), .paper(.airmail)]
+            for _ in 0..<16 {
+                if let c = all.randomElement(using: &rng) { select(c) }
+                try? await Task.sleep(for: .seconds(Double.random(in: 0.4...1.1, using: &rng)))
+            }
+            try? await Task.sleep(for: .seconds(2.0))    // must end at a steady state
+        default:
+            break
+        }
+    }
+
+    // TEMPQA — reproducible randomness for the stress soak.
+    private struct SplitMix64: RandomNumberGenerator {
+        var state: UInt64
+        init(seed: UInt64) { state = seed }
+        mutating func next() -> UInt64 {
+            state &+= 0x9E3779B97F4A7C15
+            var z = state
+            z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+            z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+            return z ^ (z >> 31)
         }
     }
 
 
-    /// An option was tapped. Stickers run the die cutter (once); stamps
-    /// frame the whole photo on paper — no cut. Every switch is reversible
-    /// because both forms are opacity-driven over the same content.
+    /// An option was tapped. The FIRST cut is the hero moment: punch →
+    /// grain shatter → flight, gated on the wave itself. Every later
+    /// switch is a fast morph (~0.45s): the plain photo and the outline
+    /// crossfade on one complementary spring while the piece glides — no
+    /// wave, no punch, nothing that can leave leftovers. The wave is
+    /// one-shot and forward-only; interrupting the first cut finishes the
+    /// shatter fast, never reverses it. Gen guards protect only the
+    /// stage-mutating tails — one-shot ambient tails (chrome reveal, holo
+    /// decay) must run regardless, or an early re-tap strands them.
     private func select(_ choice: ArtifactChoice) {
         guard selection != choice else { return }
         model.haptics.tick()
         let first = selection == nil
+        switchGen += 1
+        let gen = switchGen
+        lastSelectAt = Date()
         withAnimation(Theme.spring) { selection = choice }
         if case .paper(let v) = choice {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
@@ -286,52 +411,74 @@ struct RevealScreen: View {
         Task { @MainActor in
             switch choice {
             case .sticker:
-                if !cutDone {
-                    cutDone = true
+                if !waveCommitted {
+                    // FIRST CUT — cinematic. The press dips the sheet and
+                    // the outline appears…
                     await afterNextCommit()
-                    // Die cut: the press dips the sheet, the outline appears…
+                    guard gen == switchGen else { break }
                     model.haptics.tick()
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
-                        border = 1
+                        stickerness = 1
+                        press = 1
                     }
                     try? await Task.sleep(for: .seconds(0.45))
+                    guard gen == switchGen else { break }
                     // …then the waste shatters off the cut line — a grain
-                    // wave radiating outward — and the piece settles.
+                    // wave radiating outward — and the piece settles. From
+                    // here the wave only ever moves forward.
+                    waveCommitted = true
                     model.haptics.grains(duration: 0.8)
-                    driveWaste(to: 1)
-                    // The settle waits on the wave itself, not the clock: if
-                    // a stall pauses the grains, the piece must not shrink
-                    // out from beneath them.
-                    let waveStart = Date()
-                    while wasteProgress < 0.83,
-                          Date().timeIntervalSince(waveStart) < 3 {
-                        try? await Task.sleep(for: .seconds(0.05))
-                    }
+                    driveWave(duration: 1.15)
+                    await waveReached(0.90)
+                    guard gen == switchGen else { break }
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                         settle = 1
+                        flight = 1
                         paper = 0.001
                         caption = 0.001
                     }
                 } else {
-                    driveWaste(to: 1)
-                    withAnimation(.spring(response: 0.55, dampingFraction: 0.8)) {
-                        border = 1
+                    // SWITCH → sticker: one complementary crossfade while
+                    // the piece lifts. The caption dies before the tag can
+                    // rise (the tag lives in the top half of the outline).
+                    withAnimation(.easeOut(duration: 0.10)) { caption = 0.001 }
+                    withAnimation(.spring(response: 0.40, dampingFraction: 0.86)) {
+                        stickerness = 1
                         settle = 1
+                    }
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
                         paper = 0.001
-                        caption = 0.001
+                    }
+                    // Immediate in steady state; only suspends inside the
+                    // ≤0.25s accelerated-shatter race — the sheet must
+                    // never travel wearing waste.
+                    await waveReached(0.90)
+                    guard gen == switchGen else { break }
+                    withAnimation(.spring(response: 0.40, dampingFraction: 0.86)) {
+                        flight = 1
                     }
                 }
             case .paper:
-                // The whole photo, framed — cut waste reassembles in reverse.
-                driveWaste(to: 0)
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
-                    border = 0
-                    paper = 1
-                    settle = 1
-                }
-                if caption < 0.5 {
-                    withAnimation(.linear(duration: 0.7).delay(0.22)) {
-                        caption = 1
+                if waveCommitted {
+                    // SWITCH → stamp: finish any unfinished shatter fast
+                    // (forward — un-shattering reads as broken), then one
+                    // crossfade home: photo in, outline out, piece lands.
+                    if wasteProgress < 1 { driveWave(duration: 0.25) }
+                    withAnimation(.spring(response: 0.40, dampingFraction: 0.86)) {
+                        stickerness = 0
+                        flight = 0
+                        paper = 1
+                        settle = 1
+                    }
+                } else {
+                    // Nothing was ever cut (or the punch was aborted) —
+                    // the whole photo, framed; melt any half punch back.
+                    withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                        stickerness = 0
+                        press = 0
+                        flight = 0
+                        paper = 1
+                        settle = 1
                     }
                 }
                 if first {
@@ -345,10 +492,24 @@ struct RevealScreen: View {
                         withAnimation(.easeOut(duration: 0.4)) { holoStrength = 0 }
                     }
                 }
+                if caption < 0.5 {
+                    // After the die-cut tag is provably dead (border 0.5).
+                    // No `break` on staleness: the chrome tail below must
+                    // still run for a superseded FIRST selection.
+                    try? await Task.sleep(for: .seconds(0.2))
+                    if gen == switchGen {
+                        withAnimation(.linear(duration: 0.5)) { caption = 1 }
+                    }
+                }
             }
             if first {
+                // One-shot ambient tail: NOT gen-guarded — a quick re-tap
+                // must not strand the chrome unreachable. Keep hides it
+                // through the flying guard instead.
                 try? await Task.sleep(for: .seconds(0.4))
-                withAnimation(Theme.spring) { chromeVisible = true }
+                if !flying {
+                    withAnimation(Theme.spring) { chromeVisible = true }
+                }
             }
         }
     }
@@ -357,11 +518,21 @@ struct RevealScreen: View {
         guard !flying, !postmarked else { return }
         stopEditingTitle()
         model.haptics.thunk()
+        // Supersede any in-flight switch choreography and land the current
+        // selection at its terminal values — the artifact must fly whole,
+        // and no stale tail may mutate the stage mid-flight.
+        switchGen += 1
+        if wasteProgress < 1, waveCommitted { driveWave(duration: 0.25) }
 
         if selection == .sticker {
             // Stickers fly uncancelled — no date strike.
             Task { @MainActor in
                 withAnimation(Theme.spring) {
+                    stickerness = 1
+                    flight = 1
+                    settle = 1
+                    paper = 0.001
+                    caption = 0.001
                     flying = true
                     chromeVisible = false
                 }
@@ -374,6 +545,13 @@ struct RevealScreen: View {
             return
         }
 
+        withAnimation(Theme.spring) {
+            stickerness = 0
+            flight = 0
+            settle = 1
+            paper = 1
+            caption = 1
+        }
         postmarked = true   // seal mounts at 1.7
         Task { @MainActor in
             await afterNextCommit()

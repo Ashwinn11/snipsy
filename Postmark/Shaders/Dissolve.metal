@@ -56,18 +56,23 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
 
 /// The die-cut's waste: everything the mask calls background dissolves in a
 /// grain wave radiating OUTWARD from the sticker's box — the press cuts,
-/// the waste shatters off the cut line and drifts away. Runs in reverse
-/// (grains reassemble) when the user switches back to a paper.
+/// the waste shatters off the cut line and drifts away. One-shot and
+/// forward-only: switches never reverse it.
 ///
 /// `size` is the content size in points, passed explicitly: for a
 /// layerEffect, `.boundingRect` reports raster bounds expanded by
 /// maxSampleOffset while `position` stays in content coordinates —
 /// normalizing by the padded rect shifts the mask.
+/// `origin` is the content rect's origin in the layer's coordinate space:
+/// `position` carries the raw view's content offset, so every mask sample
+/// must subtract it — sampling at position/size shifts the matte by the
+/// content inset and strands un-dissolvable waste on the subject's far side.
 /// `box` = sticker coverage rect (x, y, w, h) in content points.
 [[ stitchable ]] half4 grainDissolveWaste(
     float2 position,
     SwiftUI::Layer layer,
     float2 size,
+    float2 origin,
     texture2d<half> mask,
     float4 box,
     float progress,
@@ -76,7 +81,7 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     if (progress <= 0.0) { return layer.sample(position); }
 
     constexpr sampler s(coord::normalized, address::clamp_to_edge, filter::linear);
-    float2 uv = position / size;
+    float2 uv = (position - origin) / size;
     half m = mask.sample(s, uv).a;
 
     // Kept pixels ride the matte's continuous alpha. They sit beneath the
@@ -94,11 +99,12 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     // Normalize the wave by the waste's own extent — the farthest content
     // corner from the cut line — so the front spends the full window
     // crossing whatever waste actually exists, however large the sticker.
+    // Corners live in the same (layer) space as `position` and `box`.
     float maxDist = max(
-        max(sdRoundRect(float2(0.0, 0.0), boxCenter, half_, 8.0),
-            sdRoundRect(float2(size.x, 0.0), boxCenter, half_, 8.0)),
-        max(sdRoundRect(float2(0.0, size.y), boxCenter, half_, 8.0),
-            sdRoundRect(size, boxCenter, half_, 8.0)));
+        max(sdRoundRect(origin, boxCenter, half_, 8.0),
+            sdRoundRect(origin + float2(size.x, 0.0), boxCenter, half_, 8.0)),
+        max(sdRoundRect(origin + float2(0.0, size.y), boxCenter, half_, 8.0),
+            sdRoundRect(origin + size, boxCenter, half_, 8.0)));
     maxDist = max(maxDist, 1.0);
 
     float2 cell = floor(position / cellSize);
@@ -113,7 +119,7 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
 
     GrainSample g = grainMotion(position, cell, cellSize, local);
     // Never resurrect subject pixels while sampling for a dying grain.
-    float2 suv = g.samplePos / size;
+    float2 suv = (g.samplePos - origin) / size;
     half sm = mask.sample(s, suv).a;
     half4 c = layer.sample(g.samplePos) * half(1.0 - float(sm > 0.5));
     c.rgb += half3(g.glint) * c.a;
