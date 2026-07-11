@@ -4,8 +4,6 @@ struct RootView: View {
     @State private var model = AppModel()
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var screenSize: CGSize = .zero
-
     var body: some View {
         // Read the real device insets from a safe-area-respecting reader, then
         // let the content expand edge-to-edge. (A reader that itself ignores
@@ -64,7 +62,6 @@ struct RootView: View {
             }
             .frame(width: fullSize.width, height: fullSize.height)
             .ignoresSafeArea()
-            .onAppear { screenSize = fullSize }
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
@@ -82,21 +79,7 @@ struct RootView: View {
             }
         }
         .task { await Self.warmUpShaders() }
-        .task { await qaDrive() }   // TEMPQA
     }
-
-    // TEMPQA — local verification driver, never committed.
-    private func qaDrive() async {
-        guard ProcessInfo.processInfo.environment["PMQA"] != nil else { return }
-        try? await Task.sleep(for: .seconds(3.0))
-        let size = screenSize
-        guard size != .zero else { return }
-        await model.capture(
-            viewfinderRect: CameraScreen.viewfinderRect(in: size),
-            viewSize: size
-        )
-    }
-
 
     /// Precompile every Metal pipeline the capture moment needs — the first
     /// shutter press must never stall on shader compilation.

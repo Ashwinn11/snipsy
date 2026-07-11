@@ -84,10 +84,6 @@ struct Capture {
     let cropImage: UIImage
     /// Viewfinder rect in full-screen view coordinates.
     let viewfinderRect: CGRect
-    /// Demo-mode fallbacks (precomputed on macOS with the same Vision API),
-    /// already cropped to the viewfinder.
-    let fallbackCutout: UIImage?
-    let fallbackLabel: String?
 }
 
 /// A stamp being assembled on the reveal screen — not yet kept.

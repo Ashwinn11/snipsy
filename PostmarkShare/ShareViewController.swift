@@ -1,7 +1,6 @@
 import UIKit
 import SwiftUI
 import UniformTypeIdentifiers
-import OSLog
 
 /// The share-sheet entry: any image, from any app, becomes a stamp. Vision
 /// lifts the subject, the user picks a paper, Keep drops it straight into
@@ -97,9 +96,6 @@ final class ShareComposerState {
         case paper(StampVariant)
     }
 
-    private static let log = Logger(
-        subsystem: "com.ashwinn.postmark.share", category: "compose")
-
     var failed = false
     var analyzing = true
     var kept = false
@@ -122,7 +118,6 @@ final class ShareComposerState {
         // Center 4:5 crop — the shape a viewfinder capture would have.
         let px = CGSize(width: image.size.width * image.scale,
                         height: image.size.height * image.scale)
-        Self.log.log("begin: \(Int(px.width))x\(Int(px.height)) px, budget \(Self.availableMB) MB")
         let target = min(px.width / 4, px.height / 5)
         let cropRect = CGRect(
             x: (px.width - target * 4) / 2,
@@ -142,15 +137,13 @@ final class ShareComposerState {
         let budget = Self.availableMB
         let lift = budget == 0 || budget >= 150
         stickerDeferred = !lift
-        Self.log.log("budget \(budget) MB → lift \(lift ? "in-extension" : "deferred to app")")
         let analysis = await VisionService.analyze(
-            crop, fallbackCutout: nil, fallbackLabel: nil, subjectLift: lift)
-        Self.log.log("analysis done: cutout \(analysis.cutout != nil), sticker \(analysis.sticker != nil), budget \(Self.availableMB) MB")
+            crop, subjectLift: lift)
         let hasSubject = analysis.cutout != nil && analysis.sticker != nil
         pending = PendingStamp(
             capture: Capture(
                 screenImage: crop, cropImage: crop,
-                viewfinderRect: .zero, fallbackCutout: nil, fallbackLabel: nil),
+                viewfinderRect: .zero),
             style: hasSubject ? .cutout : .classic,
             cutout: analysis.cutout,
             sticker: analysis.sticker,

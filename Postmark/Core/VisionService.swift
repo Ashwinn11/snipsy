@@ -29,8 +29,6 @@ enum VisionService {
     /// and the app lifts the subject on its next launch instead.
     static func analyze(
         _ image: UIImage,
-        fallbackCutout: UIImage?,
-        fallbackLabel: String?,
         subjectLift: Bool = true
     ) async -> Analysis {
         // The pool matters in the share extension: Vision and CoreImage
@@ -44,16 +42,12 @@ enum VisionService {
             }
 
             var cutout = subjectLift ? subjectCutout(from: cg) : nil
-            if cutout == nil, let fallback = fallbackCutout?.cgImage,
-               alphaCoverage(of: fallback) > 0.02 {
-                cutout = fallback
-            }
             if let c = cutout {
                 let coverage = alphaCoverage(of: c)
                 if coverage < 0.025 || coverage > 0.92 { cutout = nil }
             }
 
-            let label = classify(cutout ?? cg) ?? fallbackLabel
+            let label = classify(cutout ?? cg)
             let tintSource = dominantColor(of: cutout ?? cg)
             let tint = RGBValue.stampTint(from: tintSource)
 

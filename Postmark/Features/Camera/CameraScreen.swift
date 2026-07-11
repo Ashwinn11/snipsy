@@ -13,12 +13,13 @@ struct CameraScreen: View {
     @State private var focusPulse = false
     @State private var pickedItem: PhotosPickerItem? = nil
 
-    /// The stamp-to-be. 4:5, centered, slightly above middle. Shared by the
-    /// capture path and the reveal handoff — single source of truth.
+    /// The stamp-to-be. 4:5, full-bleed width, slightly above middle —
+    /// the frame is the whole stage, not a window. Shared by the capture
+    /// path and the reveal handoff — single source of truth.
     static func viewfinderRect(in size: CGSize) -> CGRect {
-        let w = size.width * 0.78
+        let w = size.width
         let h = w * 1.25
-        return CGRect(x: (size.width - w) / 2, y: size.height * 0.44 - h / 2,
+        return CGRect(x: 0, y: size.height * 0.44 - h / 2,
                       width: w, height: h)
     }
 
@@ -50,9 +51,7 @@ struct CameraScreen: View {
 
     @ViewBuilder
     private var feed: some View {
-        if CameraController.isDemo {
-            DemoFeedView(feed: model.camera.demoFeed, size: screenSize)
-        } else if model.camera.authorization == .denied {
+        if model.camera.authorization == .denied {
             PermissionDeniedView()
         } else {
             CameraPreviewView(session: model.camera.session) { viewPoint, devicePoint in
@@ -105,8 +104,8 @@ struct CameraScreen: View {
             .shadow(color: .black.opacity(0.45), radius: 7, y: 1)
             .position(x: screenSize.width / 2, y: safeArea.top + 24)
 
-        // Flash (device, back camera only)
-        if !CameraController.isDemo && !model.camera.frontCamera {
+        // Flash (back camera only)
+        if !model.camera.frontCamera {
             Button {
                 model.camera.flashOn.toggle()
                 model.haptics.tick()
@@ -119,15 +118,6 @@ struct CameraScreen: View {
             }
             .glassEffect(.regular.tint(.black.opacity(0.22)).interactive(), in: .circle)
             .position(x: screenSize.width - 46, y: safeArea.top + 24)
-        }
-
-        // Demo hint — retire it once the first stamp is collected.
-        if CameraController.isDemo && model.store.stamps.isEmpty {
-            Text("Swipe for another scene")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.white.opacity(0.75))
-                .shadow(color: .black.opacity(0.5), radius: 5, y: 1)
-                .position(x: screenSize.width / 2, y: vf.maxY + 30)
         }
 
         // Bottom bar
@@ -147,9 +137,7 @@ struct CameraScreen: View {
             model.camera.flip()
             model.haptics.tick()
         } label: {
-            Image(systemName: CameraController.isDemo
-                  ? "photo.on.rectangle.angled"
-                  : "arrow.triangle.2.circlepath.camera")
+            Image(systemName: "arrow.triangle.2.circlepath.camera")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.55), radius: 4, y: 1)

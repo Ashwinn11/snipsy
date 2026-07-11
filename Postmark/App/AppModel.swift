@@ -58,39 +58,32 @@ final class AppModel {
         let shutterMoment = Date()
 
         do {
-            let shot = try await camera.capture()
-            let image = shot.image
-            let drift = shot.drift
-            let fallback = shot.fallbackCutout
+            let image = try await camera.capture()
 
-            // Bake the on-screen presentation (aspect-fill + demo drift) into a
+            // Bake the on-screen presentation (aspect-fill) into a
             // screen-exact image so every later step shares one geometry.
             // Cropping and bitmap decode are heavy — do them off the main
             // thread, behind the blackout, so no frame is ever built late.
             let baked = await Task.detached(priority: .userInitiated) {
-                () -> (screen: UIImage, crop: UIImage, cutout: UIImage?)? in
+                () -> (screen: UIImage, crop: UIImage)? in
                 let screenRect = CGRect(origin: .zero, size: viewSize)
                 let screenPixels = FrameGeometry.imageCrop(
                     imageSize: image.size, viewSize: viewSize,
-                    rectInView: screenRect, drift: drift
+                    rectInView: screenRect
                 )
                 guard let screenImage = FrameGeometry.crop(image, to: screenPixels)
                 else { return nil }
 
                 let cropPixels = FrameGeometry.imageCrop(
                     imageSize: image.size, viewSize: viewSize,
-                    rectInView: viewfinderRect, drift: drift
+                    rectInView: viewfinderRect
                 )
                 guard cropPixels.width > 16, cropPixels.height > 16,
                       let cropImage = FrameGeometry.crop(image, to: cropPixels)
                 else { return nil }
 
-                let fallbackCutout = fallback.flatMap {
-                    FrameGeometry.crop($0, to: cropPixels)
-                }
                 return (screenImage.preparingForDisplay() ?? screenImage,
-                        cropImage.preparingForDisplay() ?? cropImage,
-                        fallbackCutout.map { $0.preparingForDisplay() ?? $0 })
+                        cropImage.preparingForDisplay() ?? cropImage)
             }.value
 
             guard let baked else {
@@ -107,9 +100,7 @@ final class AppModel {
             phase = .developing(Capture(
                 screenImage: baked.screen,
                 cropImage: baked.crop,
-                viewfinderRect: viewfinderRect,
-                fallbackCutout: baked.cutout,
-                fallbackLabel: shot.fallbackLabel
+                viewfinderRect: viewfinderRect
             ))
             // DevelopOverlay lifts the blackout once its first frame is up.
         } catch {
@@ -153,9 +144,7 @@ final class AppModel {
         phase = .developing(Capture(
             screenImage: baked.screen,
             cropImage: baked.crop,
-            viewfinderRect: viewfinderRect,
-            fallbackCutout: nil,
-            fallbackLabel: nil
+            viewfinderRect: viewfinderRect
         ))
     }
 
@@ -203,12 +192,11 @@ final class AppModel {
         Task { @MainActor in
             for image in images {
                 let analysis = await VisionService.analyze(
-                    image, fallbackCutout: nil, fallbackLabel: nil)
+                    image)
                 let pending = PendingStamp(
                     capture: Capture(
                         screenImage: image, cropImage: image,
-                        viewfinderRect: .zero,
-                        fallbackCutout: nil, fallbackLabel: nil),
+                        viewfinderRect: .zero),
                     style: analysis.cutout != nil && analysis.sticker != nil
                         ? .cutout : .classic,
                     cutout: analysis.cutout,

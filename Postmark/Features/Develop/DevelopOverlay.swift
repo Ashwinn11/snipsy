@@ -100,8 +100,6 @@ struct DevelopOverlay: View {
         .task {
             var result = await VisionService.analyze(
                 capture.cropImage,
-                fallbackCutout: capture.fallbackCutout,
-                fallbackLabel: capture.fallbackLabel
             )
             // Decode the reveal's textures now, while the grains are still
             // falling — its first frame must not stall on bitmap decode.
