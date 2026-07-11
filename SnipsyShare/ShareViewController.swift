@@ -11,7 +11,7 @@ final class ShareViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0.094, green: 0.082, blue: 0.059, alpha: 1)
+        view.backgroundColor = UIColor(red: 0.973, green: 0.949, blue: 0.890, alpha: 1)
 
         let host = UIHostingController(rootView: ShareComposerView(
             state: state,
@@ -185,8 +185,8 @@ struct ShareComposerView: View {
             VStack(spacing: 0) {
                 HStack {
                     Text("SNIPSY")
-                        .font(Theme.engraved(15))
-                        .tracking(4)
+                        .font(Theme.display(15))
+                        .tracking(2)
                         .foregroundStyle(Theme.ink)
                     Spacer()
                     Button {
@@ -206,16 +206,14 @@ struct ShareComposerView: View {
 
                 if state.failed {
                     Text("Couldn't read that image.")
-                        .font(.system(size: 15, design: .serif))
-                        .italic()
+                        .font(.system(size: 15, design: .rounded))
                         .foregroundStyle(Theme.inkSoft)
                 } else if state.analyzing {
                     VStack(spacing: 14) {
                         ProgressView()
                             .tint(Theme.inkSoft)
                         Text("Lifting your subject…")
-                            .font(.system(size: 14, design: .serif))
-                            .italic()
+                            .font(.system(size: 14, design: .rounded))
                             .foregroundStyle(Theme.inkSoft)
                     }
                 } else if let pending = state.pending {
@@ -236,7 +234,7 @@ struct ShareComposerView: View {
                             assembly: previewAssembly
                         )
                         .frame(width: 210)
-                        .shadow(color: Theme.shadow.opacity(0.45), radius: 16, y: 9)
+                        .shadow(color: Theme.shadow.opacity(0.22), radius: 16, y: 9)
 
                         HStack(spacing: 11) {
                             if pending.style == .cutout, let sticker = pending.sticker {
@@ -286,8 +284,7 @@ struct ShareComposerView: View {
 
                         if state.stickerDeferred, state.choice == .sticker {
                             Text("The sticker finishes in Snipsy — open the app to find it.")
-                                .font(.system(size: 12, design: .serif))
-                                .italic()
+                                .font(.system(size: 12, design: .rounded))
                                 .foregroundStyle(Theme.inkSoft)
                         }
                     }
@@ -302,7 +299,7 @@ struct ShareComposerView: View {
                         Image(systemName: state.kept ? "checkmark" : "seal.fill")
                             .font(.system(size: 15, weight: .semibold))
                         Text(state.kept ? "Kept" : "Keep")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(.white)
                     .padding(.horizontal, 40)

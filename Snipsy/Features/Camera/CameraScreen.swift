@@ -98,8 +98,9 @@ struct CameraScreen: View {
 
         // Wordmark
         Text("SNIPSY")
-            .font(Theme.engraved(15))
-            .tracking(5)
+            .font(Theme.display(15))
+            .tracking(2)
+            .rotationEffect(.degrees(-2))
             .foregroundStyle(.white.opacity(0.9))
             .shadow(color: .black.opacity(0.45), radius: 7, y: 1)
             .position(x: screenSize.width / 2, y: safeArea.top + 24)
@@ -193,10 +194,10 @@ struct PermissionDeniedView: View {
                             .foregroundStyle(Theme.inkSoft)
                     }
                 Text("Snipsy needs the camera")
-                    .font(Theme.serifDisplay(22))
+                    .font(Theme.display(22))
                     .foregroundStyle(Theme.ink)
                 Text("Every stamp starts with a photo.\nAllow camera access in Settings.")
-                    .font(.system(size: 15))
+                    .font(.system(size: 15, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
                 Button {
@@ -205,7 +206,7 @@ struct PermissionDeniedView: View {
                     }
                 } label: {
                     Text("Open Settings")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 26)
                         .padding(.vertical, 13)

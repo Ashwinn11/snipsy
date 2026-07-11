@@ -100,8 +100,8 @@ struct StampView: View {
     }
 
     /// Caption / hairline / cancellation ink — prints light on ink paper.
-    /// Stamps keep light papers, so their internal ink stays dark even
-    /// though the app's screen ink is light (dark-only album).
+    /// Stamps keep light papers with their own dark ink, independent of
+    /// the app's screen ink, so stored artifacts never shift with the theme.
     private var markInk: Color {
         variant == .ink ? Color(red: 0.93, green: 0.90, blue: 0.84) : Theme.stampInk
     }
@@ -190,8 +190,8 @@ struct StampView: View {
             PerforatedRect()
                 .fill(paperFill)
                 .colorEffect(ShaderLibrary.paperGrain(.float(0.62), .float(0.55)))
-                .shadow(color: Theme.shadow.opacity(0.5), radius: 0.05 * w, y: 0.024 * w)
-                .shadow(color: Theme.shadow.opacity(0.25), radius: 0.009 * w, y: 0.005 * w)
+                .shadow(color: Theme.shadow.opacity(0.30), radius: 0.05 * w, y: 0.024 * w)
+                .shadow(color: Theme.shadow.opacity(0.16), radius: 0.009 * w, y: 0.005 * w)
 
             // Each paper has its own signature framing. All treatments stay
             // mounted; switching variants only animates opacity, never view
@@ -450,7 +450,7 @@ struct StampView: View {
 
             // Contact shadow: arrives with the paper.
             Ellipse()
-                .fill(Theme.shadow.opacity(0.28 * assembly.paper))
+                .fill(Theme.shadow.opacity(0.16 * assembly.paper))
                 .frame(width: frame.width * 0.62, height: 0.04 * w)
                 .blur(radius: 0.018 * w)
                 .position(x: frame.midX, y: frame.maxY - 0.004 * w)
@@ -461,7 +461,7 @@ struct StampView: View {
                 .frame(width: frame.width, height: frame.height)
                 .rotationEffect(.degrees(
                     variant == .airmail ? -2.5 * assembly.settle : 0))
-                .shadow(color: Theme.shadow.opacity(0.22 * assembly.paper),
+                .shadow(color: Theme.shadow.opacity(0.12 * assembly.paper),
                         radius: 0.012 * w, y: 0.008 * w)
                 .position(x: frame.midX, y: frame.midY)
         } else if let image {
@@ -513,8 +513,8 @@ struct StampView: View {
     private func titleFont(_ w: CGFloat) -> Font {
         switch variant {
         case .ivory: .system(size: 0.054 * w, weight: .medium, design: .serif).italic()
-        case .ink: Theme.engraved(0.048 * w)
-        default: Theme.engraved(0.052 * w)
+        case .ink: Theme.stampEngraved(0.048 * w)
+        default: Theme.stampEngraved(0.052 * w)
         }
     }
 
@@ -629,7 +629,7 @@ struct StampView: View {
 struct DieCutText: View {
     var text: String
     var fontSize: CGFloat
-    var ink: Color = Theme.ink.opacity(0.85)
+    var ink: Color = .black
 
     var body: some View {
         let base = Text(text)

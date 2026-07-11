@@ -73,8 +73,7 @@ struct DevelopOverlay: View {
             // If Vision is still thinking after the dust settles.
             if dissolveDone && analysis == nil {
                 Text("Lifting your subject…")
-                    .font(.system(size: 15, design: .serif))
-                    .italic()
+                    .font(.system(size: 15, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .position(x: screenSize.width / 2, y: vf.maxY + 44)
                     .transition(.opacity)

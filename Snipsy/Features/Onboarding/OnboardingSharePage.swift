@@ -39,12 +39,11 @@ struct OnboardingSharePage: View {
 
             VStack(spacing: 10) {
                 Text("STAMP ANYTHING")
-                    .font(Theme.engraved(21))
-                    .tracking(5)
+                    .font(Theme.display(21))
+                    .tracking(1.5)
                     .foregroundStyle(Theme.ink)
                 Text("Any moment becomes a stamp or sticker —\nstraight from the share sheet.")
-                    .font(.system(size: 14.5, design: .serif))
-                    .italic()
+                    .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
             }
@@ -54,8 +53,7 @@ struct OnboardingSharePage: View {
             MockPhoneCard(width: cardWidth) { journey }
 
             Text(caption)
-                .font(.system(size: 14, design: .serif))
-                .italic()
+                .font(.system(size: 14, design: .rounded))
                 .foregroundStyle(Theme.inkSoft)
                 .animation(.easeOut(duration: 0.25), value: caption)
                 .padding(.top, 22)
@@ -264,8 +262,8 @@ struct OnboardingSharePage: View {
 
             HStack {
                 Text("SNIPSY")
-                    .font(Theme.engraved(11))
-                    .tracking(3)
+                    .font(Theme.display(11))
+                    .tracking(1.5)
                     .foregroundStyle(Theme.ink)
                 Spacer()
                 Image(systemName: "xmark")
@@ -292,7 +290,7 @@ struct OnboardingSharePage: View {
                     assembly: stickerSelected ? stickerAssembly : stampAssembly
                 )
                 .frame(width: 116)
-                .shadow(color: Theme.shadow.opacity(0.4), radius: 9, y: 5)
+                .shadow(color: Theme.shadow.opacity(0.20), radius: 9, y: 5)
 
                 optionRow(subject: subject)
             }

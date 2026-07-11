@@ -23,12 +23,11 @@ struct SettingsSheet: View {
                 // Header
                 VStack(spacing: 6) {
                     Text("SNIPSY")
-                        .font(Theme.engraved(17))
-                        .tracking(5)
+                        .font(Theme.display(17))
+                        .tracking(2)
                         .foregroundStyle(Theme.ink)
                     Text("Version \(version)")
-                        .font(.system(size: 13, design: .serif))
-                        .italic()
+                        .font(.system(size: 13, design: .rounded))
                         .foregroundStyle(Theme.inkSoft)
                 }
                 .padding(.top, 34)
@@ -58,7 +57,7 @@ struct SettingsSheet: View {
                 } label: {
                     HStack {
                         Text("Delete All Data")
-                            .font(.system(size: 16, weight: .medium, design: .serif))
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
                             .foregroundStyle(Theme.postalRed)
                         Spacer()
                         Image(systemName: "trash")
@@ -73,8 +72,7 @@ struct SettingsSheet: View {
                 .padding(.top, 8)
 
                 Text("Every stamp lives only on this device.")
-                    .font(.system(size: 12.5, design: .serif))
-                    .italic()
+                    .font(.system(size: 12.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft.opacity(0.85))
                     .padding(.top, 14)
 
@@ -101,7 +99,7 @@ struct SettingsSheet: View {
         Button(action: action) {
             HStack {
                 Text(title)
-                    .font(.system(size: 16, weight: .medium, design: .serif))
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
                     .foregroundStyle(Theme.ink)
                 Spacer()
                 Image(systemName: "chevron.right")
@@ -129,7 +127,7 @@ struct LegalDocView: View {
             VStack(spacing: 0) {
                 HStack {
                     Text(doc.rawValue)
-                        .font(Theme.serifDisplay(24))
+                        .font(Theme.display(24))
                         .foregroundStyle(Theme.ink)
                     Spacer()
                     Button {
@@ -148,7 +146,7 @@ struct LegalDocView: View {
 
                 ScrollView(showsIndicators: false) {
                     Text(doc.body)
-                        .font(.system(size: 14.5, design: .serif))
+                        .font(.system(size: 14.5, design: .rounded))
                         .lineSpacing(4.5)
                         .foregroundStyle(Theme.ink.opacity(0.85))
                         .frame(maxWidth: .infinity, alignment: .leading)

@@ -27,13 +27,12 @@ struct PaywallScreen: View {
                     stickerFan
                         .padding(.bottom, 10)
                     Text("KEEP EVERY MOMENT")
-                        .font(Theme.engraved(24))
-                        .tracking(5)
+                        .font(Theme.display(24))
+                        .tracking(1.5)
                         .foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)
                     Text("The coffee, the concert, the two of you —\nturned into stamps and stickers you keep forever.")
-                        .font(.system(size: 15, design: .serif))
-                        .italic()
+                        .font(.system(size: 15, design: .rounded))
                         .foregroundStyle(Theme.inkSoft)
                         .multilineTextAlignment(.center)
                         .lineSpacing(3)
@@ -68,7 +67,7 @@ struct PaywallScreen: View {
                             Text(purchases.priceText.map {
                                 "Unlock Snipsy — \($0)"
                             } ?? "Unlock Snipsy for Life")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
                         }
                         .foregroundStyle(.white)
                         .padding(.horizontal, 34)
@@ -81,8 +80,7 @@ struct PaywallScreen: View {
                     .disabled(purchases.purchasing)
 
                     Text("One-time purchase · No subscription")
-                        .font(.system(size: 12.5, design: .serif))
-                        .italic()
+                        .font(.system(size: 12.5, design: .rounded))
                         .foregroundStyle(Theme.inkSoft)
 
                     HStack(spacing: 18) {
@@ -100,7 +98,7 @@ struct PaywallScreen: View {
                             Text("Privacy").underline()
                         }
                     }
-                    .font(.system(size: 12, design: .serif))
+                    .font(.system(size: 12, design: .rounded))
                     .foregroundStyle(Theme.inkSoft.opacity(0.8))
                     .buttonStyle(.plain)
                 }
@@ -113,12 +111,11 @@ struct PaywallScreen: View {
             if closeVisible {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Theme.inkSoft.opacity(0.6))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
                         .frame(width: 38, height: 38)
-                        .contentShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .circle)
                 .position(x: screenSize.width - 44,
                           y: max(safeArea.top, 20) + 18)
                 .transition(.opacity)
@@ -163,7 +160,7 @@ struct PaywallScreen: View {
             .scaledToFit()
             .frame(width: width)
             .rotationEffect(.degrees(degrees))
-            .shadow(color: Theme.shadow.opacity(0.38), radius: 8, y: 5)
+            .shadow(color: Theme.shadow.opacity(0.20), radius: 8, y: 5)
             .offset(x: dx, y: dy)
     }
 
@@ -174,7 +171,7 @@ struct PaywallScreen: View {
                 .foregroundStyle(Theme.postalRed)
                 .frame(width: 26)
             Text(line)
-                .font(.system(size: 14.5, design: .serif))
+                .font(.system(size: 14.5, design: .rounded))
                 .foregroundStyle(Theme.ink.opacity(0.92))
                 .fixedSize(horizontal: false, vertical: true)
         }

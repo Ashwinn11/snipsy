@@ -13,19 +13,18 @@ struct OnboardingFinalPage: View {
             Spacer(minLength: 0)
 
             AppIconView(size: 108)
-                .shadow(color: Theme.shadow.opacity(0.45), radius: 16, y: 8)
+                .shadow(color: Theme.shadow.opacity(0.22), radius: 16, y: 8)
                 .scaleEffect(breathe ? 1.03 : 0.99)
                 .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true),
                            value: breathe)
 
             VStack(spacing: 10) {
                 Text("START YOUR COLLECTION")
-                    .font(Theme.engraved(21))
-                    .tracking(4)
+                    .font(Theme.display(21))
+                    .tracking(1.5)
                     .foregroundStyle(Theme.ink)
                 Text("Fill it with the moments you keep —\ncut, stamped, and yours forever.")
-                    .font(.system(size: 14.5, design: .serif))
-                    .italic()
+                    .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
@@ -38,7 +37,7 @@ struct OnboardingFinalPage: View {
                 onStart()
             } label: {
                 Text("Start Collecting")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 42)
                     .frame(height: 54)

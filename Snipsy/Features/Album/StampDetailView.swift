@@ -41,8 +41,7 @@ struct StampDetailView: View {
 
                 VStack(spacing: 6) {
                     Text(metaLine)
-                        .font(.system(size: 14, design: .serif))
-                        .italic()
+                        .font(.system(size: 14, design: .rounded))
                         .foregroundStyle(Theme.inkSoft)
                 }
                 .transition(.opacity)
@@ -110,7 +109,7 @@ struct StampDetailView: View {
         .matchedGeometryEffect(id: stamp.id, in: ns, isSource: true)
         .rotation3DEffect(.degrees(Double(-tilt.height) / 7), axis: (x: 1, y: 0, z: 0))
         .rotation3DEffect(.degrees(Double(tilt.width) / 8), axis: (x: 0, y: 1, z: 0))
-        .shadow(color: Theme.shadow.opacity(0.45 + magnitude * 0.2),
+        .shadow(color: Theme.shadow.opacity(0.22 + magnitude * 0.1),
                 radius: 24 + magnitude * 10, y: 14)
         .gesture(
             SpatialTapGesture(coordinateSpace: .local).onEnded { value in

@@ -42,12 +42,11 @@ struct OnboardingMessagesPage: View {
 
             VStack(spacing: 10) {
                 Text("PEEL THEM IN MESSAGES")
-                    .font(Theme.engraved(21))
-                    .tracking(4)
+                    .font(Theme.display(21))
+                    .tracking(1.5)
                     .foregroundStyle(Theme.ink)
                 Text("Your collection waits behind the plus button\nin any conversation.")
-                    .font(.system(size: 14.5, design: .serif))
-                    .italic()
+                    .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
             }
@@ -57,8 +56,7 @@ struct OnboardingMessagesPage: View {
             MockPhoneCard(width: cardWidth) { journey }
 
             Text(caption)
-                .font(.system(size: 14, design: .serif))
-                .italic()
+                .font(.system(size: 14, design: .rounded))
                 .foregroundStyle(Theme.inkSoft)
                 .animation(.easeOut(duration: 0.25), value: caption)
                 .padding(.top, 22)
@@ -130,7 +128,7 @@ struct OnboardingMessagesPage: View {
                                 .easeInOut(duration: 2.6)
                                     .repeatForever(autoreverses: true),
                                 value: sway)
-                            .shadow(color: Theme.shadow.opacity(0.35),
+                            .shadow(color: Theme.shadow.opacity(0.18),
                                     radius: 6, y: 4)
                             .padding(.trailing, 28)
                     }
@@ -250,7 +248,7 @@ struct OnboardingMessagesPage: View {
                     HStack(spacing: 6) {
                         AppIconView(size: 24)
                         Text("Snipsy")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(Theme.ink)
                     }
                     Capsule()

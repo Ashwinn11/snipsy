@@ -502,8 +502,7 @@ struct RevealScreen: View {
 
         return VStack(spacing: 14) {
             Text("Make it a…")
-                .font(.system(size: 14, design: .serif))
-                .italic()
+                .font(.system(size: 14, design: .rounded))
                 .foregroundStyle(Theme.inkSoft)
                 .opacity(selection == nil ? 1 : 0)
 
@@ -514,7 +513,7 @@ struct RevealScreen: View {
                             .resizable()
                             .scaledToFit()
                             .frame(width: 52, height: 68)
-                            .shadow(color: Theme.shadow.opacity(0.4), radius: 3, y: 2)
+                            .shadow(color: Theme.shadow.opacity(0.22), radius: 3, y: 2)
                     }
                 }
                 ForEach(StampVariant.allCases) { v in
@@ -596,7 +595,7 @@ struct RevealScreen: View {
                         Image(systemName: "seal.fill")
                             .font(.system(size: 15, weight: .semibold))
                         Text("Keep")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(.white)
                     .padding(.horizontal, 34)
@@ -617,7 +616,7 @@ struct RevealScreen: View {
 struct PressableButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1)
-            .animation(Theme.springTight, value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.93 : 1)
+            .animation(Theme.springBouncy, value: configuration.isPressed)
     }
 }

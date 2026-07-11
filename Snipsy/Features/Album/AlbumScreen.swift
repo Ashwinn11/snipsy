@@ -60,10 +60,10 @@ struct AlbumScreen: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Collection")
-                    .font(Theme.serifDisplay(34))
+                    .font(Theme.display(34))
                     .foregroundStyle(Theme.ink)
                 Text(countLine)
-                    .font(.system(size: 14))
+                    .font(.system(size: 14, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
             }
             Spacer()
@@ -108,10 +108,10 @@ struct AlbumScreen: View {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(group.title)
-                                .font(Theme.engraved(21))
+                                .font(Theme.display(21))
                                 .foregroundStyle(Theme.ink.opacity(0.8))
                             Text(group.stamps.count == 1 ? "1 stamp" : "\(group.stamps.count) stamps")
-                                .font(.system(size: 12.5))
+                                .font(.system(size: 12.5, design: .rounded))
                                 .foregroundStyle(Theme.inkSoft)
                         }
 
@@ -143,7 +143,7 @@ struct AlbumScreen: View {
             }
         } label: {
             StampView(stamp: stamp, image: model.store.image(for: stamp))
-                .rotationEffect(.degrees(index.isMultiple(of: 2) ? -1.3 : 1.4))
+                .rotationEffect(.degrees(index.isMultiple(of: 2) ? -2.2 : 2.4))
         }
         .buttonStyle(PressableButtonStyle())
         .matchedGeometryEffect(id: stamp.id, in: ns, isSource: selected?.id != stamp.id)
@@ -162,7 +162,7 @@ struct StaggeredAppear: ViewModifier {
             .opacity(shown ? 1 : 0)
             .offset(y: shown ? 0 : 18)
             .onAppear {
-                withAnimation(Theme.spring.delay(Double(index % 8) * 0.05)) {
+                withAnimation(Theme.springBouncy.delay(Double(index % 8) * 0.05)) {
                     shown = true
                 }
             }
@@ -191,10 +191,10 @@ struct EmptyAlbumView: View {
 
             VStack(spacing: 7) {
                 Text("Your first stamp awaits")
-                    .font(Theme.serifDisplay(21))
+                    .font(Theme.display(21))
                     .foregroundStyle(Theme.ink)
                 Text("Frame something you love and press the shutter.")
-                    .font(.system(size: 14.5))
+                    .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
             }
         }

@@ -39,12 +39,11 @@ struct OnboardingDemoPage: View {
 
             VStack(spacing: 10) {
                 Text("SNIPSY")
-                    .font(Theme.engraved(24))
-                    .tracking(7)
+                    .font(Theme.display(24))
+                    .tracking(2)
                     .foregroundStyle(Theme.ink)
                 Text("Turn your moments into stamps & stickers.")
-                    .font(.system(size: 16, design: .serif))
-                    .italic()
+                    .font(.system(size: 16, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
             }
 
@@ -54,8 +53,7 @@ struct OnboardingDemoPage: View {
                 .frame(height: stampWidth * 1.3125 + 30)
 
             Text(phaseLine)
-                .font(.system(size: 14, design: .serif))
-                .italic()
+                .font(.system(size: 14, design: .rounded))
                 .foregroundStyle(Theme.inkSoft)
                 .animation(.easeOut(duration: 0.25), value: phaseLine)
                 .padding(.top, 26)
@@ -104,7 +102,7 @@ struct OnboardingDemoPage: View {
             )
             .frame(width: stampWidth)
             .opacity(stampOpacity)
-            .shadow(color: Theme.shadow.opacity(0.4), radius: 18, y: 10)
+            .shadow(color: Theme.shadow.opacity(0.20), radius: 18, y: 10)
             .onTapGesture { if isActive { startLoop() } }   // instant replay
         } else {
             // Assets missing (should never happen): the old static motif.

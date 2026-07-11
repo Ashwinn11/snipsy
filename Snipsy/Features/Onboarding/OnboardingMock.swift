@@ -17,13 +17,16 @@ struct MockPhoneCard<Content: View>: View {
             .background(
                 RoundedRectangle(cornerRadius: 28)
                     .fill(Theme.paperDeep)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28)
-                            .strokeBorder(Theme.inkSoft.opacity(0.15), lineWidth: 1)
-                    )
-                    .shadow(color: Theme.shadow.opacity(0.5), radius: 22, y: 12)
+                    .shadow(color: Theme.shadow.opacity(0.25), radius: 22, y: 12)
             )
             .clipShape(RoundedRectangle(cornerRadius: 28))
+            // Cut-line outline: drawn above the clipped content so the demo
+            // card reads as a piece set onto the page, not a floating beat.
+            .overlay(
+                RoundedRectangle(cornerRadius: 28)
+                    .strokeBorder(Theme.inkSoft.opacity(0.5),
+                                  style: StrokeStyle(lineWidth: 1.4, dash: [5, 5]))
+            )
             .allowsHitTesting(false)
     }
 }

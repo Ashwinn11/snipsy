@@ -42,7 +42,7 @@ struct PaperBackdrop: View {
                         while x < size.width {
                             ctx.fill(
                                 Path(ellipseIn: CGRect(origin: CGPoint(x: x, y: y), size: dot)),
-                                with: .color(Theme.ink.opacity(0.05))
+                                with: .color(Theme.ink.opacity(0.06))
                             )
                             x += spacing
                         }
@@ -51,9 +51,10 @@ struct PaperBackdrop: View {
                 }
             }
 
-            // Soft vignette keeps focus centered without reading as "effect".
+            // Soft vignette keeps focus centered without reading as "effect" —
+            // on cream the sepia edge reads as a sun-faded page, so keep it faint.
             RadialGradient(
-                colors: [.clear, Theme.shadow.opacity(0.30)],
+                colors: [.clear, Theme.shadow.opacity(0.10)],
                 center: .center, startRadius: 220, endRadius: 640
             )
         }

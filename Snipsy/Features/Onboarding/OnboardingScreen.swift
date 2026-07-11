@@ -47,7 +47,7 @@ struct OnboardingScreen: View {
             HStack(spacing: 9) {
                 ForEach(0..<4, id: \.self) { i in
                     Circle()
-                        .fill(Theme.inkSoft.opacity(page == i ? 0.9 : 0.3))
+                        .fill(page == i ? Theme.postalRed : Theme.inkSoft.opacity(0.3))
                         .frame(width: 6, height: 6)
                 }
             }
@@ -61,8 +61,7 @@ struct OnboardingScreen: View {
                     withAnimation(Theme.spring) { page = 3 }
                 } label: {
                     Text("Skip")
-                        .font(.system(size: 14, design: .serif))
-                        .italic()
+                        .font(.system(size: 14, design: .rounded))
                         .foregroundStyle(Theme.inkSoft)
                         .padding(.horizontal, 14)
                         .frame(height: 34)
