@@ -1,20 +1,20 @@
-// Prepares the simulator demo feed: resizes raw photos, runs the SAME Vision
-// pipeline the app uses (VNGenerateForegroundInstanceMaskRequest) on macOS to
-// precompute subject cutouts, and writes the feed.json manifest.
+// Prepares the onboarding demo assets: resizes raw photos and runs the SAME
+// Vision pipeline the app uses (VNGenerateForegroundInstanceMaskRequest) on
+// macOS to precompute subject cutouts. Titles/tints live in OnboardingDemo.
 // Run: swift tools/prepare_assets.swift
 import AppKit
 import Vision
 import CoreImage
 
-let samples: [(raw: String, name: String, label: String)] = [
-    ("robot.jpg", "robot", "Tin Robot"),
-    ("teapot.jpg", "teapot", "Teapot"),
-    ("coffee.jpg", "coffee", "Coffee"),
-    ("cactus.jpg", "cactus", "Cactus"),
+let samples: [(raw: String, name: String)] = [
+    ("robot.jpg", "robot"),
+    ("teapot.jpg", "teapot"),
+    ("coffee.jpg", "coffee"),
+    ("cactus.jpg", "cactus"),
 ]
 
 let rawDir = URL(fileURLWithPath: "tools/raw")
-let outDir = URL(fileURLWithPath: "Postmark/Resources/SampleFeed")
+let outDir = URL(fileURLWithPath: "Postmark/Resources/Onboarding")
 try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
 
 let ciContext = CIContext()
@@ -77,7 +77,6 @@ func classify(_ cg: CGImage) -> [(String, Float)] {
     return (request.results ?? []).prefix(5).map { ($0.identifier, $0.confidence) }
 }
 
-var manifest: [[String: String]] = []
 for sample in samples {
     let rawURL = rawDir.appendingPathComponent(sample.raw)
     guard let cg = loadCG(rawURL) else { print("missing \(sample.raw)"); continue }
@@ -86,19 +85,10 @@ for sample in samples {
     writeJPEG(resized, to: outDir.appendingPathComponent(jpgName))
     print("\(sample.name): \(resized.width)×\(resized.height)")
 
-    var entry = ["file": jpgName, "label": sample.label]
     if let cutout = subjectCutout(resized) {
-        let cutName = "\(sample.name).cutout.png"
-        writePNG(cutout, to: outDir.appendingPathComponent(cutName))
-        entry["cutout"] = cutName
+        writePNG(cutout, to: outDir.appendingPathComponent("\(sample.name).cutout.png"))
         print("  cutout ✓ (\(cutout.width)×\(cutout.height))")
     }
     print("  classify: \(classify(resized).map { "\($0.0) \(String(format: "%.2f", $0.1))" }.joined(separator: ", "))")
-    manifest.append(entry)
 }
 
-let json = try! JSONSerialization.data(
-    withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys]
-)
-try! json.write(to: outDir.appendingPathComponent("feed.json"))
-print("feed.json written (\(manifest.count) samples)")
