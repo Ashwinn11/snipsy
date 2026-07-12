@@ -15,6 +15,19 @@ static inline float hash21(float2 p) {
     return fract(p.x * p.y);
 }
 
+/// Smooth value noise — soft organic clumps, used to decorrelate grain
+/// death times so no geometric front is ever readable in the dissolve.
+static inline float vnoise(float2 p) {
+    float2 i = floor(p);
+    float2 f = fract(p);
+    float2 u = f * f * (3.0 - 2.0 * f);
+    float a = hash21(i);
+    float b = hash21(i + float2(1.0, 0.0));
+    float c = hash21(i + float2(0.0, 1.0));
+    float d = hash21(i + float2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
 struct GrainSample {
     float2 samplePos;
     float alpha;
@@ -22,14 +35,17 @@ struct GrainSample {
 };
 
 /// Shared grain math. `local` is this grain's 0→1 death progress.
-static inline GrainSample grainMotion(float2 position, float2 cell, float cellSize, float local) {
+/// `windBias` adds a one-directional gust (+x): dust streams off with
+/// the sweep instead of scattering symmetrically. 0 = neutral breeze.
+static inline GrainSample grainMotion(float2 position, float2 cell, float cellSize, float local, float windBias) {
     GrainSample g;
     float rnd  = hash21(cell);
     float rnd2 = hash21(cell + 71.7);
 
     // Rigid per-grain drift: up and sideways on a randomized breeze.
     float rise = local * local * (70.0 + 130.0 * rnd);
-    float wind = sin(rnd * 6.28318) * (18.0 + 30.0 * rnd2) * local;
+    float wind = (sin(rnd * 6.28318) * (18.0 + 30.0 * rnd2)
+                + windBias * (24.0 + 30.0 * rnd2)) * local;
     float2 offset = float2(wind, -rise);
 
     // Shrink grain content toward its center as it dies.
@@ -54,10 +70,11 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
-/// The die-cut's waste: everything the mask calls background dissolves in a
-/// grain wave radiating OUTWARD from the sticker's box — the press cuts,
-/// the waste shatters off the cut line and drifts away. One-shot and
-/// forward-only: switches never reverse it.
+/// The die-cut's waste: everything the mask calls background dissolves in
+/// one ragged dust front sweeping left→right across the sheet — and the
+/// dying grains STREAM off on the gust, long breaking streaks that cross
+/// the screen and exit its right edge — while the subject stays.
+/// One-shot and forward-only: switches never reverse it.
 ///
 /// `size` is the content size in points, passed explicitly: for a
 /// layerEffect, `.boundingRect` reports raster bounds expanded by
@@ -93,46 +110,74 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
         return layer.sample(position) * m * fade;
     }
 
-    float2 boxCenter = box.xy + box.zw * 0.5;
-    float2 half_ = box.zw * 0.5;
-    float sd = max(sdRoundRect(position, boxCenter, half_, 8.0), 0.0);
-    // Normalize the wave by the waste's own extent — the farthest content
-    // corner from the cut line — so the front spends the full window
-    // crossing whatever waste actually exists, however large the sticker.
-    // Corners live in the same (layer) space as `position` and `box`.
-    float maxDist = max(
-        max(sdRoundRect(origin, boxCenter, half_, 8.0),
-            sdRoundRect(origin + float2(size.x, 0.0), boxCenter, half_, 8.0)),
-        max(sdRoundRect(origin + float2(0.0, size.y), boxCenter, half_, 8.0),
-            sdRoundRect(origin + size, boxCenter, half_, 8.0)));
-    maxDist = max(maxDist, 1.0);
+    // Launch phase at this pixel: the ragged left→right front. `box` no
+    // longer steers the wave; the cut line only decides what stays. The
+    // sweep field extends a full flight length PAST the sheet's right
+    // edge, so the front — and the debris it carries — travels
+    // continuously off the sheet and across the screen instead of only
+    // bursting out at the wave's end.
+    float sweep = clamp((position.x - origin.x) / max(size.x + 340.0, 1.0),
+                        0.0, 1.0);
+    float2 cellP = floor(position / cellSize);
+    float delay = sweep * 0.71
+                + vnoise(position / 60.0) * 0.10
+                + hash21(cellP + 7.3) * 0.05;
+    float window = 0.18 + 0.12 * hash21(cellP + 3.7);
+    float lp = clamp((progress * (0.86 + window) - delay) / window, 0.0, 1.0);
 
-    float2 cell = floor(position / cellSize);
-    float rnd = hash21(cell + 7.3);
-    // Wide spread + strong per-grain stagger: the front visibly TRAVELS
-    // outward from the cut line instead of melting all at once.
-    float delay = clamp(sd / maxDist, 0.0, 1.0) * 0.85 + rnd * 0.22;
-    float local = clamp((progress * 1.65 - delay) / 0.42, 0.0, 1.0);
+    if (lp <= 0.0) { return layer.sample(position); }
+    if (lp >= 1.0) { return half4(0.0); }
 
-    if (local <= 0.0) { return layer.sample(position); }
-    if (local >= 1.0) { return half4(0.0); }
+    // Flight, INVERSE-MAPPED: each output pixel asks "what content has
+    // flown HERE?" and samples backward along the gust — rightward with a
+    // slight loft, sheared by a smooth flow field so the dust tears into
+    // streaks instead of sliding as one sheet. The displacement depends
+    // only on (position, progress), so the inversion is exact and grains
+    // can travel any distance. (grainMotion's in-cell trick CANNOT carry
+    // this: a grain dies the moment its offset exceeds its own ~cell, so
+    // no windBias value makes it stream — that path is for the in-place
+    // crumble of the capture dissolve only.)
+    float flow = vnoise(position / 46.0 + float2(progress * 2.0, 0.0));
+    float S = lp * lp * 340.0;
+    float2 src = position - float2(S * (0.8 + 0.4 * flow),
+                                   -S * (0.10 + 0.22 * flow));
 
-    GrainSample g = grainMotion(position, cell, cellSize, local);
-    // Never resurrect subject pixels while sampling for a dying grain.
-    float2 suv = (g.samplePos - origin) / size;
-    half sm = mask.sample(s, suv).a;
-    half4 c = layer.sample(g.samplePos) * half(1.0 - float(sm > 0.5));
-    c.rgb += half3(g.glint) * c.a;
-    c *= half(g.alpha);
+    // Nothing ever flew out of the empty padding, and the subject never
+    // streams — only true waste rides the wind.
+    float2 suv = (src - origin) / size;
+    if (suv.x < 0.0 || suv.y < 0.0 || suv.x > 1.0 || suv.y > 1.0) {
+        return half4(0.0);
+    }
+    if (mask.sample(s, suv).a > 0.5) { return half4(0.0); }
+
+    half4 c = layer.sample(src);
+
+    // Break the streaks into grains (keyed to the SOURCE cell so specks
+    // travel with their content), glint at launch, dissipate along the
+    // flight, and be gone entirely by lp 1.
+    float2 cellS = floor(src / cellSize);
+    float speck = mix(1.0, 0.42 + 0.58 * step(0.30, hash21(cellS + 5.1)),
+                      smoothstep(0.04, 0.30, lp));
+    float glint = smoothstep(0.02, 0.10, lp) * (1.0 - smoothstep(0.10, 0.32, lp))
+                * pow(hash21(cellS + 2.2), 3.5) * 2.2;
+    float fade = (1.0 - smoothstep(0.10, 0.92, S / 340.0))
+               * (1.0 - smoothstep(0.60, 1.0, lp));
+    c.rgb += half3(glint) * c.a;
+    c *= half(speck * fade);
     return c;
 }
 
-/// Everything outside the viewfinder rounded-rect dissolves, edge-out.
-/// vfRect = (x, y, w, h) in view points; progress 0→1.
+/// Everything outside the viewfinder rounded-rect dissolves: a ragged
+/// dust front sweeps the screen left→right (the viewfinder itself is
+/// untouchable). vfRect = (x, y, w, h) in view points; progress 0→1.
+/// `size` is the CONTENT size in points, passed explicitly — a
+/// layerEffect's .boundingRect is padded by maxSampleOffset, and
+/// normalizing the sweep by the padded rect strands the front short of
+/// the right edge.
 [[ stitchable ]] half4 grainDissolveRect(
     float2 position,
     SwiftUI::Layer layer,
-    float4 bounds,
+    float2 size,
     float4 vfRect,
     float vfCorner,
     float progress,
@@ -144,18 +189,29 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     // Inside the viewfinder: untouched, always.
     if (sd <= 0.0) { return layer.sample(position); }
 
-    // The wave travels outward from the viewfinder edge; per-grain jitter
-    // keeps the front ragged but legible.
-    float maxDist = length(bounds.zw) * 0.42;
+    // Thanos snap: one ragged dust front sweeps across the whole screen,
+    // left to right. Grains crumble as it passes and stream off with the
+    // gust; noise clumps and per-grain chance tear the front's edge so it
+    // never reads as a clean line — and never echoes the viewfinder rect.
+    float sweep = clamp(position.x / max(size.x, 1.0), 0.0, 1.0);
     float2 cell = floor(position / cellSize);
     float rnd = hash21(cell + 13.1);
-    float delay = clamp(sd / maxDist, 0.0, 1.0) * 0.62 + rnd * 0.10;
-    float local = clamp((progress * 1.75 - delay) / 0.42, 0.0, 1.0);
+    float clump = vnoise(position / 74.0);
+    // Sweep-dominant: the jitter budget stays small so the front remains
+    // ONE coherent traveling wave all the way to the far edge — too much
+    // spread and the trailing side fades in place instead of being swept.
+    float delay = sweep * 0.71
+                + clump * 0.10
+                + rnd * 0.05;
+    // Per-grain lifespan varies a little — max delay (0.86) + any window
+    // still lands by progress 1.
+    float window = 0.18 + 0.12 * hash21(cell + 3.7);
+    float local = clamp((progress * (0.86 + window) - delay) / window, 0.0, 1.0);
 
     if (local <= 0.0) { return layer.sample(position); }
     if (local >= 1.0) { return half4(0.0); }
 
-    GrainSample g = grainMotion(position, cell, cellSize, local);
+    GrainSample g = grainMotion(position, cell, cellSize, local, 1.0);
     half4 c = layer.sample(g.samplePos);
     c.rgb += half3(g.glint) * c.a;
     c *= half(g.alpha);

@@ -9,8 +9,9 @@ import UIKit
 enum VisionService {
 
     struct Analysis {
-        /// Subject-only RGBA at the crop's full pixel size (mask-aligned, used
-        /// by the grain-dissolve shader and reveal continuity).
+        /// Subject-only RGBA, aspect-aligned to the crop (≤1536 px — the
+        /// grain-dissolve shader samples it normalized, so resolution
+        /// need not match the crop, only extent).
         var cutout: UIImage?
         /// Trimmed cutout with the white die-cut sticker border (display).
         var sticker: UIImage?
@@ -37,7 +38,12 @@ enum VisionService {
         // jetsam ceiling.
         let work = Task.detached(priority: .userInitiated) { () -> Analysis in
             autoreleasepool { () -> Analysis in
-            guard let cg = image.cgImage else {
+            // Segmentation quality saturates well below full crop
+            // resolution; ~1536 px keeps the mask crisp at display sizes
+            // while the foreground model runs several times faster (and
+            // fits the share extension's memory budget with more room).
+            let input = ImageOptimizer.downscaled(image, maxDimension: 1536)
+            guard let cg = input.cgImage else {
                 return Analysis(tint: .paper)
             }
 

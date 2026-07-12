@@ -43,6 +43,11 @@ final class AppModel {
     let haptics = Haptics()
     let purchases = PurchaseController()
 
+    /// Vision kicked off the moment the crop is baked — the shutter beat
+    /// and the grain dissolve run on top of it, so the reveal is usually
+    /// ready the instant the last grain dies. Consumed by DevelopOverlay.
+    @ObservationIgnored var pendingAnalysis: Task<VisionService.Analysis, Never>?
+
     init() {
         // Pick up a prior unlock before onboarding's gate can ask again.
         Task { await purchases.refresh() }
@@ -97,6 +102,8 @@ final class AppModel {
                 return
             }
 
+            pendingAnalysis = Task { await VisionService.analyze(baked.crop) }
+
             // Hold the shutter blink long enough to read as a beat.
             let elapsed = Date().timeIntervalSince(shutterMoment)
             if elapsed < 0.26 {
@@ -146,6 +153,7 @@ final class AppModel {
             blackout = false
             return
         }
+        pendingAnalysis = Task { await VisionService.analyze(baked.crop) }
         try? await Task.sleep(for: .seconds(0.2))
         phase = .developing(Capture(
             screenImage: baked.screen,
@@ -159,6 +167,7 @@ final class AppModel {
     }
 
     func retake() {
+        pendingAnalysis = nil
         phase = .camera
     }
 

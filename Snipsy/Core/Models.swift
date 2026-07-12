@@ -95,7 +95,8 @@ struct Capture {
 struct PendingStamp {
     var capture: Capture
     var style: Stamp.Style
-    /// Full-crop-size subject-only image (drives the mask dissolve).
+    /// Subject-only image, aspect-aligned to the crop (drives the mask
+    /// dissolve; sampled normalized, so resolution may differ).
     var cutout: UIImage?
     /// Trimmed cutout with white die-cut border (final display image).
     var sticker: UIImage?

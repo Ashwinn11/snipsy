@@ -284,14 +284,16 @@ struct RevealScreen: View {
             // (a big texture + shader raster) finish on this static frame
             // instead of inside the glide.
             await afterNextCommit()
-            try? await Task.sleep(for: .seconds(0.2))
+            try? await Task.sleep(for: .seconds(0.08))
             await afterNextCommit()
             withAnimation(.spring(response: 0.52, dampingFraction: 0.82)) {
                 centered = true
             }
-            try? await Task.sleep(for: .seconds(0.42))
+            // Options rise WHILE the crop glides to center — the chooser
+            // is tappable the moment the glide settles, not a beat after.
+            try? await Task.sleep(for: .seconds(0.16))
             // Pre-render the dressed layers invisibly (paper shader, path
-            // shadows, caption glyphs) on this static beat.
+            // shadows, caption glyphs) while the glide covers the cost.
             paper = 0.001
             caption = 0.001
             await afterNextCommit()

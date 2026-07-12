@@ -50,6 +50,10 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
                 session.sessionPreset = .photo
                 attachInput(position: .back)
                 if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
+                // The photo becomes a ≤1600 px stamp; Deep Fusion-class
+                // processing would burn 300–600 ms buying detail the
+                // pipeline immediately throws away.
+                photoOutput.maxPhotoQualityPrioritization = .speed
                 session.commitConfiguration()
             }
             if !session.isRunning { session.startRunning() }
@@ -101,6 +105,7 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
         try await withCheckedThrowingContinuation { cont in
             photoContinuation = cont
             let settings = AVCapturePhotoSettings()
+            settings.photoQualityPrioritization = .speed
             if photoOutput.supportedFlashModes.contains(.on) {
                 settings.flashMode = flashOn ? .on : .off
             }
@@ -115,13 +120,20 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
         didFinishProcessingPhoto photo: AVCapturePhoto,
         error: (any Error)?
     ) {
-        let data = photo.fileDataRepresentation()
+        // Decode here, on the delegate's private queue, at a bounded size:
+        // CGImageSource applies EXIF orientation during the subsampled
+        // decode, so the full-resolution UIImage(data:) + orientation
+        // redraw (previously on the main actor) never happens. 3072 px
+        // out-resolves the screen-exact crop on any current display.
+        let image = photo.fileDataRepresentation().flatMap {
+            ImageOptimizer.downsampled(data: $0, maxPixel: 3072)
+        }
         Task { @MainActor in
             defer { photoContinuation = nil }
             if let error {
                 photoContinuation?.resume(throwing: error)
-            } else if let data, let image = UIImage(data: data) {
-                photoContinuation?.resume(returning: image.normalizedUp())
+            } else if let image {
+                photoContinuation?.resume(returning: image)
             } else {
                 photoContinuation?.resume(throwing: CameraError.noImage)
             }

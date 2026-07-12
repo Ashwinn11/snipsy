@@ -157,38 +157,93 @@ struct StampView: View {
         let content = contentRect(w)
 
         ZStack(alignment: .topLeading) {
-            // ── Paper ────────────────────────────────────────────────
-            paper(w)
-                .opacity(assembly.paper)
-                .scaleEffect(0.94 + 0.06 * assembly.paper)
+            ZStack(alignment: .topLeading) {
+                // ── Paper ────────────────────────────────────────────
+                paper(w)
+                    .opacity(assembly.paper)
+                    .scaleEffect(0.94 + 0.06 * assembly.paper)
 
-            // ── Content ──────────────────────────────────────────────
-            contentLayer(w, content: content)
+                // ── Content ──────────────────────────────────────────
+                contentLayer(w, content: content)
 
-            // ── Edition dressing printed over the picture ────────────
-            dressing(w)
-                .opacity(assembly.paper)
-                .scaleEffect(0.94 + 0.06 * assembly.paper)
-                .allowsHitTesting(false)
+                // ── Edition dressing printed over the picture ────────
+                dressing(w)
+                    .opacity(assembly.paper)
+                    .scaleEffect(0.94 + 0.06 * assembly.paper)
+                    .allowsHitTesting(false)
 
-            // ── Caption strip ────────────────────────────────────────
-            captionLayer(w)
-                .opacity(assembly.paper)
-                // Invisible in sticker form (paper 0.001) but still laid
-                // out — it must not catch rename taps there.
-                .allowsHitTesting(assembly.paper > 0.5)
+                // ── Caption strip ────────────────────────────────────
+                captionLayer(w)
+                    .opacity(assembly.paper)
+                    // Invisible in sticker form (paper 0.001) but still
+                    // laid out — it must not catch rename taps there.
+                    .allowsHitTesting(assembly.paper > 0.5)
+            }
+            .compositingGroup()
+            // Shader effects cannot rasterize platform-backed views: with
+            // the rename TextField mounted they render as a yellow
+            // prohibition placeholder. Drop them during editing — the
+            // identity change is confined to the edit-mode boundary, where
+            // nothing is in flight.
+            .modifier(HoloModifier(enabled: holoEnabled && editableTitle == nil,
+                                   strength: holoStrength,
+                                   sweep: holoSweep, dir: holoDir))
+            .modifier(LiquidModifier(enabled: liquidEnabled && editableTitle == nil,
+                                     center: liquidCenter,
+                                     time: liquidTime))
+
+            // ── The first cut's shatter ──────────────────────────────
+            // ABOVE the shader modifiers: those wrappers rasterize the
+            // stamp at its own frame, so dust rendered beneath them clips
+            // at the image's edge. Out here the grains own the window —
+            // they stream across the screen and off its right side.
+            hoistedWaste(w, content: content)
         }
-        .compositingGroup()
-        // Shader effects cannot rasterize platform-backed views: with the
-        // rename TextField mounted they render as a yellow prohibition
-        // placeholder. Drop them during editing — the identity change is
-        // confined to the edit-mode boundary, where nothing is in flight.
-        .modifier(HoloModifier(enabled: holoEnabled && editableTitle == nil,
-                               strength: holoStrength,
-                               sweep: holoSweep, dir: holoDir))
-        .modifier(LiquidModifier(enabled: liquidEnabled && editableTitle == nil,
-                                 center: liquidCenter,
-                                 time: liquidTime))
+    }
+
+    /// The waste wave, hoisted out of the holo/liquid raster. Mounted only
+    /// when a mask exists (constant for the view's lifetime); held at 0.001
+    /// opacity until the wave's first tick so the un-poked duplicate never
+    /// occludes the liquid-poke ripple, and culled once the shader is
+    /// provably blank (waste < 0.03 — kept-pixel fade ends at progress
+    /// 0.97, all waste dead by 0.903). Replicates the sheet's exact
+    /// box→frame mapping and press dip so no state combination can show
+    /// dust and sheet at two different scales.
+    @ViewBuilder
+    private func hoistedWaste(_ w: CGFloat, content: CGRect) -> some View {
+        if assembly.content == .raw, maskImage != nil, let raw = rawCrop ?? image {
+            let boxRect = wasteBox(content: content)
+            let sheet = sheetTargetRect(w, content: content, box: boxRect)
+            let sx = boxRect.width > 0 ? sheet.width / boxRect.width : 1
+            let sy = boxRect.height > 0 ? sheet.height / boxRect.height : 1
+            let waveLive = assembly.waste < 1 && assembly.waste >= 0.03
+
+            rawView(raw, content: content)
+                .layerEffect(
+                    ShaderLibrary.grainDissolveWaste(
+                        .float2(content.width, content.height),
+                        .float2(content.minX, content.minY),
+                        .image(Image(uiImage: maskImage ?? UIImage())),
+                        .float4(boxRect.minX, boxRect.minY,
+                                boxRect.width, boxRect.height),
+                        .float(1 - assembly.waste),
+                        .float(max(2.5, w * 0.011))
+                    ),
+                    // Room for the full flight: gust (≤~430) + a cell wide,
+                    // rise (≤~170) + a cell tall. Paid only while the wave
+                    // is live — the idle duplicate stays cheap.
+                    maxSampleOffset: assembly.waste < 1
+                        ? CGSize(width: 440, height: 240)
+                        : CGSize(width: 8, height: 8)
+                )
+                .frame(width: w, height: 1.3125 * w, alignment: .topLeading)
+                .scaleEffect(x: sx, y: sy, anchor: .topLeading)
+                .offset(x: sheet.minX - boxRect.minX * sx,
+                        y: sheet.minY - boxRect.minY * sy)
+                .scaleEffect(1 - 0.018 * sin(min(1, max(0, assembly.press)) * .pi))
+                .opacity(waveLive ? 1 : 0.001)
+                .allowsHitTesting(false)
+        }
     }
 
     // MARK: Paper
@@ -431,36 +486,15 @@ struct StampView: View {
             ZStack(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) {
                     if let raw = rawCrop ?? image {
-                        // Plain layer — the post-cut photo. Sits BELOW the
-                        // wave layer: pre-cut, the wave layer's progress-0
-                        // passthrough occludes it with identical pixels;
-                        // during an interrupted cut the photo heals BEHIND
-                        // the dying grains. 0.001 floor = pre-warm pattern.
+                        // Plain layer — the post-cut photo. Covers the waste
+                        // at full opacity until the wave's first tick (the
+                        // shatter itself lives in hoistedWaste, ABOVE the
+                        // shader modifiers); during an interrupted cut the
+                        // photo heals BEHIND the dying grains. 0.001 floor =
+                        // pre-warm pattern.
                         rawView(raw, content: content)
-                            .opacity(max(0.001, assembly.photoFade))
-                        // Wave layer — the first cut's shatter, one-shot.
-                        rawView(raw, content: content)
-                            .layerEffect(
-                                ShaderLibrary.grainDissolveWaste(
-                                    .float2(content.width, content.height),
-                                    .float2(content.minX, content.minY),
-                                    .image(Image(uiImage: maskImage ?? UIImage())),
-                                    .float4(boxRect.minX, boxRect.minY,
-                                            boxRect.width, boxRect.height),
-                                    .float(1 - assembly.waste),
-                                    .float(max(2.5, w * 0.011))
-                                ),
-                                // Width bound: wind (≤48pt) + a cell, before
-                                // the in-cell test kills anything farther.
-                                maxSampleOffset: CGSize(width: 64, height: 180),
-                                isEnabled: maskImage != nil
-                            )
-                            // Cull, never disable: isEnabled false would
-                            // resurrect the photo unshaded. The shader is
-                            // provably blank for waste < 0.03 (kept-pixel
-                            // fade ends at progress 0.97, all waste dead by
-                            // 0.903), so the discrete flip is invisible.
-                            .opacity(maskImage == nil || assembly.waste >= 0.03 ? 1 : 0)
+                            .opacity(max(0.001, assembly.photoFade,
+                                         assembly.waste >= 1 ? 1 : 0))
                     }
                     stickerOverlay(w, content: content, box: boxRect)
                 }

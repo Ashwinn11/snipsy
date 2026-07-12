@@ -18,7 +18,7 @@ struct DevelopOverlay: View {
     /// to the true drift and commits behind the blackout.
     @State private var drift: CGFloat = 0
 
-    private let duration: TimeInterval = 1.05
+    private let duration: TimeInterval = 0.72
 
     var body: some View {
         let vf = capture.viewfinderRect
@@ -38,21 +38,26 @@ struct DevelopOverlay: View {
             TimelineView(.animation(paused: start == nil || dissolveDone)) { timeline in
                 let elapsed = start.map { timeline.date.timeIntervalSince($0) } ?? 0
                 let raw = min(1.0, max(0.0, elapsed / duration))
-                // Ease the wave itself; grains add their own stagger.
-                let progress = 0.5 - 0.5 * cos(raw * .pi)
+                // LINEAR on purpose: the dust front must cross the screen at
+                // constant speed and EXIT the right edge — an ease-out tail
+                // decelerates it to a crawl short of the edge, which reads
+                // as the sweep stalling. Grains stagger their own deaths.
+                let progress = raw
 
                 Image(uiImage: capture.screenImage)
                     .resizable()
                     .frame(width: screenSize.width, height: screenSize.height)
                     .layerEffect(
                         ShaderLibrary.grainDissolveRect(
-                            .boundingRect,
+                            .float2(screenSize.width, screenSize.height),
                             .float4(vf.minX, vf.minY, vf.width, vf.height),
                             .float(12),
                             .float(progress),
                             .float(4.5)
                         ),
-                        maxSampleOffset: CGSize(width: 52, height: 210)
+                        // Width bound: symmetric breeze (≤48) + the sweep
+                        // gust (≤54) + a cell.
+                        maxSampleOffset: CGSize(width: 116, height: 210)
                     )
                     .onChange(of: raw >= 1) { _, done in
                         if done {
@@ -97,9 +102,15 @@ struct DevelopOverlay: View {
             }
         }
         .task {
-            var result = await VisionService.analyze(
-                capture.cropImage,
-            )
+            // AppModel started the analysis right after the bake — behind
+            // the shutter beat — so by now it usually only needs awaiting.
+            var result: VisionService.Analysis
+            if let early = model.pendingAnalysis {
+                result = await early.value
+                model.pendingAnalysis = nil
+            } else {
+                result = await VisionService.analyze(capture.cropImage)
+            }
             // Decode the reveal's textures now, while the grains are still
             // falling — its first frame must not stall on bitmap decode.
             result = await Task.detached(priority: .userInitiated) { [result] in

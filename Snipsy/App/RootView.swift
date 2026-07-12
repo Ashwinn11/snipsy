@@ -87,7 +87,7 @@ struct RootView: View {
         let mask = Image(uiImage: UIImage())
         let layerShaders = [
             ShaderLibrary.grainDissolveRect(
-                .boundingRect, .float4(0, 0, 1, 1), .float(1), .float(0), .float(9)),
+                .float2(1, 1), .float4(0, 0, 1, 1), .float(1), .float(0), .float(9)),
             ShaderLibrary.grainDissolveWaste(
                 .float2(1, 1), .float2(0, 0), .image(mask), .float4(0, 0, 1, 1),
                 .float(0.5), .float(9)),
