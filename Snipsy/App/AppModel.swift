@@ -202,15 +202,15 @@ final class AppModel {
     /// budget can't hold the subject-lift model on older devices): finish
     /// them here, where the model has room. Consumes the inbox.
     func drainShareInbox() {
-        let images = ShareInbox.drain()
-        guard !images.isEmpty else { return }
+        let items = ShareInbox.drain()
+        guard !items.isEmpty else { return }
         Task { @MainActor in
-            for image in images {
+            for item in items {
                 let analysis = await VisionService.analyze(
-                    image)
+                    item.image)
                 let pending = PendingStamp(
                     capture: Capture(
-                        screenImage: image, cropImage: image,
+                        screenImage: item.image, cropImage: item.image,
                         viewfinderRect: .zero),
                     style: analysis.cutout != nil && analysis.sticker != nil
                         ? .cutout : .classic,
@@ -225,7 +225,10 @@ final class AppModel {
                 // rather than dropping the share silently.
                 let kind: ArtifactKind =
                     pending.style == .cutout ? .sticker : .stamp
-                store.add(pending, title: analysis.label ?? "",
+                // A name typed in the share sheet wins over the classifier.
+                let typed = item.title?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                store.add(pending, title: typed.isEmpty ? (analysis.label ?? "") : typed,
                           variant: .tinted, kind: kind)
                 pillBump += 1
             }

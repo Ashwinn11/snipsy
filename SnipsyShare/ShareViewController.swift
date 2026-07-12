@@ -100,6 +100,9 @@ final class ShareComposerState {
     var analyzing = true
     var kept = false
     var choice: Choice? = nil
+    /// The artifact's name: prefilled with Vision's guess when it has one,
+    /// always editable inline. Renaming later lives in the app's album.
+    var title = ""
     /// The sticker can't be cut here (no memory budget for the model) —
     /// choosing it parks the photo for the app to finish.
     var stickerDeferred = false
@@ -152,21 +155,22 @@ final class ShareComposerState {
             suggestedTitle: analysis.label,
             tint: analysis.tint
         )
+        title = analysis.label ?? ""
         analyzing = false
     }
 
     func keep() {
         guard let pending, let choice, !kept else { return }
+        let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
         switch choice {
         case .sticker where stickerDeferred:
-            // The app cuts it on next launch — park the full crop.
-            ShareInbox.deposit(pending.capture.cropImage)
+            // The app cuts it on next launch — park the full crop, and the
+            // typed name rides along.
+            ShareInbox.deposit(pending.capture.cropImage, title: name)
         case .sticker:
-            store.add(pending, title: pending.suggestedTitle ?? "",
-                      variant: .tinted, kind: .sticker)
+            store.add(pending, title: name, variant: .tinted, kind: .sticker)
         case .paper(let v):
-            store.add(pending, title: pending.suggestedTitle ?? "",
-                      variant: v, kind: .stamp)
+            store.add(pending, title: name, variant: v, kind: .stamp)
         }
         kept = true
     }
@@ -176,6 +180,8 @@ struct ShareComposerView: View {
     @Bindable var state: ShareComposerState
     var onKeep: () -> Void
     var onCancel: () -> Void
+
+    @FocusState private var titleFocused: Bool
 
     var body: some View {
         ZStack {
@@ -222,7 +228,7 @@ struct ShareComposerView: View {
                             image: pending.displayImage,
                             style: pending.style,
                             tint: pending.tint.color,
-                            title: pending.suggestedTitle ?? "",
+                            title: state.title,
                             number: state.nextNumber,
                             date: .now,
                             variant: previewVariant,
@@ -234,6 +240,27 @@ struct ShareComposerView: View {
                         )
                         .frame(width: 210)
                         .shadow(color: Theme.shadow.opacity(0.22), radius: 16, y: 9)
+
+                        // Inline name: prefilled when Vision recognized the
+                        // subject, blank otherwise — editable either way.
+                        // Later changes live in the app's album. Bare text
+                        // over the stamp caption's own dashed rename rule —
+                        // no box.
+                        TextField("Name it", text: $state.title)
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(Theme.ink)
+                            .tint(Theme.postalRed)
+                            .submitLabel(.done)
+                            .focused($titleFocused)
+                            .frame(width: 210, height: 30)
+                            .overlay(alignment: .bottom) {
+                                Line()
+                                    .stroke(Theme.inkSoft.opacity(0.45),
+                                            style: StrokeStyle(lineWidth: 1,
+                                                               dash: [2.5, 3]))
+                                    .frame(height: 1)
+                            }
 
                         ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 11) {
@@ -295,6 +322,7 @@ struct ShareComposerView: View {
                 Spacer(minLength: 0)
 
                 Button {
+                    titleFocused = false
                     onKeep()
                 } label: {
                     HStack(spacing: 8) {

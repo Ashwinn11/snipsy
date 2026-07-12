@@ -14,27 +14,41 @@ enum ShareInbox {
             .appendingPathComponent("Snipsy/inbox", isDirectory: true)
     }
 
-    /// Park a crop for the app to finish as a sticker.
-    static func deposit(_ image: UIImage) {
+    /// Park a crop for the app to finish as a sticker. A name typed in the
+    /// share sheet rides along as a sidecar so the finished sticker keeps it.
+    static func deposit(_ image: UIImage, title: String? = nil) {
         guard let dir else { return }
         try? FileManager.default.createDirectory(
             at: dir, withIntermediateDirectories: true)
         guard let data = ImageOptimizer.optimized(image) else { return }
+        let id = UUID().uuidString
         try? data.write(
-            to: dir.appendingPathComponent("\(UUID().uuidString).heic"),
+            to: dir.appendingPathComponent("\(id).heic"),
             options: .atomic)
+        let name = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !name.isEmpty {
+            try? name.data(using: .utf8)?.write(
+                to: dir.appendingPathComponent("\(id).title"),
+                options: .atomic)
+        }
     }
 
-    /// Every parked crop, consuming the files.
-    static func drain() -> [UIImage] {
+    /// Every parked crop (and its typed name, if any), consuming the files.
+    static func drain() -> [(image: UIImage, title: String?)] {
         guard let dir,
               let files = try? FileManager.default.contentsOfDirectory(
                   at: dir, includingPropertiesForKeys: nil)
         else { return [] }
-        return files.compactMap { url in
-            defer { try? FileManager.default.removeItem(at: url) }
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return ImageOptimizer.downsampled(data: data)
+        return files.filter { $0.pathExtension == "heic" }.compactMap { url in
+            let titleURL = url.deletingPathExtension().appendingPathExtension("title")
+            defer {
+                try? FileManager.default.removeItem(at: url)
+                try? FileManager.default.removeItem(at: titleURL)
+            }
+            guard let data = try? Data(contentsOf: url),
+                  let image = ImageOptimizer.downsampled(data: data)
+            else { return nil }
+            return (image, try? String(contentsOf: titleURL, encoding: .utf8))
         }
     }
 }
