@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Page 3: the Messages journey, played inside a mini phone — a thread with
 /// the ⊕ compose button, the plus menu with Stickers, the drawer showing
-/// the real Snipsy tab and the four real stickers, and one landing on a
+/// the four real stickers under the compose bar, and one landing on a
 /// bubble. Four beats, looping.
 struct OnboardingMessagesPage: View {
     let demo: OnboardingDemo
@@ -80,8 +80,7 @@ struct OnboardingMessagesPage: View {
     private var journey: some View {
         ZStack {
             thread
-                .overlay(Color.black.opacity(
-                    beat == .menu || beat == .drawer ? 0.45 : 0))
+                .overlay(Color.black.opacity(beat == .menu ? 0.45 : 0))
 
             plusMenu
                 .frame(maxWidth: .infinity, maxHeight: .infinity,
@@ -164,7 +163,10 @@ struct OnboardingMessagesPage: View {
                 )
             }
             .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+            // The compose bar rides above the sticker drawer when it opens,
+            // exactly like real Messages (drawer: grabber 13 + gap 11 +
+            // stickers 60 + inset 16 = 100pt tall).
+            .padding(.bottom, beat == .drawer ? 112 : 12)
         }
         .background(Color(hex: 0xF7F7F9))
     }
@@ -232,32 +234,14 @@ struct OnboardingMessagesPage: View {
         )
     }
 
-    /// The sticker drawer: Snipsy tab active, the four real stickers.
+    /// The sticker drawer as it really appears: just the grabber and the
+    /// stickers on paper — Messages tucks its compose bar above the sheet.
     private var drawer: some View {
         VStack(spacing: 11) {
             Capsule()
                 .fill(Theme.inkSoft.opacity(0.4))
                 .frame(width: 30, height: 4)
                 .padding(.top, 9)
-
-            // App strip: generic packs + the real Snipsy tab, active.
-            HStack(spacing: 16) {
-                MockGenericIcon(size: 24, symbol: "face.smiling")
-                    .opacity(0.5)
-                VStack(spacing: 4) {
-                    HStack(spacing: 6) {
-                        AppIconView(size: 24)
-                        Text("Snipsy")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Theme.ink)
-                    }
-                    Capsule()
-                        .fill(Theme.postalRed)
-                        .frame(width: 64, height: 2)
-                }
-                MockGenericIcon(size: 24)
-                    .opacity(0.5)
-            }
 
             HStack(spacing: 13) {
                 ForEach(Array(demo.drawer.prefix(4).enumerated()),

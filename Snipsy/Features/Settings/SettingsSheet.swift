@@ -40,6 +40,12 @@ struct SettingsSheet: View {
                     .padding(.horizontal, 26)
 
                 VStack(spacing: 0) {
+                    // System prompt while the yearly budget lasts; after
+                    // that, straight to the store's write-review page.
+                    row("Rate Snipsy") {
+                        model.haptics.tick()
+                        model.reviews.rateManually()
+                    }
                     row("Terms of Service") { doc = .terms }
                     row("Privacy Policy") { doc = .privacy }
                 }

@@ -79,7 +79,9 @@ struct CameraScreen: View {
                 .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
                 .frame(width: 44, height: 44)
         }
-        .glassEffect(.regular.tint(.black.opacity(0.22)).interactive(), in: .circle)
+        // Fixed scrim, not glass: liquid glass refracts the live feed, so
+        // the chrome would flicker with every exposure change.
+        .background(.black.opacity(0.32), in: Circle())
         .position(x: 46, y: safeArea.top + 24)
         .onChange(of: pickedItem) { _, item in
             guard let item else { return }
@@ -117,7 +119,9 @@ struct CameraScreen: View {
                     .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
                     .frame(width: 44, height: 44)
             }
-            .glassEffect(.regular.tint(.black.opacity(0.22)).interactive(), in: .circle)
+            // Fixed scrim, not glass: liquid glass refracts the live feed, so
+        // the chrome would flicker with every exposure change.
+        .background(.black.opacity(0.32), in: Circle())
             .position(x: screenSize.width - 46, y: safeArea.top + 24)
         }
 
@@ -144,7 +148,9 @@ struct CameraScreen: View {
                 .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
                 .frame(width: 48, height: 48)
         }
-        .glassEffect(.regular.tint(.black.opacity(0.22)).interactive(), in: .circle)
+        // Fixed scrim, not glass: liquid glass refracts the live feed, so
+        // the chrome would flicker with every exposure change.
+        .background(.black.opacity(0.32), in: Circle())
         .position(x: screenSize.width - 66, y: barY)
     }
 }

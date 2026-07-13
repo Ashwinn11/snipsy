@@ -68,25 +68,6 @@ struct AppIconView: View {
     }
 }
 
-/// A neutral, anonymous app/action stand-in (dark circle).
-struct MockGenericIcon: View {
-    let size: CGFloat
-    var symbol: String? = nil
-
-    var body: some View {
-        Circle()
-            .fill(Color(hex: 0x3A3A3E))
-            .frame(width: size, height: size)
-            .overlay {
-                if let symbol {
-                    Image(systemName: symbol)
-                        .font(.system(size: size * 0.4, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.55))
-                }
-            }
-    }
-}
-
 /// A neutral app tile for light share-sheet rows (white rounded square).
 struct MockAppTile: View {
     let size: CGFloat

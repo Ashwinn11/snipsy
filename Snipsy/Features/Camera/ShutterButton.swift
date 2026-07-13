@@ -72,7 +72,9 @@ struct CollectionPill: View {
             .padding(.horizontal, 15)
             .frame(height: 48)
         }
-        .glassEffect(.regular.interactive(), in: .capsule)
+        // Fixed scrim, not glass — see CameraScreen: glass refracts the
+        // live feed, so the pill would flicker with every exposure change.
+        .background(.black.opacity(0.32), in: Capsule())
         .scaleEffect(bounce ? 1.14 : 1)
         .onGeometryChange(for: CGRect.self) { proxy in
             proxy.frame(in: .global)

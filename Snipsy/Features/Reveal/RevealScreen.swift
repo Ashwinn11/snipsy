@@ -46,6 +46,9 @@ struct RevealScreen: View {
     @State private var caption: Double = 0
     @State private var settle: Double = 0
     @State private var chromeVisible = false
+    /// Keep pill's measured width — re-centers the lone retake button
+    /// before a selection exists (Keep hidden), exact for any locale.
+    @State private var keepWidth: CGFloat = 0
 
     /// One row, five options: the bare sticker or one of four papers.
     enum ArtifactChoice: Equatable {
@@ -299,6 +302,13 @@ struct RevealScreen: View {
             await afterNextCommit()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 options = true
+            }
+            // The first-ever output screen is the wow moment — worth one
+            // of the year's three rating prompts. After the entrance has
+            // fully settled, and only if we're still on this screen.
+            try? await Task.sleep(for: .seconds(1.6))
+            if case .reveal = model.phase {
+                model.reviews.fire(.firstReveal)
             }
         }
     }
@@ -576,6 +586,10 @@ struct RevealScreen: View {
     @ViewBuilder
     private var chrome: some View {
         let barY = screenSize.height - max(safeArea.bottom, 16) - 50
+        // Retake is the only exit before a choice is made — it rises with
+        // the options row. Keep still waits for a selection. Both stay
+        // mounted in one HStack so the retake button never changes place.
+        let retakeShown = options && !flying
 
         Group {
             HStack(spacing: 14) {
@@ -589,6 +603,9 @@ struct RevealScreen: View {
                         .frame(width: 54, height: 54)
                 }
                 .glassEffect(.regular.interactive(), in: .circle)
+                .opacity(retakeShown ? 1 : 0)
+                .offset(y: retakeShown ? 0 : 14)
+                .allowsHitTesting(retakeShown)
 
                 Button(action: keepTapped) {
                     HStack(spacing: 8) {
@@ -603,12 +620,19 @@ struct RevealScreen: View {
                     .background(Theme.postalRed, in: Capsule())
                 }
                 .buttonStyle(PressableButtonStyle())
+                .opacity(chromeVisible ? 1 : 0)
+                .offset(y: chromeVisible ? 0 : 14)
+                .allowsHitTesting(chromeVisible)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
+                    keepWidth = $0
+                }
             }
+            // Lone retake sits dead-center; when Keep fades in it glides
+            // left into the pair. chromeVisible flips inside springs, so
+            // the slide rides the same animation.
+            .offset(x: chromeVisible ? 0 : (keepWidth + 14) / 2)
             .position(x: screenSize.width / 2, y: barY)
         }
-        .opacity(chromeVisible ? 1 : 0)
-        .offset(y: chromeVisible ? 0 : 14)
-        .allowsHitTesting(chromeVisible)
     }
 }
 

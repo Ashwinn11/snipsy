@@ -99,39 +99,180 @@ struct AlbumScreen: View {
         return n == 1 ? "1 stamp" : "\(n) stamps"
     }
 
+    // MARK: Timeline
+
+    private static let monthTitleFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM yyyy"; return f
+    }()
+    private static let monthNameFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMMM"; return f
+    }()
+
+    /// The timeline grouped month-first: each section owns its day groups,
+    /// and its header is the pinnable month divider.
+    private var monthSections:
+        [(month: Date, title: String, days: [(day: Date, title: String, stamps: [Stamp])])] {
+        let calendar = Calendar.current
+        var out: [(month: Date, title: String,
+                   days: [(day: Date, title: String, stamps: [Stamp])])] = []
+        for group in model.store.dayGroups {
+            let month = calendar.dateInterval(of: .month, for: group.day)?.start ?? group.day
+            let day = (day: group.day, title: group.title, stamps: group.stamps)
+            if out.last?.month == month {
+                out[out.count - 1].days.append(day)
+            } else {
+                out.append((month, Self.monthTitleFormatter.string(from: month), [day]))
+            }
+        }
+        return out
+    }
+
+    /// Every month in the collection, newest first — the jump menu's entries.
+    private var months: [(month: Date, label: String)] {
+        let calendar = Calendar.current
+        var seen = Set<Date>()
+        var out: [(Date, String)] = []
+        for group in model.store.dayGroups {
+            let month = calendar.dateInterval(of: .month, for: group.day)?.start ?? group.day
+            guard seen.insert(month).inserted else { continue }
+            out.append((month, Self.monthNameFormatter.string(from: month)))
+        }
+        return out
+    }
+
+    /// Months grouped by year, newest first — the jump menu shows year
+    /// sections only when the collection actually spans years.
+    private var jumpYears: [(year: Int, months: [(month: Date, label: String)])] {
+        let calendar = Calendar.current
+        var out: [(year: Int, months: [(month: Date, label: String)])] = []
+        for m in months {
+            let year = calendar.component(.year, from: m.month)
+            if out.last?.year == year {
+                out[out.count - 1].months.append(m)
+            } else {
+                out.append((year, [m]))
+            }
+        }
+        return out
+    }
+
+    /// The month divider IS the navigation: it pins to the top while its
+    /// month scrolls past (you always know where you are), and tapping it
+    /// opens the jump menu. No chip rows, no extra chrome.
+    @ViewBuilder
+    private func monthHeader(month: Date, title: String,
+                             proxy: ScrollViewProxy) -> some View {
+        if months.count > 1 {
+            Menu {
+                if jumpYears.count > 1 {
+                    ForEach(jumpYears, id: \.year) { group in
+                        Section(String(group.year)) {
+                            monthButtons(group.months, current: month, proxy: proxy)
+                        }
+                    }
+                } else {
+                    monthButtons(months, current: month, proxy: proxy)
+                }
+            } label: {
+                headerLine(title, chevron: true)
+            }
+            .buttonStyle(.plain)
+            .background(Theme.paper.padding(.horizontal, -26))
+        } else {
+            headerLine(title, chevron: false)
+                .background(Theme.paper.padding(.horizontal, -26))
+        }
+    }
+
+    private func monthButtons(_ items: [(month: Date, label: String)],
+                              current: Date, proxy: ScrollViewProxy) -> some View {
+        ForEach(items, id: \.month) { m in
+            Button {
+                model.haptics.tick()
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    proxy.scrollTo(m.month, anchor: .top)
+                }
+            } label: {
+                if m.month == current {
+                    Label(m.label, systemImage: "checkmark")
+                } else {
+                    Text(m.label)
+                }
+            }
+        }
+    }
+
+    private func headerLine(_ title: String, chevron: Bool) -> some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(Theme.display(26))
+                    .foregroundStyle(Theme.ink)
+                if chevron {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.inkSoft)
+                }
+            }
+            Line()
+                .stroke(Theme.inkSoft.opacity(0.4),
+                        style: StrokeStyle(lineWidth: 1, dash: [2.5, 4]))
+                .frame(height: 1)
+        }
+        .padding(.vertical, 7)
+        .contentShape(Rectangle())
+    }
+
     // MARK: Grid
 
     private func grid(bottomInset: CGFloat) -> some View {
-        ScrollView(showsIndicators: false) {
-            LazyVStack(alignment: .leading, spacing: 34) {
-                ForEach(model.store.dayGroups, id: \.day) { group in
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(group.title)
-                                .font(Theme.display(21))
-                                .foregroundStyle(Theme.ink.opacity(0.8))
-                            Text(group.stamps.count == 1 ? "1 stamp" : "\(group.stamps.count) stamps")
-                                .font(.system(size: 12.5, design: .rounded))
-                                .foregroundStyle(Theme.inkSoft)
-                        }
-
-                        LazyVGrid(
-                            columns: [
-                                GridItem(.flexible(), spacing: 24),
-                                GridItem(.flexible(), spacing: 24),
-                            ],
-                            spacing: 30
-                        ) {
-                            ForEach(Array(group.stamps.enumerated()), id: \.element.id) { i, stamp in
-                                cell(stamp, index: i)
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 34,
+                           pinnedViews: [.sectionHeaders]) {
+                    ForEach(monthSections, id: \.month) { section in
+                        Section {
+                            ForEach(section.days, id: \.day) { row in
+                                dayBlock(row)
                             }
+                        } header: {
+                            monthHeader(month: section.month, title: section.title,
+                                        proxy: proxy)
+                                .id(section.month)
                         }
                     }
                 }
+                .padding(.horizontal, 26)
+                .padding(.top, 4)
+                .padding(.bottom, bottomInset + 36)
             }
-            .padding(.horizontal, 26)
-            .padding(.top, 4)
-            .padding(.bottom, bottomInset + 36)
+        }
+    }
+
+    private func dayBlock(
+        _ row: (day: Date, title: String, stamps: [Stamp])
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(row.title)
+                    .font(Theme.display(21))
+                    .foregroundStyle(Theme.ink.opacity(0.8))
+                Text(row.stamps.count == 1 ? "1 stamp" : "\(row.stamps.count) stamps")
+                    .font(.system(size: 12.5, design: .rounded))
+                    .foregroundStyle(Theme.inkSoft)
+            }
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 24),
+                    GridItem(.flexible(), spacing: 24),
+                ],
+                spacing: 30
+            ) {
+                ForEach(Array(row.stamps.enumerated()), id: \.element.id) { i, stamp in
+                    cell(stamp, index: i)
+                }
+            }
         }
     }
 

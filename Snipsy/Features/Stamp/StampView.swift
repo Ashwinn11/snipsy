@@ -633,7 +633,10 @@ struct StampView: View {
             .resizable()
             .scaledToFill()
             .frame(width: content.width, height: content.height)
-            .clipShape(RoundedRectangle(cornerRadius: content.width * 0.01))
+            // Same corner proportion the develop dissolve leaves on the
+            // viewfinder (12pt on a ~340pt rect), so the snap → reveal
+            // handoff keeps one silhouette.
+            .clipShape(RoundedRectangle(cornerRadius: content.width * 0.035))
             .offset(x: content.minX, y: content.minY)
     }
 

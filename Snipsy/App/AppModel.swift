@@ -42,6 +42,7 @@ final class AppModel {
     let store = StampStore()
     let haptics = Haptics()
     let purchases = PurchaseController()
+    let reviews = ReviewPrompter()
 
     /// Vision kicked off the moment the crop is baked — the shutter beat
     /// and the grain dissolve run on top of it, so the reveal is usually
@@ -196,6 +197,7 @@ final class AppModel {
         phase = .camera
         pillBump += 1
         haptics.success()
+        reviews.stampKept(count: store.stamps.count)
     }
 
     /// Stickers the share extension couldn't cut in-process (its memory
@@ -232,6 +234,7 @@ final class AppModel {
                           variant: .tinted, kind: kind)
                 pillBump += 1
             }
+            reviews.stampKept(count: store.stamps.count)
         }
     }
 }
