@@ -54,11 +54,11 @@ struct StampDetailView: View {
         }
         .onAppear { localTitle = current.title }
         .confirmationDialog(
-            "Remove this stamp from your collection?",
+            "Remove this from your collection?",
             isPresented: $confirmDelete,
             titleVisibility: .visible
         ) {
-            Button("Remove Stamp", role: .destructive) {
+            Button("Remove", role: .destructive) {
                 model.haptics.thunk()
                 onClose()
                 Task { @MainActor in
@@ -79,29 +79,59 @@ struct StampDetailView: View {
         return TimelineView(.animation(paused: rippleStart == nil)) { timeline in
             let rippleTime = rippleStart.map { timeline.date.timeIntervalSince($0) } ?? 10
 
-            StampView(
-                image: model.store.image(for: current),
-                style: current.style,
-                tint: current.tint.color,
-                title: editing ? localTitle : current.displayTitle,
-                number: current.number,
-                date: current.date,
-                variant: current.variant,
-                labelAnchor: current.kind == .sticker ? current.labelAnchor : nil,
-                assembly: current.kind == .sticker
-                    ? StampView.Assembly(paper: 0, caption: 0, content: .final)
-                    : .dressed,
-                holoEnabled: true,
-                holoStrength: magnitude * 0.75,
-                holoSweep: 0.5 + Double(tilt.width) / 220,
-                holoDir: holoDirection,
-                liquidEnabled: true,
-                liquidCenter: rippleCenter,
-                liquidTime: rippleTime,
-                editableTitle: editing ? $localTitle : nil,
-                titleFocused: $titleFocused,
-                onSubmitTitle: commitRename
-            )
+            switch current.kind {
+            case .polaroid:
+                immersed(rippleTime: rippleTime, magnitude: magnitude) {
+                    PolaroidView(
+                        image: model.store.image(for: current),
+                        title: editing ? localTitle : current.title,
+                        date: current.date,
+                        editableTitle: editing ? $localTitle : nil,
+                        titleFocused: $titleFocused,
+                        onSubmitTitle: commitRename
+                    )
+                }
+            case .card:
+                immersed(rippleTime: rippleTime, magnitude: magnitude) {
+                    CardView(
+                        image: model.store.image(for: current),
+                        title: editing ? localTitle : current.title,
+                        date: current.date,
+                        editableTitle: editing ? $localTitle : nil,
+                        titleFocused: $titleFocused,
+                        onSubmitTitle: commitRename
+                    )
+                }
+            case .canvas:
+                immersed(rippleTime: rippleTime, magnitude: magnitude) {
+                    FlattenedCanvas(image: model.store.image(for: current),
+                                    aspect: current.canvas?.aspect ?? CardView.aspect)
+                }
+            case .stamp, .sticker:
+                StampView(
+                    image: model.store.image(for: current),
+                    style: current.style,
+                    tint: current.tint.color,
+                    title: editing ? localTitle : current.displayTitle,
+                    number: current.number,
+                    date: current.date,
+                    variant: current.variant,
+                    labelAnchor: current.kind == .sticker ? current.labelAnchor : nil,
+                    assembly: current.kind == .sticker
+                        ? StampView.Assembly(paper: 0, caption: 0, content: .final)
+                        : .dressed,
+                    holoEnabled: true,
+                    holoStrength: magnitude * 0.75,
+                    holoSweep: 0.5 + Double(tilt.width) / 220,
+                    holoDir: holoDirection,
+                    liquidEnabled: true,
+                    liquidCenter: rippleCenter,
+                    liquidTime: rippleTime,
+                    editableTitle: editing ? $localTitle : nil,
+                    titleFocused: $titleFocused,
+                    onSubmitTitle: commitRename
+                )
+            }
         }
         .frame(width: w)
         .matchedGeometryEffect(id: stamp.id, in: ns, isSource: true)
@@ -140,6 +170,22 @@ struct StampDetailView: View {
         )
     }
 
+    /// The shimmer + poke the stamp wears internally, worn externally by
+    /// the flat artifact kinds. Off while renaming — a live TextField must
+    /// never sit under a shader.
+    private func immersed<V: View>(
+        rippleTime: Double, magnitude: Double, @ViewBuilder _ view: () -> V
+    ) -> some View {
+        view()
+            .modifier(HoloModifier(enabled: !editing,
+                                   strength: magnitude * 0.6,
+                                   sweep: 0.5 + Double(tilt.width) / 220,
+                                   dir: holoDirection))
+            .modifier(LiquidModifier(enabled: !editing,
+                                     center: rippleCenter,
+                                     time: rippleTime))
+    }
+
     private var holoDirection: CGPoint {
         let m = max(1, hypot(tilt.width, tilt.height))
         guard m > 8 else { return CGPoint(x: 1, y: 0.35) }
@@ -166,7 +212,8 @@ struct StampDetailView: View {
                 .glassEffect(.regular.interactive(), in: .circle)
             }
 
-            if current.kind == .stamp || current.labelAnchor != nil {
+            if current.kind == .stamp || current.kind == .polaroid
+                || current.kind == .card || current.labelAnchor != nil {
                 Button {
                     model.haptics.tick()
                     if editing {
@@ -183,6 +230,14 @@ struct StampDetailView: View {
             }
 
             Button {
+                model.haptics.tick()
+                openInCanvas()
+            } label: {
+                actionIcon("paintbrush")
+            }
+            .glassEffect(.regular.interactive(), in: .circle)
+
+            Button {
                 confirmDelete = true
             } label: {
                 actionIcon("trash")
@@ -191,6 +246,26 @@ struct StampDetailView: View {
             .glassEffect(.regular.interactive(), in: .circle)
         }
         .task { await renderShareImage() }
+    }
+
+    /// Decorate: open this artifact on the canvas — compositions re-open
+    /// their live layers, everything else seeds a fresh page.
+    private func openInCanvas() {
+        if current.kind == .canvas, let doc = current.canvas {
+            model.canvasSession = CanvasSession(
+                stampID: current.id, seed: doc, seedTitle: current.title)
+        } else {
+            var doc = CanvasDocument()
+            switch current.kind {
+            case .stamp: doc.background = .paper(current.variant)
+            case .polaroid: doc.background = .polaroid
+            default: doc.background = .card
+            }
+            doc.aspect = CanvasDocument.aspect(for: doc.background)
+            model.canvasSession = CanvasSession(
+                seed: doc, seedTitle: current.title, seedArtifact: current)
+        }
+        onClose()
     }
 
     private func actionIcon(_ name: String) -> some View {
@@ -207,13 +282,16 @@ struct StampDetailView: View {
         if trimmed != current.title {
             model.store.rename(current, to: trimmed)
             model.haptics.success()
+            // The share render bakes the name in — it must follow.
+            Task { @MainActor in await renderShareImage() }
         }
     }
 
-    /// The item in its own form: stickers share the die cut (alpha intact),
-    /// stamps share the flattened render on paper.
+    /// The item in its own form: compositions share their stored flatten,
+    /// everything else shares the dressed render (for stickers that is the
+    /// die cut wearing its name tag — the stored file is the RAW cut).
     private var shareArtifact: PNGArtifact? {
-        if current.kind == .sticker {
+        if current.kind == .canvas {
             guard let ui = model.store.image(for: current) else { return nil }
             return PNGArtifact(title: current.displayTitle, uiImage: ui)
         }
@@ -223,9 +301,36 @@ struct StampDetailView: View {
 
     @MainActor
     private func renderShareImage() async {
-        // Transparent export: the stamp's perforated silhouette IS the edge.
-        let view = StampView(stamp: current, image: model.store.image(for: current))
-            .frame(width: 360, height: 472.5)
+        // Stickers store the bare die cut; the name label only exists at
+        // render time. Composite it here exactly like the drawer copy
+        // does, or the export loses the name. Untitled ships bare.
+        if current.kind == .sticker {
+            guard let base = model.store.image(for: current) else { return }
+            if let anchor = current.labelAnchor, !current.title.isEmpty {
+                let renderer = ImageRenderer(content: StickerArtifact(
+                    image: base, title: current.title, anchor: anchor))
+                renderer.scale = 1
+                renderer.isOpaque = false
+                if let ui = renderer.uiImage {
+                    shareUIImage = ui
+                    shareImage = Image(uiImage: ui)
+                    return
+                }
+            }
+            shareUIImage = base
+            shareImage = Image(uiImage: base)
+            return
+        }
+
+        // Transparent export: the artifact's silhouette IS the edge.
+        let aspect: CGFloat = switch current.kind {
+        case .polaroid: PolaroidView.aspect
+        case .card: CardView.aspect
+        case .canvas: current.canvas?.aspect ?? CardView.aspect
+        default: 1.3125
+        }
+        let view = ArtifactView(stamp: current, image: model.store.image(for: current))
+            .frame(width: 360, height: 360 * aspect)
         let renderer = ImageRenderer(content: view)
         renderer.scale = 3
         renderer.isOpaque = false

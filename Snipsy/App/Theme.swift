@@ -34,6 +34,22 @@ enum Theme {
     static func stampEngraved(_ size: CGFloat) -> Font {
         .system(size: size, weight: .semibold, design: .serif)
     }
+    /// Pen-on-polaroid captions and canvas text. Bradley Hand ships with
+    /// iOS; Noteworthy is the documented fallback.
+    static func handwritten(_ size: CGFloat) -> Font {
+        if UIFont(name: "BradleyHandITCTT-Bold", size: size) != nil {
+            return .custom("BradleyHandITCTT-Bold", size: size)
+        }
+        return .custom("Noteworthy-Bold", size: size)
+    }
+    /// Flourished calligraphy for canvas text. Snell Roundhand ships with
+    /// iOS; Savoye LET is the fallback.
+    static func script(_ size: CGFloat) -> Font {
+        if UIFont(name: "SnellRoundhand-Black", size: size) != nil {
+            return .custom("SnellRoundhand-Black", size: size)
+        }
+        return .custom("SavoyeLetPlain", size: size)
+    }
 }
 
 extension Color {

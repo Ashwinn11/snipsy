@@ -69,6 +69,17 @@ struct AlbumScreen: View {
             Spacer()
             Button {
                 model.haptics.tick()
+                model.canvasSession = CanvasSession()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 42, height: 42)
+            }
+            .glassEffect(.regular.interactive(), in: .circle)
+
+            Button {
+                model.haptics.tick()
                 showSettings = true
             } label: {
                 Image(systemName: "gearshape")
@@ -96,7 +107,7 @@ struct AlbumScreen: View {
 
     private var countLine: String {
         let n = model.store.stamps.count
-        return n == 1 ? "1 stamp" : "\(n) stamps"
+        return n == 1 ? "1 memory" : "\(n) memories"
     }
 
     // MARK: Timeline
@@ -283,7 +294,7 @@ struct AlbumScreen: View {
                 selected = stamp
             }
         } label: {
-            StampView(stamp: stamp, image: model.store.image(for: stamp))
+            ArtifactView(stamp: stamp, image: model.store.image(for: stamp))
                 .rotationEffect(.degrees(index.isMultiple(of: 2) ? -2.2 : 2.4))
         }
         .buttonStyle(PressableButtonStyle())

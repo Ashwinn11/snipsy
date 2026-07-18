@@ -50,14 +50,40 @@ struct RevealScreen: View {
     /// before a selection exists (Keep hidden), exact for any locale.
     @State private var keepWidth: CGFloat = 0
 
-    /// One row, five options: the bare sticker or one of four papers.
+    /// One row: the bare sticker, the instant formats, then the papers.
     enum ArtifactChoice: Equatable {
         case sticker
+        case polaroid
+        case card
         case paper(StampVariant)
     }
     @State private var options = false
     @State private var selection: ArtifactChoice? = nil
     @State private var selectedVariant: StampVariant = .tinted
+
+    // Instant formats — crossfaded over the stamp stack by value, one fade
+    // per format so polaroid ↔ card animates too. Both views stay mounted
+    // from the first frame (0.001 floor) so their grain shaders pre-pay.
+    @State private var polaroidFade: Double = 0
+    @State private var cardFade: Double = 0
+    /// One-shot polaroid develop beat (photo prints 65% → full).
+    @State private var polaroidDevelop: Double = 1
+    @State private var firstPolaroidDone = false
+
+    /// Whether an instant format owns the stage (gates hit-testing and the
+    /// stamp's rename wiring).
+    private var altSelected: Bool {
+        selection == .polaroid || selection == .card
+    }
+
+    /// The stage frame's height/width for the current selection.
+    private var currentAspect: CGFloat {
+        switch selection {
+        case .polaroid: PolaroidView.aspect
+        case .card: CardView.aspect
+        default: 1.3125
+        }
+    }
 
     // Liquid poke on the die-cut sticker
     @State private var rippleCenter: CGPoint = .zero
@@ -98,7 +124,7 @@ struct RevealScreen: View {
 
     private var centeredFrame: CGRect {
         let w = min(screenSize.width * 0.72, 330)
-        let h = w * 1.3125
+        let h = w * currentAspect
         return CGRect(x: (screenSize.width - w) / 2,
                       y: screenSize.height * 0.42 - h / 2,
                       width: w, height: h)
@@ -108,7 +134,7 @@ struct RevealScreen: View {
         let pill = model.pillFrame
         guard pill != .zero else { return centeredFrame }
         let h: CGFloat = 42
-        let w = h / 1.3125
+        let w = h / currentAspect
         return CGRect(x: pill.midX - w / 2, y: pill.midY - h / 2, width: w, height: h)
     }
 
@@ -178,30 +204,69 @@ struct RevealScreen: View {
         TimelineView(.animation(paused: rippleStart == nil)) { timeline in
             let rippleTime = rippleStart.map { timeline.date.timeIntervalSince($0) } ?? 10
 
-            StampView(
-                image: pending.displayImage,
-                style: pending.style,
-                tint: pending.tint.color,
-                title: title,
-                number: model.store.nextNumber,
-                date: .now,
-                variant: selectedVariant,
-                stickerBox: pending.stickerBox,
-                rawCrop: pending.capture.cropImage,
-                maskImage: pending.cutout,
-                labelAnchor: pending.stickerLabelAnchor,
-                assembly: assembly(),
-                holoEnabled: true,
-                holoStrength: holoStrength,
-                holoSweep: holoSweep,
-                liquidEnabled: true,
-                liquidCenter: rippleCenter,
-                liquidTime: rippleTime,
-                editableTitle: editingTitle ? $title : nil,
-                titleFocused: $titleFocused,
-                onSubmitTitle: { stopEditingTitle() },
-                onTapCaption: chromeVisible && !flying ? { startEditingTitle() } : nil
-            )
+            ZStack {
+                StampView(
+                    image: pending.displayImage,
+                    style: pending.style,
+                    tint: pending.tint.color,
+                    title: title,
+                    number: model.store.nextNumber,
+                    date: .now,
+                    variant: selectedVariant,
+                    stickerBox: pending.stickerBox,
+                    rawCrop: pending.capture.cropImage,
+                    maskImage: pending.cutout,
+                    labelAnchor: pending.stickerLabelAnchor,
+                    assembly: assembly(),
+                    holoEnabled: true,
+                    holoStrength: holoStrength,
+                    holoSweep: holoSweep,
+                    liquidEnabled: true,
+                    liquidCenter: rippleCenter,
+                    liquidTime: rippleTime,
+                    editableTitle: editingTitle && !altSelected ? $title : nil,
+                    titleFocused: $titleFocused,
+                    onSubmitTitle: { stopEditingTitle() },
+                    onTapCaption: chromeVisible && !flying && !altSelected
+                        ? { startEditingTitle() } : nil
+                )
+                .opacity(max(0.001, 1 - max(polaroidFade, cardFade)))
+                .allowsHitTesting(!altSelected)
+
+                // Instant formats ride their own fades over the stamp
+                // stack, wearing the poke ripple externally. Off while
+                // renaming — a live TextField never sits under a shader.
+                PolaroidView(
+                    image: pending.capture.cropImage,
+                    title: title,
+                    date: .now,
+                    develop: polaroidDevelop,
+                    editableTitle: editingTitle && selection == .polaroid ? $title : nil,
+                    titleFocused: $titleFocused,
+                    onSubmitTitle: { stopEditingTitle() },
+                    onTapCaption: chromeVisible && !flying && selection == .polaroid
+                        ? { startEditingTitle() } : nil
+                )
+                .modifier(LiquidModifier(enabled: !editingTitle,
+                                         center: rippleCenter, time: rippleTime))
+                .opacity(max(0.001, polaroidFade))
+                .allowsHitTesting(selection == .polaroid)
+
+                CardView(
+                    image: pending.capture.cropImage,
+                    title: title,
+                    date: .now,
+                    editableTitle: editingTitle && selection == .card ? $title : nil,
+                    titleFocused: $titleFocused,
+                    onSubmitTitle: { stopEditingTitle() },
+                    onTapCaption: chromeVisible && !flying && selection == .card
+                        ? { startEditingTitle() } : nil
+                )
+                .modifier(LiquidModifier(enabled: !editingTitle,
+                                         center: rippleCenter, time: rippleTime))
+                .opacity(max(0.001, cardFade))
+                .allowsHitTesting(selection == .card)
+            }
         }
         .frame(width: frame.width, height: frame.height)
         .gesture(
@@ -339,6 +404,14 @@ struct RevealScreen: View {
         Task { @MainActor in
             switch choice {
             case .sticker:
+                // Coming from an instant format: hand the stage back to
+                // the stamp stack before (or while) the cut plays.
+                if polaroidFade > 0 || cardFade > 0 {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                        polaroidFade = 0
+                        cardFade = 0
+                    }
+                }
                 if !waveCommitted {
                     // FIRST CUT — cinematic. The press dips the sheet and
                     // the outline appears…
@@ -386,6 +459,42 @@ struct RevealScreen: View {
                         flight = 1
                     }
                 }
+            case .polaroid, .card:
+                // Instant format: land the photo (finish any shatter
+                // forward, melt any half punch) and crossfade the format
+                // over the stamp stack — the raw photo showing through
+                // mid-fade reads as the print re-framing.
+                if waveCommitted {
+                    if wasteProgress < 1 { driveWave(duration: 0.25) }
+                    withAnimation(.spring(response: 0.40, dampingFraction: 0.86)) {
+                        stickerness = 0
+                        flight = 0
+                        settle = 1
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
+                        stickerness = 0
+                        press = 0
+                        flight = 0
+                        settle = 1
+                    }
+                }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
+                    paper = 0.001
+                    caption = 0.001
+                }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+                    polaroidFade = choice == .polaroid ? 1 : 0
+                    cardFade = choice == .card ? 1 : 0
+                }
+                if choice == .polaroid, !firstPolaroidDone {
+                    // The develop beat: the print rises to full exposure.
+                    firstPolaroidDone = true
+                    polaroidDevelop = 0
+                    withAnimation(.easeOut(duration: 0.9).delay(0.25)) {
+                        polaroidDevelop = 1
+                    }
+                }
             case .paper:
                 if waveCommitted {
                     // SWITCH → stamp: finish any unfinished shatter fast
@@ -397,6 +506,8 @@ struct RevealScreen: View {
                         flight = 0
                         paper = 1
                         settle = 1
+                        polaroidFade = 0
+                        cardFade = 0
                     }
                 } else {
                     // Nothing was ever cut (or the punch was aborted) —
@@ -407,6 +518,8 @@ struct RevealScreen: View {
                         flight = 0
                         paper = 1
                         settle = 1
+                        polaroidFade = 0
+                        cardFade = 0
                     }
                 }
                 if first {
@@ -473,6 +586,32 @@ struct RevealScreen: View {
             return
         }
 
+        if altSelected {
+            // Instant formats fly whole — the format view already owns the
+            // stage, nothing to restore underneath it.
+            let kind: ArtifactKind = selection == .polaroid ? .polaroid : .card
+            keeping = true
+            Task { @MainActor in
+                withAnimation(Theme.spring) {
+                    stickerness = 0
+                    flight = 0
+                    settle = 1
+                }
+                await afterNextCommit()
+                try? await Task.sleep(for: .seconds(0.35))
+                withAnimation(Theme.spring) {
+                    flying = true
+                    chromeVisible = false
+                }
+                withAnimation(.easeIn(duration: 0.18).delay(0.34)) {
+                    stampGone = true
+                }
+                try? await Task.sleep(for: .seconds(0.52))
+                model.keep(pending, title: title, variant: .tinted, kind: kind)
+            }
+            return
+        }
+
         withAnimation(Theme.spring) {
             stickerness = 0
             flight = 0
@@ -522,6 +661,16 @@ struct RevealScreen: View {
                             .frame(width: 52, height: 68)
                             .shadow(color: Theme.shadow.opacity(0.22), radius: 3, y: 2)
                     }
+                }
+                optionButton(.polaroid, selected: selection == .polaroid) {
+                    PolaroidView(image: pending.capture.cropImage,
+                                 title: "", appear: 0)
+                        .frame(width: 52)
+                }
+                optionButton(.card, selected: selection == .card) {
+                    CardView(image: pending.capture.cropImage,
+                             title: "", appear: 0)
+                        .frame(width: 52)
                 }
                 ForEach(StampVariant.allCases) { v in
                     optionButton(.paper(v), selected: selection == .paper(v)) {

@@ -107,10 +107,18 @@ final class StampStore {
             } else {
                 data = ImageOptimizer.stickerPNG(display)
             }
+        } else if stamp.kind == .canvas {
+            // The flatten already happened at save — don't re-render.
+            data = ImageOptimizer.stickerPNG(display)
         } else {
+            let aspect: CGFloat = switch stamp.kind {
+            case .polaroid: PolaroidView.aspect
+            case .card: CardView.aspect
+            default: 1.3125
+            }
             let renderer = ImageRenderer(content:
-                StampView(stamp: stamp, image: display)
-                    .frame(width: 400, height: 525))
+                ArtifactView(stamp: stamp, image: display)
+                    .frame(width: 400, height: 400 * aspect))
             renderer.scale = 1.5
             renderer.isOpaque = false
             data = renderer.uiImage.flatMap { ImageOptimizer.stickerPNG($0) }
@@ -161,7 +169,9 @@ final class StampStore {
         case .sticker:
             display = pending.displayImage
             style = .cutout
-        case .stamp:
+        case .stamp, .polaroid, .card, .canvas:
+            // Instant-photo idiom: the full crop fills the frame. (.canvas
+            // never arrives here — compositions come through addCanvas.)
             display = pending.capture.cropImage
             style = .classic
         }
@@ -192,12 +202,97 @@ final class StampStore {
         return stamp
     }
 
+    /// Keep a finished composition: the flattened preview is the stamp's
+    /// image, the layer document rides the index for re-editing.
+    @discardableResult
+    func addCanvas(_ doc: CanvasDocument, preview: UIImage, title: String) -> Stamp {
+        let id = UUID()
+        let file = "\(id.uuidString).heic"
+        let destination = imagesDir.appendingPathComponent(file)
+        Task.detached(priority: .utility) {
+            if let data = ImageOptimizer.optimized(preview) {
+                try? data.write(to: destination)
+            }
+        }
+        let stamp = Stamp(
+            id: id,
+            title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            date: Date(),
+            number: nextNumber,
+            style: .classic,
+            tint: .paper,
+            imageFile: file,
+            variant: .tinted,
+            kind: .canvas,
+            labelAnchor: nil,
+            canvas: doc
+        )
+        cache.setObject(preview, forKey: file as NSString)
+        stamps.insert(stamp, at: 0)
+        save()
+        writeDrawerCopy(for: stamp, display: preview)
+        return stamp
+    }
+
+    /// Re-save an edited composition in place — id, number and date
+    /// survive; layer files the new document dropped are collected.
+    func updateCanvas(_ id: UUID, doc: CanvasDocument, preview: UIImage) {
+        guard let i = stamps.firstIndex(where: { $0.id == id }) else { return }
+        let oldFiles = Set(stamps[i].allImageFiles)
+        stamps[i].canvas = doc
+        let kept = Set(stamps[i].allImageFiles)
+        for file in oldFiles.subtracting(kept) {
+            try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(file))
+            cache.removeObject(forKey: file as NSString)
+        }
+        let destination = imagesDir.appendingPathComponent(stamps[i].imageFile)
+        Task.detached(priority: .utility) {
+            if let data = ImageOptimizer.optimized(preview) {
+                try? data.write(to: destination)
+            }
+        }
+        cache.setObject(preview, forKey: stamps[i].imageFile as NSString)
+        save()
+        writeDrawerCopy(for: stamps[i], display: preview)
+    }
+
+    /// Park a canvas layer bitmap under images/; returns its file name.
+    /// The cache serves reads until the write lands (same contract as add).
+    func saveLayerImage(_ image: UIImage) -> String {
+        let file = "\(UUID().uuidString).heic"
+        let destination = imagesDir.appendingPathComponent(file)
+        cache.setObject(image, forKey: file as NSString)
+        Task.detached(priority: .utility) {
+            if let data = ImageOptimizer.optimized(image) {
+                try? data.write(to: destination)
+            }
+        }
+        return file
+    }
+
+    /// Remove an orphaned layer file (editor cancel / undo GC).
+    func deleteLayerImage(_ file: String) {
+        try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(file))
+        cache.removeObject(forKey: file as NSString)
+    }
+
+    /// Any image under images/ by file name (canvas layers).
+    func layerImage(named file: String) -> UIImage? {
+        if let cached = cache.object(forKey: file as NSString) { return cached }
+        let url = imagesDir.appendingPathComponent(file)
+        guard let image = UIImage(contentsOfFile: url.path) else { return nil }
+        cache.setObject(image, forKey: file as NSString)
+        return image
+    }
+
     func remove(_ stamp: Stamp) {
         stamps.removeAll { $0.id == stamp.id }
-        try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(stamp.imageFile))
+        for file in stamp.allImageFiles {
+            try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(file))
+            cache.removeObject(forKey: file as NSString)
+        }
         try? FileManager.default.removeItem(
             at: stickersDir.appendingPathComponent("\(stamp.id.uuidString).png"))
-        cache.removeObject(forKey: stamp.imageFile as NSString)
         save()
     }
 
@@ -210,8 +305,10 @@ final class StampStore {
     /// Settings → Delete All Data: every stamp, photo, sticker, the index.
     func deleteAll() {
         for stamp in stamps {
-            try? FileManager.default.removeItem(
-                at: imagesDir.appendingPathComponent(stamp.imageFile))
+            for file in stamp.allImageFiles {
+                try? FileManager.default.removeItem(
+                    at: imagesDir.appendingPathComponent(file))
+            }
             try? FileManager.default.removeItem(
                 at: stickersDir.appendingPathComponent("\(stamp.id.uuidString).png"))
         }

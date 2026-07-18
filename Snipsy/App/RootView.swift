@@ -53,6 +53,13 @@ struct RootView: View {
                         .zIndex(10)
                 }
 
+                if let session = model.canvasSession {
+                    CanvasEditorScreen(model: model, session: session,
+                                       screenSize: fullSize, safeArea: insets)
+                        .transition(.move(edge: .bottom))
+                        .zIndex(20)
+                }
+
                 if !model.hasOnboarded {
                     OnboardingScreen(model: model, screenSize: fullSize,
                                      safeArea: insets)

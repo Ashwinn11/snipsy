@@ -2,6 +2,19 @@ import SwiftUI
 import UIKit
 import Observation
 
+/// What the canvas editor opens with: a blank page, or a saved creation
+/// seeded/re-loaded for decorating.
+struct CanvasSession {
+    /// nil = new creation; set = re-editing this stamp in place.
+    var stampID: UUID? = nil
+    var seed = CanvasDocument()
+    var seedTitle = ""
+    /// A non-canvas artifact to open with: the editor copies its pixels
+    /// into a fresh layer file (never shares the source's file — deleting
+    /// the composition must not orphan the source stamp).
+    var seedArtifact: Stamp? = nil
+}
+
 /// The one flow state machine. Camera is always mounted underneath;
 /// developing and reveal overlay it with pixel-continuous handoffs.
 @MainActor
@@ -24,6 +37,10 @@ final class AppModel {
 
     var phase: Phase = .camera
     var showAlbum = false
+    /// Canvas editor session — the album overlay pattern with a payload.
+    /// Independent of Phase: the editor has no continuity contract with
+    /// the camera feed and returns to the album intact.
+    var canvasSession: CanvasSession? = nil
 
     /// Collection pill frame in full-screen coordinates (fly-to-album target).
     var pillFrame: CGRect = .zero

@@ -39,7 +39,7 @@ targets:
       path: Snipsy/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.0"
+        CFBundleShortVersionString: "1.1"
         CFBundleVersion: "1"
         NSCameraUsageDescription: "Snipsy uses the camera so you can turn your moments into collectible stamps and stickers."
         NSPhotoLibraryAddUsageDescription: "Snipsy saves the stamps and stickers you export to your photo library."
@@ -58,7 +58,7 @@ targets:
         SUPPORTS_MACCATALYST: "NO"
         ENABLE_PREVIEWS: "YES"
         CURRENT_PROJECT_VERSION: "1"
-        MARKETING_VERSION: "1.0"
+        MARKETING_VERSION: "1.1"
   SnipsyStickers:
     type: app-extension.messages
     platform: iOS
@@ -73,7 +73,7 @@ targets:
       path: SnipsyStickers/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.0"
+        CFBundleShortVersionString: "1.1"
         CFBundleVersion: "1"
         UIUserInterfaceStyle: Light
         NSExtension:
@@ -85,7 +85,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
         CURRENT_PROJECT_VERSION: "1"
-        MARKETING_VERSION: "1.0"
+        MARKETING_VERSION: "1.1"
         ASSETCATALOG_COMPILER_APPICON_NAME: iMessage App Icon
   SnipsyShare:
     type: app-extension
@@ -94,6 +94,7 @@ targets:
       - path: SnipsyShare
       - path: Snipsy/App/Theme.swift
       - path: Snipsy/Core/Models.swift
+      - path: Snipsy/Core/CanvasModels.swift
       - path: Snipsy/Core/StampStore.swift
       - path: Snipsy/Core/VisionService.swift
       - path: Snipsy/Core/StampRenderer.swift
@@ -102,6 +103,9 @@ targets:
       - path: Snipsy/Features/Stamp/StampView.swift
       - path: Snipsy/Features/Stamp/PerforatedRect.swift
       - path: Snipsy/Features/Stamp/PaperBackdrop.swift
+      - path: Snipsy/Features/Artifact/ArtifactView.swift
+      - path: Snipsy/Features/Artifact/PolaroidView.swift
+      - path: Snipsy/Features/Artifact/CardView.swift
       - path: Snipsy/Shaders/Paper.metal
       - path: Snipsy/Shaders/Holo.metal
       - path: Snipsy/Shaders/Liquid.metal
@@ -114,7 +118,7 @@ targets:
       path: SnipsyShare/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.0"
+        CFBundleShortVersionString: "1.1"
         CFBundleVersion: "1"
         UIUserInterfaceStyle: Light
         NSExtension:
@@ -129,4 +133,4 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
         CURRENT_PROJECT_VERSION: "1"
-        MARKETING_VERSION: "1.0"
+        MARKETING_VERSION: "1.1"

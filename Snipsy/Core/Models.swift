@@ -30,10 +30,14 @@ enum StampVariant: String, Codable, CaseIterable, Identifiable {
 
 /// What the user chose to make from a capture. A sticker is a first-class
 /// collectible: bare die-cut in the album and the Messages drawer; a stamp
-/// is the dressed artifact.
+/// is the dressed artifact; a polaroid/card is the framed instant photo;
+/// a canvas is a layered composition built in the editor.
 enum ArtifactKind: String, Codable {
     case stamp
     case sticker
+    case polaroid
+    case card
+    case canvas
 }
 
 /// A collected stamp.
@@ -59,8 +63,29 @@ struct Stamp: Identifiable, Codable, Equatable {
     /// Sticker items: contour fraction where the name label anchors.
     /// nil = legacy item whose label was baked into the image.
     var labelAnchor: CGFloat? = nil
+    /// Layered composition, nil for single-shot artifacts. Present ⇒
+    /// imageFile is the flattened preview and the creation is re-editable.
+    var canvas: CanvasDocument? = nil
 
     var displayTitle: String { title.isEmpty ? "Untitled" : title }
+
+    /// Every image file this stamp owns under images/ — the flattened
+    /// preview plus any canvas layer pixels. Deletion must remove all.
+    var allImageFiles: [String] {
+        var files = [imageFile]
+        for layer in canvas?.layers ?? [] {
+            switch layer.content {
+            case .image(let file, let cutoutFile, _):
+                files.append(file)
+                if let cutoutFile { files.append(cutoutFile) }
+            case .sticker(let file):
+                files.append(file)
+            case .text, .doodle:
+                break
+            }
+        }
+        return files
+    }
 }
 
 extension Stamp {
@@ -78,6 +103,7 @@ extension Stamp {
         variant = (try? c.decodeIfPresent(StampVariant.self, forKey: .variant)) ?? .tinted
         kind = (try? c.decodeIfPresent(ArtifactKind.self, forKey: .kind)) ?? .stamp
         labelAnchor = try? c.decodeIfPresent(CGFloat.self, forKey: .labelAnchor)
+        canvas = try? c.decodeIfPresent(CanvasDocument.self, forKey: .canvas)
     }
 }
 

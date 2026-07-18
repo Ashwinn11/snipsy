@@ -1008,38 +1008,46 @@ struct StampView: View {
 }
 
 /// Letterforms cut like the sticker itself: ink glyphs wearing the same
-/// white die-cut contour as the subject (offset-stacked copies build the
-/// outline).
+/// white die-cut contour as the subject.
 struct DieCutText: View {
     var text: String
     var fontSize: CGFloat
     var ink: Color = .black
+    /// Contour reach around the glyphs, as an em fraction.
+    var spread: CGFloat = 0.34
+    /// The glyph voice — nil keeps the app's heavy-rounded chrome default.
+    var font: Font? = nil
 
     var body: some View {
+        let margin = max(2, fontSize * spread)
         let base = Text(text)
-            .font(.system(size: fontSize, weight: .heavy, design: .rounded))
+            .font(font ?? .system(size: fontSize, weight: .heavy, design: .rounded))
             .lineLimit(1)
-        // Color glyphs (emoji) ignore foregroundStyle, so the contour
-        // copies must be true silhouettes: white masked by the glyph
-        // alpha, or an emoji title stacks as a smeared ring of 26 full-
-        // color copies instead of a cut line.
-        let ghost = base
-            .foregroundStyle(.clear)
-            .overlay(Color.white)
-            .mask(base)
-        let r = fontSize * 0.34
 
-        return ZStack {
-            ForEach(0..<16, id: \.self) { i in
-                let a = Double(i) / 16 * 2 * .pi
-                ghost.offset(x: cos(a) * r, y: sin(a) * r)
+        base
+            .foregroundStyle(ink)
+            .background {
+                // The cut: blur the glyph silhouette, threshold the tail —
+                // one smooth dilation that hugs every letterform. Color
+                // glyphs (emoji) need no special casing; whatever alpha
+                // they carry, the threshold turns white. The low threshold
+                // keeps script hairlines from dropping out of the contour.
+                Canvas { context, size in
+                    context.addFilter(.alphaThreshold(min: 0.08, color: .white))
+                    context.addFilter(.blur(radius: margin / 1.4))
+                    context.drawLayer { layer in
+                        if let glyphs = context.resolveSymbol(id: 0) {
+                            layer.draw(glyphs, at: CGPoint(x: size.width / 2,
+                                                           y: size.height / 2))
+                        }
+                    }
+                } symbols: {
+                    base.tag(0)
+                }
+                // Room for the contour beyond the text's own bounds — a
+                // Canvas clips at its edges.
+                .padding(-margin * 2)
             }
-            ForEach(0..<10, id: \.self) { i in
-                let a = Double(i) / 10 * 2 * .pi + 0.3
-                ghost.offset(x: cos(a) * r * 0.6, y: sin(a) * r * 0.6)
-            }
-            base.foregroundStyle(ink)
-        }
     }
 }
 
@@ -1096,7 +1104,9 @@ struct Line: Shape {
 /// Applies the holographic shimmer. `enabled` must be constant for a view's
 /// lifetime — branching on live values (like strength) would change the whole
 /// stamp's view identity mid-flight and silently kill in-progress animations.
-private struct HoloModifier: ViewModifier {
+/// Shared with the detail view, which wears it around the flat artifact
+/// kinds (polaroid, card, canvas).
+struct HoloModifier: ViewModifier {
     var enabled: Bool
     var strength: Double
     var sweep: Double
@@ -1118,8 +1128,8 @@ private struct HoloModifier: ViewModifier {
 
 /// Applies the liquid poke ripple. `enabled` must be constant for a view's
 /// lifetime — branching on live values would change the stamp's identity and
-/// silently kill in-flight animations.
-private struct LiquidModifier: ViewModifier {
+/// silently kill in-flight animations. Shared with the detail view.
+struct LiquidModifier: ViewModifier {
     var enabled: Bool
     var center: CGPoint
     var time: Double
