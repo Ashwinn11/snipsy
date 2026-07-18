@@ -36,10 +36,7 @@ struct OnboardingDemoPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                Text("SNIPSY")
-                    .font(Theme.display(24))
-                    .tracking(2)
-                    .foregroundStyle(Theme.ink)
+                RansomText(text: "SNIPSY", fontSize: 24, ink: Theme.ink)
                 Text("Turn your moments into stamps & stickers.")
                     .font(.system(size: 16, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)

@@ -19,10 +19,7 @@ struct OnboardingFinalPage: View {
                            value: breathe)
 
             VStack(spacing: 10) {
-                Text("START YOUR COLLECTION")
-                    .font(Theme.display(21))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.ink)
+                RansomText(text: "START YOUR COLLECTION", fontSize: 14, ink: Theme.ink)
                 Text("Fill it with the moments you keep —\ncut, stamped, and yours forever.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)

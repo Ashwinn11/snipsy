@@ -41,10 +41,7 @@ struct OnboardingMessagesPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                Text("PEEL THEM IN MESSAGES")
-                    .font(Theme.display(21))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.ink)
+                RansomText(text: "PEEL THEM IN MESSAGES", fontSize: 14, ink: Theme.ink)
                 Text("Your collection waits behind the plus button\nin any conversation.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)

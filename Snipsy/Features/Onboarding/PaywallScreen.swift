@@ -26,11 +26,7 @@ struct PaywallScreen: View {
                 VStack(spacing: 12) {
                     stickerFan
                         .padding(.bottom, 10)
-                    Text("KEEP EVERY MOMENT")
-                        .font(Theme.display(24))
-                        .tracking(1.5)
-                        .foregroundStyle(Theme.ink)
-                        .multilineTextAlignment(.center)
+                    RansomText(text: "KEEP EVERY MOMENT", fontSize: 16, ink: Theme.ink)
                     Text("The coffee, the concert, the two of you —\nturned into stamps and stickers you keep forever.")
                         .font(.system(size: 15, design: .rounded))
                         .foregroundStyle(Theme.inkSoft)

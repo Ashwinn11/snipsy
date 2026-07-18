@@ -60,10 +60,12 @@ struct OnboardingScreen: View {
             .position(x: screenSize.width / 2,
                       y: screenSize.height - max(safeArea.bottom, 16) - 18)
 
-            // Skip to the gate — never past it.
+            // Skip to the gate — never past it. Plain ease: a spring's
+            // overshoot makes the page-style TabView drop multi-page
+            // programmatic jumps on the floor.
             if page < 4 {
                 Button {
-                    withAnimation(Theme.spring) { page = 4 }
+                    withAnimation(.easeInOut(duration: 0.35)) { page = 4 }
                 } label: {
                     Text("Skip")
                         .font(.system(size: 14, design: .rounded))

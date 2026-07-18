@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// Page 2 (new): the canvas pitch. A mini stamp-paper canvas assembles
-/// itself live — a couple photo drops in, washi tape sticks across it,
-/// die-cut stickers land with bouncy springs, handwritten text floats in
-/// last. The whole cycle is ~10 s, looping.
+/// Page 2: canvas pitch. Two-column grid, animates once top → bottom
+/// then **stays** on the finished composition — no loop.
+///
+///   Left col (top → bottom): couple1 photo | lily sticker | ransom "love"
+///   Right col (top → bottom): couple2 sticker | puppy sticker
+///   Full-width bottom: die-cut "forever & always"
 struct OnboardingCanvasPage: View {
     let demo: OnboardingDemo
     let haptics: Haptics
@@ -12,20 +14,16 @@ struct OnboardingCanvasPage: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Independent appear state for each canvas element — springs fire in
-    // sequence but each element owns its own animation curve.
     @State private var canvasScale: Double = 0.88
     @State private var canvasOpacity: Double = 0
-    @State private var photo1: Double = 0      // couple1 raw tilted photo
-    @State private var washi1: Double = 0      // rose washi tape
-    @State private var sticker1: Double = 0    // couple2 die-cut
-    @State private var scriptText: Double = 0  // "forever & always"
-    @State private var sticker2: Double = 0    // puppy die-cut
-    @State private var emoji1: Double = 0      // ❤️
-    @State private var handText: Double = 0    // "te amo"
-    @State private var washi2: Double = 0      // sage washi tape
+    @State private var dateEl: Double = 0      // top corners
+    @State private var photoEl: Double = 0     // couple1 photo — upper-left
+    @State private var stickerEl: Double = 0   // couple2 die-cut — upper-right
+    @State private var lilyEl: Double = 0      // lily die-cut — lower-left
+    @State private var puppyEl: Double = 0     // puppy die-cut — lower-right
+    @State private var ransomEl: Double = 0    // ransom "love" — below lily
+    @State private var diecutEl: Double = 0    // die-cut text — bottom
 
-    @State private var phaseLine = "Drop in a photo…"
     @State private var gen = 0
 
     var body: some View {
@@ -33,10 +31,7 @@ struct OnboardingCanvasPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                Text("BUILD A MEMORY")
-                    .font(Theme.display(21))
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.ink)
+                RansomText(text: "BUILD A MEMORY", fontSize: 16, ink: Theme.ink)
                 Text("Layer photos, stickers, and text —\nall on one canvas.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
@@ -49,46 +44,39 @@ struct OnboardingCanvasPage: View {
                 .scaleEffect(canvasScale)
                 .opacity(canvasOpacity)
 
-            Text(phaseLine)
-                .font(.system(size: 14, design: .rounded))
-                .foregroundStyle(Theme.inkSoft)
-                .animation(.easeOut(duration: 0.25), value: phaseLine)
-                .padding(.top, 22)
-
             Spacer(minLength: 0)
             Spacer(minLength: 0)
         }
         .padding(.top, 30)
-        .onAppear { if isActive { startLoop() } }
+        .onAppear { if isActive { start() } }
         .onChange(of: isActive) { _, active in
-            if active { startLoop() } else { stopLoop() }
+            if active { start() } else { cancel() }
         }
-        .onDisappear { stopLoop() }
+        .onDisappear { cancel() }
     }
 
     // MARK: Sizing
 
-    private var cardWidth: CGFloat { min(screenSize.width * 0.72, 306) }
+    private var cardWidth: CGFloat  { min(screenSize.width * 0.72, 306) }
     private var cardHeight: CGFloat { cardWidth * 1.3125 }
 
     // MARK: Canvas card
 
-    /// The whole mock: paper stock + perforated border + layered elements.
     private var canvasCard: some View {
         ZStack(alignment: .topLeading) {
-            // Paper base
-            Color(hex: 0xFBF5E8)
+            // Powder-blue paper stock
+            Color(hex: 0xD6E7F2)
                 .overlay {
-                    // Subtle dot grid — mirrors the canvas editor
                     Canvas { ctx, size in
-                        let step: CGFloat = 20
+                        let step: CGFloat = 18
                         var x = step
                         while x < size.width {
                             var y = step
                             while y < size.height {
-                                let dot = Path(ellipseIn: CGRect(x: x - 0.8, y: y - 0.8,
-                                                                 width: 1.6, height: 1.6))
-                                ctx.fill(dot, with: .color(Theme.inkSoft.opacity(0.12)))
+                                ctx.fill(
+                                    Path(ellipseIn: CGRect(x: x - 0.7, y: y - 0.7,
+                                                           width: 1.4, height: 1.4)),
+                                    with: .color(Color(hex: 0x6A9EC0).opacity(0.20)))
                                 y += step
                             }
                             x += step
@@ -99,227 +87,290 @@ struct OnboardingCanvasPage: View {
             canvasElements
         }
         .frame(width: cardWidth, height: cardHeight)
-        // Clip to the perforated path so elements don't bleed outside teeth.
         .clipShape(PerforatedRect())
         .overlay {
             PerforatedRect()
-                .stroke(Theme.inkSoft.opacity(0.55),
-                        style: StrokeStyle(lineWidth: 1.3, dash: [3.5, 4]))
+                .stroke(Color(hex: 0x7AADC8).opacity(0.65),
+                        style: StrokeStyle(lineWidth: 1.4, dash: [3.5, 4.0]))
         }
-        .shadow(color: Theme.shadow.opacity(0.28), radius: 20, y: 10)
-        .shadow(color: Theme.shadow.opacity(0.10), radius: 4, y: 2)
+        .shadow(color: Color(hex: 0x2A5070).opacity(0.22), radius: 22, y: 11)
     }
 
-    // MARK: Canvas elements
+    // MARK: Canvas elements — two-column, no overlaps
 
-    /// All layered content. Each element has its own appear @State;
-    /// ZStack alignment is .topLeading so offsets read from the top-left corner.
     @ViewBuilder
     private var canvasElements: some View {
         let w = cardWidth
         let h = cardHeight
 
-        // ── Photo 1: couple1 raw — tilted photo print, top-left ──────────
+        // ── Date labels ─────────────────────────────────────────────────────
+        Text(Self.shortDate)
+            .font(.system(size: w * 0.044, weight: .semibold, design: .serif))
+            .foregroundStyle(Color(hex: 0x24445E).opacity(0.78))
+            .opacity(dateEl)
+            .scaleEffect(dateEl == 0 ? 0.5 : 1, anchor: .leading)
+            .animation(.spring(response: 0.32, dampingFraction: 0.72), value: dateEl)
+            .offset(x: w * 0.056, y: h * 0.028)
+
+        Text(Self.dayName)
+            .font(.system(size: w * 0.044, weight: .semibold, design: .serif))
+            .foregroundStyle(Color(hex: 0x24445E).opacity(0.78))
+            .opacity(dateEl)
+            .scaleEffect(dateEl == 0 ? 0.5 : 1, anchor: .trailing)
+            .animation(.spring(response: 0.32, dampingFraction: 0.72), value: dateEl)
+            .offset(x: w * 0.63, y: h * 0.028)
+
+        // ── Upper-left: couple1 raw photo ───────────────────────────────────
+        // Occupies x[3%,45%]  y[8%,46%]
         if let photo = demo.canvasPhoto {
-            rawPhotoCard(photo, width: w * 0.46)
-                .rotationEffect(.degrees(-9))
-                .scaleEffect(photo1 == 0 ? 0.35 : 1, anchor: .center)
-                .opacity(photo1)
-                .animation(.spring(response: 0.52, dampingFraction: 0.64), value: photo1)
-                .offset(x: w * 0.02, y: h * 0.03)
+            rawPhoto(photo, width: w * 0.42)
+                .rotationEffect(.degrees(-7))
+                .scaleEffect(photoEl == 0 ? 0.25 : 1)
+                .opacity(photoEl)
+                .animation(.spring(response: 0.42, dampingFraction: 0.60), value: photoEl)
+                .offset(x: w * 0.03, y: h * 0.085)
         }
 
-        // ── Washi 1: rose — mid-left, slanted ────────────────────────────
-        DoodleCatalog.view(id: "washi.rose", width: w * 0.52)
-            .rotationEffect(.degrees(-4))
-            .scaleEffect(x: washi1 == 0 ? 0 : 1, anchor: .leading)
-            .opacity(washi1)
-            .animation(.spring(response: 0.44, dampingFraction: 0.70), value: washi1)
-            .offset(x: w * 0.02, y: h * 0.37)
+        // ── Upper-right: couple2 die-cut ────────────────────────────────────
+        // Occupies x[52%,95%]  y[7%,46%]
+        if let couple = stickerAt(1) {
+            Image(uiImage: couple)
+                .resizable().scaledToFit()
+                .frame(width: w * 0.43)
+                .rotationEffect(.degrees(6))
+                .scaleEffect(stickerEl == 0 ? 0.25 : 1)
+                .opacity(stickerEl)
+                .animation(.spring(response: 0.42, dampingFraction: 0.56), value: stickerEl)
+                .shadow(color: Color(hex: 0x2A5070).opacity(0.22), radius: 7, y: 4)
+                .offset(x: w * 0.52, y: h * 0.07)
+        }
 
-        // ── Sticker 1: couple2 die-cut — upper-right ─────────────────────
-        if let s = demo.subjects.count > 1 ? demo.subjects[1].sticker : nil {
-            Image(uiImage: s)
-                .resizable()
-                .scaledToFit()
-                .frame(width: w * 0.40)
+        // ── Lower-left: lily die-cut ────────────────────────────────────────
+        // Occupies x[3%,31%]  y[49%,75%]
+        if let lily = stickerAt(2) {
+            Image(uiImage: lily)
+                .resizable().scaledToFit()
+                .frame(width: w * 0.28)
+                .rotationEffect(.degrees(-10))
+                .scaleEffect(lilyEl == 0 ? 0.25 : 1)
+                .opacity(lilyEl)
+                .animation(.spring(response: 0.42, dampingFraction: 0.56), value: lilyEl)
+                .shadow(color: Color(hex: 0x2A5070).opacity(0.20), radius: 5, y: 3)
+                .offset(x: w * 0.03, y: h * 0.49)
+        }
+
+        // ── Lower-right: puppy die-cut ──────────────────────────────────────
+        // Occupies x[52%,82%]  y[49%,81%]
+        if let puppy = stickerAt(3) {
+            Image(uiImage: puppy)
+                .resizable().scaledToFit()
+                .frame(width: w * 0.30)
                 .rotationEffect(.degrees(7))
-                .scaleEffect(sticker1 == 0 ? 0.15 : 1, anchor: .center)
-                .opacity(sticker1)
-                .animation(.spring(response: 0.46, dampingFraction: 0.58), value: sticker1)
-                .shadow(color: Theme.shadow.opacity(0.22), radius: 7, y: 4)
-                .offset(x: w * 0.55, y: h * 0.06)
+                .scaleEffect(puppyEl == 0 ? 0.25 : 1)
+                .opacity(puppyEl)
+                .animation(.spring(response: 0.44, dampingFraction: 0.54), value: puppyEl)
+                .shadow(color: Color(hex: 0x2A5070).opacity(0.20), radius: 5, y: 3)
+                .offset(x: w * 0.52, y: h * 0.49)
         }
 
-        // ── Script text: "forever & always" — center ─────────────────────
-        Text("forever & always")
-            .font(Theme.script(w * 0.082))
-            .foregroundStyle(Color(hex: 0x3B3025))
-            .rotationEffect(.degrees(-5))
-            .offset(y: scriptText == 0 ? 8 : 0)
-            .opacity(scriptText)
-            .animation(.easeOut(duration: 0.48), value: scriptText)
-            .shadow(color: Theme.shadow.opacity(0.08), radius: 2, y: 1)
-            .offset(x: w * 0.16, y: h * 0.54)
+        // ── Below lily: ransom "love" ────────────────────────────────────────
+        // Occupies x[3%,37%]  y[76%,84%]
+        RansomLettering(text: "love", fontSize: w * 0.062)
+            .rotationEffect(.degrees(-4))
+            .scaleEffect(ransomEl == 0 ? 0.40 : 1, anchor: .leading)
+            .opacity(ransomEl)
+            .animation(.spring(response: 0.40, dampingFraction: 0.62), value: ransomEl)
+            .offset(x: w * 0.03, y: h * 0.76)
 
-        // ── Washi 2: sage — bottom-right, counter-angle ──────────────────
-        DoodleCatalog.view(id: "washi.sage", width: w * 0.44)
-            .rotationEffect(.degrees(5))
-            .scaleEffect(x: washi2 == 0 ? 0 : 1, anchor: .trailing)
-            .opacity(washi2)
-            .animation(.spring(response: 0.44, dampingFraction: 0.70), value: washi2)
-            .offset(x: w * 0.54, y: h * 0.74)
-
-        // ── Sticker 2: puppy die-cut — lower-left ────────────────────────
-        if let s = demo.subjects.count > 3 ? demo.subjects[3].sticker : nil {
-            Image(uiImage: s)
-                .resizable()
-                .scaledToFit()
-                .frame(width: w * 0.33)
-                .rotationEffect(.degrees(-6))
-                .scaleEffect(sticker2 == 0 ? 0.15 : 1, anchor: .center)
-                .opacity(sticker2)
-                .animation(.spring(response: 0.48, dampingFraction: 0.56), value: sticker2)
-                .shadow(color: Theme.shadow.opacity(0.20), radius: 6, y: 3)
-                .offset(x: w * 0.05, y: h * 0.64)
-        }
-
-        // ── Emoji ❤️ — top-right corner accent ───────────────────────────
-        Text("❤️")
-            .font(.system(size: w * 0.088))
-            .scaleEffect(emoji1 == 0 ? 0.05 : 1, anchor: .center)
-            .rotationEffect(.degrees(emoji1 == 0 ? -30 : 0))
-            .opacity(emoji1)
-            .animation(.spring(response: 0.38, dampingFraction: 0.50), value: emoji1)
-            .offset(x: w * 0.80, y: h * 0.44)
-
-        // ── Handwritten text: "te amo" — bottom ──────────────────────────
-        Text("te amo")
-            .font(Theme.handwritten(w * 0.115))
-            .foregroundStyle(Theme.stampInk)
-            .rotationEffect(.degrees(-7))
-            .scaleEffect(handText == 0 ? 0.40 : 1, anchor: .center)
-            .opacity(handText)
-            .animation(.spring(response: 0.42, dampingFraction: 0.62), value: handText)
-            .offset(x: w * 0.30, y: h * 0.82)
+        // ── Bottom: die-cut "forever & always" ──────────────────────────────
+        // Layered white shadows create the sticker-contour border.
+        DieCutLabel(text: "forever & always", fontSize: w * 0.076)
+            .scaleEffect(diecutEl == 0 ? 0.60 : 1)
+            .opacity(diecutEl)
+            .animation(.spring(response: 0.44, dampingFraction: 0.64), value: diecutEl)
+            .offset(x: w * 0.08, y: h * 0.87)
     }
 
-    // MARK: Photo card helper
+    // MARK: Helpers
 
-    private func rawPhotoCard(_ image: UIImage, width: CGFloat) -> some View {
+    private func stickerAt(_ index: Int) -> UIImage? {
+        guard demo.subjects.count > index else { return nil }
+        return demo.subjects[index].sticker
+    }
+
+    private func rawPhoto(_ image: UIImage, width: CGFloat) -> some View {
         Image(uiImage: image)
             .resizable()
             .scaledToFill()
-            .frame(width: width, height: width * 1.20)
+            .frame(width: width, height: width * 1.18)
             .clipShape(RoundedRectangle(cornerRadius: width * 0.04))
-            .overlay(
-                RoundedRectangle(cornerRadius: width * 0.04)
-                    .strokeBorder(.white.opacity(0.9), lineWidth: 2.5)
-            )
-            .shadow(color: Theme.shadow.opacity(0.25), radius: 8, y: 4)
+            .overlay(RoundedRectangle(cornerRadius: width * 0.04)
+                .strokeBorder(.white.opacity(0.88), lineWidth: 2.5))
+            .shadow(color: Color(hex: 0x2A5070).opacity(0.24), radius: 8, y: 5)
     }
 
-    // MARK: Loop
+    private static let shortDate: String = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MMM d"
+        return f.string(from: .now).uppercased()
+    }()
 
-    private func stopLoop() { gen += 1 }
+    private static let dayName: String = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "EEEE"
+        return f.string(from: .now).uppercased()
+    }()
 
-    private func startLoop() {
+    // MARK: Animation — runs once, settles on final state (no loop)
+
+    private func cancel() { gen += 1 }
+
+    private func start() {
         gen += 1
         let g = gen
         resetPose()
 
         if reduceMotion {
-            canvasScale = 1; canvasOpacity = 1
-            photo1 = 1; washi1 = 1; sticker1 = 1; scriptText = 1
-            washi2 = 1; sticker2 = 1; emoji1 = 1; handText = 1
-            phaseLine = "Your canvas, your memory."
+            showAll()
             return
         }
 
         Task { @MainActor in
-            while gen == g { await runCycle(g) }
+            await animate(g)
+            // Intentionally does NOT loop — canvas stays on the finished composition.
         }
     }
 
     private func resetPose() {
-        // Reset element states instantly (canvas is invisible, so no flash).
         canvasScale = 0.88; canvasOpacity = 0
-        photo1 = 0; washi1 = 0; sticker1 = 0; scriptText = 0
-        washi2 = 0; sticker2 = 0; emoji1 = 0; handText = 0
-        phaseLine = "Drop in a photo…"
+        dateEl = 0; photoEl = 0; stickerEl = 0
+        lilyEl = 0; puppyEl = 0; ransomEl = 0; diecutEl = 0
     }
 
-    /// One full cycle: empty canvas → all elements build up → hold → fade.
-    private func runCycle(_ g: Int) async {
+    private func showAll() {
+        canvasScale = 1; canvasOpacity = 1
+        dateEl = 1; photoEl = 1; stickerEl = 1
+        lilyEl = 1; puppyEl = 1; ransomEl = 1; diecutEl = 1
+    }
+
+    /// Wait for Vision to finish processing all subjects (up to ~6 s),
+    /// then build up the canvas top → bottom.
+    private func animate(_ g: Int) async {
+        // Give the Vision pipeline time to finish — puppy/lily/couple2 run live.
+        var waited = 0
+        while demo.subjects.count < 4 && waited < 30 {
+            try? await Task.sleep(for: .milliseconds(200))
+            waited += 1
+            guard gen == g else { return }
+        }
+
         // Canvas entrance
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.80)) {
+        withAnimation(.spring(response: 0.50, dampingFraction: 0.80)) {
             canvasScale = 1; canvasOpacity = 1
         }
-        try? await Task.sleep(for: .seconds(0.65))
+        try? await Task.sleep(for: .seconds(0.34))
         guard gen == g else { return }
 
-        // Photo 1
+        // Date labels
         haptics.tick()
-        withAnimation { photo1 = 1 }
-        phaseLine = "Drop in a photo…"
-        try? await Task.sleep(for: .seconds(0.70))
-        guard gen == g else { return }
-
-        // Washi 1
-        haptics.tick()
-        withAnimation { washi1 = 1 }
-        phaseLine = "…stick some washi tape…"
-        try? await Task.sleep(for: .seconds(0.68))
-        guard gen == g else { return }
-
-        // Sticker 1 (couple2)
-        haptics.thunk()
-        withAnimation { sticker1 = 1 }
-        phaseLine = "…peel on a sticker…"
-        try? await Task.sleep(for: .seconds(0.72))
-        guard gen == g else { return }
-
-        // Script text
-        haptics.tick()
-        withAnimation { scriptText = 1 }
-        phaseLine = "…write something real…"
-        try? await Task.sleep(for: .seconds(0.70))
-        guard gen == g else { return }
-
-        // Washi 2
-        haptics.tick()
-        withAnimation { washi2 = 1 }
-        try? await Task.sleep(for: .seconds(0.60))
-        guard gen == g else { return }
-
-        // Sticker 2 (puppy)
-        haptics.thunk()
-        withAnimation { sticker2 = 1 }
-        phaseLine = "…more stickers…"
-        try? await Task.sleep(for: .seconds(0.66))
-        guard gen == g else { return }
-
-        // Emoji
-        haptics.tick()
-        withAnimation { emoji1 = 1 }
-        try? await Task.sleep(for: .seconds(0.58))
-        guard gen == g else { return }
-
-        // Handwritten text
-        haptics.thunk()
-        withAnimation { handText = 1 }
-        phaseLine = "…your canvas, your memory."
-        try? await Task.sleep(for: .seconds(2.20))
-        guard gen == g else { return }
-
-        // Fade the whole card out (elements invisible under it → safe to reset).
-        withAnimation(.easeIn(duration: 0.38)) { canvasOpacity = 0; canvasScale = 0.92 }
-        try? await Task.sleep(for: .seconds(0.42))
-        guard gen == g else { return }
-
-        resetPose()
-        await afterNextCommit()
-        guard gen == g else { return }
+        withAnimation { dateEl = 1 }
         try? await Task.sleep(for: .seconds(0.30))
+        guard gen == g else { return }
+
+        // Upper row: photo (left) then sticker (right) — quick stagger
+        haptics.tick()
+        withAnimation { photoEl = 1 }
+        try? await Task.sleep(for: .seconds(0.20))
+        guard gen == g else { return }
+        haptics.thunk()
+        withAnimation { stickerEl = 1 }
+        try? await Task.sleep(for: .seconds(0.32))
+        guard gen == g else { return }
+
+        // Lower row: lily (left) then puppy (right) — quick stagger
+        haptics.tick()
+        withAnimation { lilyEl = 1 }
+        try? await Task.sleep(for: .seconds(0.20))
+        guard gen == g else { return }
+        haptics.thunk()
+        withAnimation { puppyEl = 1 }
+        try? await Task.sleep(for: .seconds(0.30))
+        guard gen == g else { return }
+
+        // Ransom "love"
+        haptics.tick()
+        withAnimation { ransomEl = 1 }
+        try? await Task.sleep(for: .seconds(0.28))
+        guard gen == g else { return }
+
+        // Die-cut text — finale, stays forever
+        haptics.thunk()
+        withAnimation { diecutEl = 1 }
+        // Done — composition holds. No fade, no reset.
+    }
+}
+
+// MARK: - Ransom lettering
+
+struct RansomLettering: View {
+    let text: String
+    var fontSize: CGFloat = 16
+
+    private static let tiles: [(bg: Color, fg: Color)] = [
+        (Color(hex: 0xC5B49A), Color(hex: 0x1A1A1A)),
+        (Color(hex: 0x24445E), .white),
+        (Color(hex: 0xA8C5D8), Color(hex: 0x1A1A1A)),
+        (Color(hex: 0xD4A87A), Color(hex: 0x1A1A1A)),
+        (Color(hex: 0xEEE4D8), Color(hex: 0x1A1A1A)),
+        (Color(hex: 0x6B8FA8), .white),
+    ]
+    private static let rotations: [Double] = [-5, 4, -7, 3, -4, 6]
+    private static let designs: [Font.Design] = [.serif, .rounded, .default, .serif, .monospaced, .rounded]
+
+    var body: some View {
+        HStack(spacing: fontSize * 0.14) {
+            ForEach(Array(text.enumerated()), id: \.offset) { i, char in
+                if char == " " {
+                    Color.clear.frame(width: fontSize * 0.45)
+                } else {
+                    letterTile(char: char, index: i)
+                }
+            }
+        }
+    }
+
+    private func letterTile(char: Character, index: Int) -> some View {
+        let tile = Self.tiles[index % Self.tiles.count]
+        let rot  = Self.rotations[index % Self.rotations.count]
+        let dsn  = Self.designs[index % Self.designs.count]
+        return Text(String(char).uppercased())
+            .font(.system(size: fontSize * 0.92, weight: .bold, design: dsn))
+            .foregroundStyle(tile.fg)
+            .frame(width: fontSize * 1.28, height: fontSize * 1.28)
+            .background(tile.bg, in: RoundedRectangle(cornerRadius: fontSize * 0.18))
+            .rotationEffect(.degrees(rot))
+    }
+}
+
+// MARK: - Die-cut text label
+
+/// Stacked white shadow layers build up a solid white contour around the
+/// glyphs — exactly how the app renders die-cut text stickers.
+struct DieCutLabel: View {
+    let text: String
+    var fontSize: CGFloat = 18
+
+    var body: some View {
+        Text(text)
+            .font(Theme.handwritten(fontSize))
+            .foregroundStyle(Color(hex: 0x1C3050))
+            // Three overlapping white shadow halos = solid die-cut border
+            .shadow(color: .white, radius: 5)
+            .shadow(color: .white, radius: 4)
+            .shadow(color: .white, radius: 3)
+            // Subtle drop shadow beneath the whole sticker
+            .shadow(color: Color(hex: 0x2A5070).opacity(0.18), radius: 4, y: 2)
     }
 }
