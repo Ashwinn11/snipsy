@@ -46,21 +46,31 @@ struct CanvasLayerView: View {
         if editingText, case .text(let string, let style) = layer.content {
             // Inline editing: a bare field in the layer's own voice. Safe
             // anywhere on the stage — no shader wraps the layer stack.
+            // When the cut is on, a contour mirror rides beneath the field
+            // (same idiom as the reveal's sticker tag) so the scissors
+            // read in real time while typing.
             let fontSize = CanvasLayerContent.fontSize(
                 scale: liveScale, canvasWidth: canvasSize.width)
-            TextField("Your words", text: Binding(
-                get: { string },
-                set: { editor.setText($0, for: layer.id) }
-            ))
-            .font(style.font(size: fontSize))
-            .foregroundStyle(style.color.color)
-            .tint(Theme.postalRed)
-            .multilineTextAlignment(.center)
-            .autocorrectionDisabled()
-            .submitLabel(.done)
-            .onSubmit { editor.editingTextID = nil }
-            .fixedSize()
-            .focused($textFocused)
+            ZStack {
+                if layer.dieCut {
+                    DieCutText(text: string.isEmpty ? "Your words" : string,
+                               fontSize: fontSize, ink: .clear, spread: 0.18,
+                               font: style.font(size: fontSize))
+                }
+                TextField("Your words", text: Binding(
+                    get: { string },
+                    set: { editor.setText($0, for: layer.id) }
+                ))
+                .font(style.font(size: fontSize))
+                .foregroundStyle(style.color.color)
+                .tint(Theme.postalRed)
+                .multilineTextAlignment(.center)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit { editor.editingTextID = nil }
+                .fixedSize()
+                .focused($textFocused)
+            }
             .onAppear { textFocused = true }
             .onChange(of: editingText) { _, editing in
                 if !editing { textFocused = false }
@@ -69,6 +79,7 @@ struct CanvasLayerView: View {
             CanvasLayerContent(content: layer.content,
                                canvasWidth: canvasSize.width,
                                scale: liveScale,
+                               dieCut: layer.dieCut,
                                resolver: { editor.bitmap(for: $0) })
                 .contentShape(Rectangle())
         }

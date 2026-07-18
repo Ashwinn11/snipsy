@@ -68,11 +68,26 @@ struct CanvasSelectionBar: View {
                 }
 
                 barCapsule {
-                    if case .image(_, let cutoutFile, let showCutout) = layer.content {
-                        cutoutToggle(layer: layer, hasCutout: cutoutFile != nil,
-                                     showing: showCutout)
-                        Divider().frame(height: 22)
+                    // One cut for everything: photos lift their subject
+                    // through Vision, everything else wears the contour.
+                    Button {
+                        if case .image = layer.content {
+                            Task { await editor.toggleCutout(for: layer.id) }
+                        } else {
+                            editor.toggleDieCut(layer.id)
+                        }
+                    } label: {
+                        if editor.cutoutBusy.contains(layer.id) {
+                            ProgressView().controlSize(.small)
+                                .frame(width: 30, height: 30)
+                        } else {
+                            barIcon("scissors", tint: cutActive(layer)
+                                    ? Theme.postalRed : Theme.ink)
+                        }
                     }
+                    .disabled(editor.cutoutBusy.contains(layer.id))
+
+                    Divider().frame(height: 22)
 
                     Button { editor.nudgeScale(layer.id, factor: 1 / 1.15) } label: {
                         barIcon("minus.magnifyingglass")
@@ -83,12 +98,20 @@ struct CanvasSelectionBar: View {
 
                     Divider().frame(height: 22)
 
-                    Button { editor.sendBackward(layer.id) } label: {
+                    // Absolute z-order: behind everything / on top of
+                    // everything. Dimmed when the layer is already there.
+                    let isBack = editor.doc.layers.first?.id == layer.id
+                    let isFront = editor.doc.layers.last?.id == layer.id
+                    Button { editor.sendToBack(layer.id) } label: {
                         barIcon("square.2.layers.3d.bottom.filled")
+                            .opacity(isBack ? 0.3 : 1)
                     }
-                    Button { editor.bringForward(layer.id) } label: {
+                    .disabled(isBack)
+                    Button { editor.bringToFront(layer.id) } label: {
                         barIcon("square.2.layers.3d.top.filled")
+                            .opacity(isFront ? 0.3 : 1)
                     }
+                    .disabled(isFront)
                 }
             }
         }
@@ -110,31 +133,21 @@ struct CanvasSelectionBar: View {
 
     @ViewBuilder
     private func textControls(layer: CanvasLayer, style: TextStyleValue) -> some View {
-        // Voice: cycle through the five designs.
+        // Voice: cycle through the designs.
         Button {
             var s = style
             let all = TextStyleValue.DesignValue.allCases
             let i = all.firstIndex(of: s.design) ?? 0
             s.design = all[(i + 1) % all.count]
             editor.setTextStyle(s, for: layer.id)
+            // The inline field can't wear ransom chips — the real render
+            // must take over for the voice to show.
+            if s.design == .ransom { editor.editingTextID = nil }
         } label: {
             Text("Aa")
                 .font(style.font(size: 17))
                 .foregroundStyle(Theme.ink)
                 .frame(width: 30, height: 30)
-        }
-
-        // Die-cut contour toggle. Ends inline editing — a live TextField
-        // can't wear the cut, so the real render must take over for the
-        // toggle to show at all.
-        Button {
-            var s = style
-            s.dieCut.toggle()
-            editor.setTextStyle(s, for: layer.id)
-            editor.editingTextID = nil
-        } label: {
-            barIcon("scissors")
-                .foregroundStyle(style.dieCut ? Theme.postalRed : Theme.ink)
         }
 
         ForEach(Array(Self.inkChoices.enumerated()), id: \.offset) { _, ink in
@@ -163,30 +176,16 @@ struct CanvasSelectionBar: View {
         }
     }
 
-    @ViewBuilder
-    private func cutoutToggle(layer: CanvasLayer, hasCutout: Bool, showing: Bool) -> some View {
-        Button {
-            Task { await editor.toggleCutout(for: layer.id) }
-        } label: {
-            HStack(spacing: 6) {
-                if editor.cutoutBusy.contains(layer.id) {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Image(systemName: "scissors")
-                        .font(.system(size: 15, weight: .semibold))
-                }
-                Text(showing ? "Cut out" : "Cutout")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-            }
-            .foregroundStyle(showing ? Theme.postalRed : Theme.ink)
-        }
-        .disabled(editor.cutoutBusy.contains(layer.id))
+    /// Whether the selected layer currently wears its cut.
+    private func cutActive(_ layer: CanvasLayer) -> Bool {
+        if case .image(_, _, let showing) = layer.content { return showing }
+        return layer.dieCut
     }
 
-    private func barIcon(_ name: String) -> some View {
+    private func barIcon(_ name: String, tint: Color = Theme.ink) -> some View {
         Image(systemName: name)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(Theme.ink)
+            .foregroundStyle(tint)
             .frame(width: 30, height: 30)
     }
 }

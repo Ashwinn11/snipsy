@@ -15,7 +15,7 @@ struct LayerTransform: Codable, Equatable {
 /// bundles no font files.
 struct TextStyleValue: Codable, Equatable {
     enum DesignValue: String, Codable, CaseIterable {
-        case rounded, serif, monospaced, condensed, handwritten, script
+        case rounded, serif, monospaced, condensed, handwritten, script, ransom
     }
     var design: DesignValue = .rounded
     /// UIFont.Weight bucket 1...9 (ultraLight...black). Heavy (8) is the
@@ -55,6 +55,9 @@ struct TextStyleValue: Codable, Equatable {
         case .condensed: .system(size: size, weight: w).width(.condensed)
         case .handwritten: Theme.handwritten(size)
         case .script: Theme.script(size)
+        // Ransom is a per-glyph treatment (RansomText), not a Font — this
+        // stands in for live editing and previews.
+        case .ransom: .system(size: size, weight: w, design: .rounded)
         }
         if italic { f = f.italic() }
         return f
@@ -80,12 +83,36 @@ struct CanvasLayer: Identifiable, Codable, Equatable {
     let id: UUID
     var content: LayerContent
     var transform: LayerTransform = LayerTransform()
+    /// Universal white sticker contour — any layer can be cut. (Photos cut
+    /// through Vision's subject lift instead; this flag stays false there.)
+    var dieCut: Bool = false
 
     init(id: UUID = UUID(), content: LayerContent,
-         transform: LayerTransform = LayerTransform()) {
+         transform: LayerTransform = LayerTransform(), dieCut: Bool = false) {
         self.id = id
         self.content = content
         self.transform = transform
+        self.dieCut = dieCut
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, content, transform, dieCut
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        content = try c.decode(LayerContent.self, forKey: .content)
+        transform = try c.decodeIfPresent(LayerTransform.self, forKey: .transform)
+            ?? LayerTransform()
+        if let flag = try c.decodeIfPresent(Bool.self, forKey: .dieCut) {
+            dieCut = flag
+        } else if case .text(_, let style) = content {
+            // Migrate: text layers once carried the cut on their style.
+            dieCut = style.dieCut
+        } else {
+            dieCut = false
+        }
     }
 }
 

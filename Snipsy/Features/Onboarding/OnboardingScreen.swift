@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// First run (and after Delete All Data): four pages on paper. The pitch
+/// First run (and after Delete All Data): five pages on paper. The pitch
 /// is a performance — page 1 die-cuts a bundled photo with the real
-/// product choreography; pages 2–3 preview the share sheet and Messages
-/// drawer in miniature; page 4 holds the legal gate and the camera CTA.
+/// product choreography; page 2 builds a live canvas collage; pages 3–4
+/// preview the share sheet and Messages drawer in miniature; page 5 holds
+/// the legal gate and the camera CTA.
 struct OnboardingScreen: View {
     let model: AppModel
     let screenSize: CGSize
@@ -22,14 +23,18 @@ struct OnboardingScreen: View {
                     demo: demo, haptics: model.haptics,
                     isActive: page == 0, screenSize: screenSize)
                     .tag(0)
-                OnboardingSharePage(
+                OnboardingCanvasPage(
                     demo: demo, haptics: model.haptics,
                     isActive: page == 1, screenSize: screenSize)
                     .tag(1)
-                OnboardingMessagesPage(
+                OnboardingSharePage(
                     demo: demo, haptics: model.haptics,
                     isActive: page == 2, screenSize: screenSize)
                     .tag(2)
+                OnboardingMessagesPage(
+                    demo: demo, haptics: model.haptics,
+                    isActive: page == 3, screenSize: screenSize)
+                    .tag(3)
                 OnboardingFinalPage(safeArea: safeArea) {
                     if model.purchases.unlocked {
                         withAnimation(.easeInOut(duration: 0.55)) {
@@ -39,13 +44,13 @@ struct OnboardingScreen: View {
                         showPaywall = true
                     }
                 }
-                .tag(3)
+                .tag(4)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
 
             // Perforation-hole page dots.
             HStack(spacing: 9) {
-                ForEach(0..<4, id: \.self) { i in
+                ForEach(0..<5, id: \.self) { i in
                     Circle()
                         .fill(page == i ? Theme.postalRed : Theme.inkSoft.opacity(0.3))
                         .frame(width: 6, height: 6)
@@ -56,9 +61,9 @@ struct OnboardingScreen: View {
                       y: screenSize.height - max(safeArea.bottom, 16) - 18)
 
             // Skip to the gate — never past it.
-            if page < 3 {
+            if page < 4 {
                 Button {
-                    withAnimation(Theme.spring) { page = 3 }
+                    withAnimation(Theme.spring) { page = 4 }
                 } label: {
                     Text("Skip")
                         .font(.system(size: 14, design: .rounded))

@@ -255,12 +255,11 @@ struct StampDetailView: View {
             model.canvasSession = CanvasSession(
                 stampID: current.id, seed: doc, seedTitle: current.title)
         } else {
+            // The artifact arrives whole, glued onto a neutral page — its
+            // own stock behind it would just echo (or show an empty
+            // recess). Papers stay one tap away in the background sheet.
             var doc = CanvasDocument()
-            switch current.kind {
-            case .stamp: doc.background = .paper(current.variant)
-            case .polaroid: doc.background = .polaroid
-            default: doc.background = .card
-            }
+            doc.background = .card
             doc.aspect = CanvasDocument.aspect(for: doc.background)
             model.canvasSession = CanvasSession(
                 seed: doc, seedTitle: current.title, seedArtifact: current)

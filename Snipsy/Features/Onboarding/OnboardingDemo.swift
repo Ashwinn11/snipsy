@@ -1,11 +1,10 @@
 import SwiftUI
 
-/// Bundled, Vision-free inputs for the onboarding showcases. Every matte
-/// was baked at build time by tools/prepare_assets.swift with the same
-/// Vision pipeline the app uses; sticker geometry comes from the same
-/// renderer as the live path. The hero (coffee) stars in the page-1 demo
-/// and the Messages bubble; the robot fronts the share mock; all four
-/// subjects fill the Messages drawer.
+/// Bundled, inputs for the onboarding showcases. The coffee hero and its
+/// pre-baked cutout star in the page-1 demo and the Messages bubble.
+/// Couple2, lily, and puppy run Vision live at onboarding time (first launch
+/// only) since they have no pre-baked cutout — the fallback path is identical
+/// to the normal app pipeline.
 @MainActor
 @Observable
 final class OnboardingDemo {
@@ -35,30 +34,46 @@ final class OnboardingDemo {
     private(set) var share: Subject?
     private(set) var drawer: [UIImage] = []
 
+    /// All four loaded subjects — used by the canvas page for sticker access.
+    private(set) var subjects: [Subject] = []
+
+    /// couple1 raw photo — shown as a tilted photo card on the canvas page.
+    /// No Vision needed: it's used as a flat photo, not a die-cut.
+    private(set) var canvasPhoto: UIImage?
+
     func load() {
         guard hero == nil else { return }
+
+        // Load couple1 raw (no cutout pipeline — flat photo for the canvas page).
+        if let url = Bundle.main.url(forResource: "couple1", withExtension: "jpg"),
+           let img = UIImage(contentsOfFile: url.path) {
+            canvasPhoto = img
+        }
+
         Task.detached(priority: .userInitiated) { [weak self] in
+            // coffee has a pre-baked cutout; the rest run Vision live on first launch.
             let specs: [(file: String, title: String)] = [
-                ("coffee", "Coffee"),
-                ("robot", "Tin Robot"),
-                ("teapot", "Teapot"),
-                ("cactus", "Cactus"),
+                ("coffee",  "Coffee"),
+                ("couple2", "Us"),
+                ("lily",    "Lily"),
+                ("puppy",   "Buddy"),
             ]
-            var subjects: [Subject] = []
+            var loaded: [Subject] = []
             for spec in specs {
                 guard let s = await Self.loadSubject(spec.file, title: spec.title)
                 else { continue }
-                subjects.append(s)
-                if subjects.count == 1 {
+                loaded.append(s)
+                if loaded.count == 1 {
                     // Publish the hero early — page 1 starts while the
-                    // drawer subjects are still cutting.
+                    // remaining subjects are still being processed.
                     await MainActor.run { [weak self] in self?.hero = s }
                 }
             }
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                self.share = subjects.count > 1 ? subjects[1] : subjects.first
-                self.drawer = subjects.map(\.stickerRender)
+                self.subjects = loaded
+                self.share = loaded.count > 1 ? loaded[1] : loaded.first
+                self.drawer = loaded.map(\.stickerRender)
             }
         }
     }
@@ -68,24 +83,31 @@ final class OnboardingDemo {
     ) async -> Subject? {
         guard
             let photoURL = Bundle.main.url(forResource: file, withExtension: "jpg"),
-            let cutoutURL = Bundle.main.url(
-                forResource: "\(file).cutout", withExtension: "png"),
-            let rawPhoto = UIImage(contentsOfFile: photoURL.path)?.cgImage,
-            let rawCutout = UIImage(contentsOfFile: cutoutURL.path)?.cgImage
+            let rawPhoto = UIImage(contentsOfFile: photoURL.path)?.cgImage
         else { return nil }
 
-        // Center-crop BOTH to 4:5 identically: the overlay and the raw
-        // photo must share one mapping inside StampView (the feed assets
-        // aren't pre-cropped).
-        guard let photoCG = centerCrop45(rawPhoto),
-              let cutoutCG = centerCrop45(rawCutout),
-              let result = StampRenderer.sticker(from: cutoutCG)
-        else { return nil }
+        guard let photoCG = centerCrop45(rawPhoto) else { return nil }
         let photo = UIImage(cgImage: photoCG).predecoded()
+
+        // Try the pre-baked cutout first (coffee); fall back to live Vision
+        // for any subject that doesn't have a bundled .cutout.png.
+        let cutoutCG: CGImage
+        if let cutoutURL = Bundle.main.url(
+                forResource: "\(file).cutout", withExtension: "png"),
+           let rawCutout = UIImage(contentsOfFile: cutoutURL.path)?.cgImage,
+           let cropped = centerCrop45(rawCutout) {
+            cutoutCG = cropped
+        } else {
+            // Run the real Vision foreground-lift pipeline — same as the
+            // live camera path, just on a bundled image.
+            let analysis = await VisionService.analyze(UIImage(cgImage: photoCG))
+            guard let liveCutout = analysis.cutout?.cgImage else { return nil }
+            cutoutCG = liveCutout
+        }
+
+        guard let result = StampRenderer.sticker(from: cutoutCG) else { return nil }
         let cutout = UIImage(cgImage: cutoutCG)
 
-        // ImageRenderer is main-actor; raster the drawer artifact once,
-        // exactly like StampStore.writeDrawerCopy.
         return await MainActor.run {
             let renderer = ImageRenderer(content: StickerArtifact(
                 image: result.image, title: title, anchor: result.labelAnchor))

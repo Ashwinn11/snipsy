@@ -36,47 +36,38 @@ final class CanvasEditorModel {
 
         // Decorate entry: the source artifact lands as the first layer —
         // its pixels copied to a session-owned file (cancel GC applies).
+        // Stamps, polaroids and cards arrive WHOLE: the dressed collectible
+        // (frame, perforations, caption baked in), not just its photo.
         if let artifact = session.seedArtifact,
            let image = store.image(for: artifact) {
-            let file = store.saveLayerImage(image)
+            let pixels = Self.dressedRender(of: artifact, image: image) ?? image
+            let file = store.saveLayerImage(pixels)
             sessionFiles.insert(file)
-            let isSticker = artifact.kind == .sticker
             doc.layers.append(CanvasLayer(
-                content: isSticker
-                    ? .sticker(file: file)
-                    : .image(file: file, cutoutFile: nil, showCutout: false),
-                transform: LayerTransform(x: 0.5, y: isSticker ? 0.5 : 0.42,
-                                          scale: isSticker ? 0.5 : 0.8)
+                content: .sticker(file: file),
+                transform: LayerTransform(x: 0.5, y: 0.48, scale: 0.55)
             ))
-
-            // The caption comes along as a real text layer — the stock's
-            // caption band isn't part of the canvas background, and a
-            // named memory must not lose its name in the decorate hop.
-            // Untitled artifacts carry nothing.
-            let caption = session.seedTitle
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !isSticker, !caption.isEmpty {
-                var style = TextStyleValue()
-                switch artifact.kind {
-                case .polaroid:
-                    style.design = .handwritten
-                    style.weight = 7
-                    doc.layers.append(CanvasLayer(
-                        content: .text(string: caption, style: style),
-                        transform: LayerTransform(x: 0.5, y: 0.89, scale: 0.15,
-                                                  rotation: -2 * .pi / 180)))
-                default:
-                    // Card and stamp paper speak in the engraved voice.
-                    style.design = .serif
-                    style.weight = 6
-                    doc.layers.append(CanvasLayer(
-                        content: .text(string: caption.uppercased(), style: style),
-                        transform: LayerTransform(
-                            x: 0.5, y: artifact.kind == .card ? 0.915 : 0.88,
-                            scale: 0.11)))
-                }
-            }
         }
+    }
+
+    /// The complete artifact as transparent pixels — the same dressed
+    /// render the share path exports. Stickers pass through (their stored
+    /// file already IS the die cut).
+    private static func dressedRender(of artifact: Stamp,
+                                      image: UIImage) -> UIImage? {
+        let aspect: CGFloat
+        switch artifact.kind {
+        case .stamp: aspect = 1.3125
+        case .polaroid: aspect = PolaroidView.aspect
+        case .card: aspect = CardView.aspect
+        case .sticker, .canvas: return nil
+        }
+        let renderer = ImageRenderer(content:
+            ArtifactView(stamp: artifact, image: image)
+                .frame(width: 360, height: 360 * aspect))
+        renderer.scale = 3
+        renderer.isOpaque = false
+        return renderer.uiImage
     }
 
     var selectedLayer: CanvasLayer? {
@@ -189,17 +180,22 @@ final class CanvasEditorModel {
         selectedLayerID = copy.id
     }
 
-    func bringForward(_ id: UUID) {
+    /// Absolute, not stepwise — one tap must produce one visible result.
+    /// Stepwise swaps trade places with whatever neighbors the array has,
+    /// which may not even overlap the selected layer on screen.
+    func bringToFront(_ id: UUID) {
         guard let i = doc.layers.firstIndex(where: { $0.id == id }),
               i < doc.layers.count - 1 else { return }
         push()
-        doc.layers.swapAt(i, i + 1)
+        let layer = doc.layers.remove(at: i)
+        doc.layers.append(layer)
     }
 
-    func sendBackward(_ id: UUID) {
+    func sendToBack(_ id: UUID) {
         guard let i = doc.layers.firstIndex(where: { $0.id == id }), i > 0 else { return }
         push()
-        doc.layers.swapAt(i, i - 1)
+        let layer = doc.layers.remove(at: i)
+        doc.layers.insert(layer, at: 0)
     }
 
     /// A run of zoom-button taps on one layer collapses into a single
@@ -246,6 +242,15 @@ final class CanvasEditorModel {
     }
 
     // MARK: Cutout
+
+    /// The universal white contour — everything but photos, which cut
+    /// through Vision below.
+    func toggleDieCut(_ id: UUID) {
+        guard let i = doc.layers.firstIndex(where: { $0.id == id }) else { return }
+        if case .image = doc.layers[i].content { return }
+        push()
+        doc.layers[i].dieCut.toggle()
+    }
 
     /// Toggle the die-cut treatment on an image layer. First enable runs
     /// Vision once; after that the flag just flips.
