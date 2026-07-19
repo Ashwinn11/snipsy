@@ -9,8 +9,12 @@ import Observation
 final class PurchaseController {
 
     private nonisolated static let apiKey = "appl_OxILRWppWRYZibPzGmTcxsECqoD"
+    private(set) var unlocked = false {
+        didSet {
+            UserDefaults(suiteName: "group.com.ashwinn.postmark")?.set(unlocked, forKey: "isPremiumUnlocked")
+        }
+    }
 
-    private(set) var unlocked = false
     private(set) var lifetime: Package?
     private(set) var weekly: Package?
     private(set) var yearly: Package?

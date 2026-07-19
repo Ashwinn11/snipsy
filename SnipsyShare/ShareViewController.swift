@@ -91,6 +91,10 @@ final class ShareViewController: UIViewController {
 @MainActor
 @Observable
 final class ShareComposerState {
+    var isPremiumUnlocked: Bool {
+        UserDefaults(suiteName: "group.com.ashwinn.postmark")?.bool(forKey: "isPremiumUnlocked") ?? false
+    }
+
     enum Choice: Equatable {
         case sticker
         case paper(StampVariant)
@@ -208,13 +212,32 @@ struct ShareComposerView: View {
                 .padding(.horizontal, 22)
                 .padding(.top, 18)
 
-                Spacer(minLength: 0)
+                if !state.isPremiumUnlocked {
+                    Spacer(minLength: 0)
+                    VStack(spacing: 20) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(Theme.postalRed)
+                        
+                        Text("Snipsy Premium Required")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                        
+                        Text("Please open the Snipsy app to unlock premium access and share custom stamps.")
+                            .font(.system(size: 14.5, design: .rounded))
+                            .foregroundStyle(Theme.inkSoft)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
+                    Spacer(minLength: 0)
+                } else {
+                    Spacer(minLength: 0)
 
-                if state.failed {
-                    Text("Couldn't read that image.")
-                        .font(.system(size: 15, design: .rounded))
-                        .foregroundStyle(Theme.inkSoft)
-                } else if state.analyzing {
+                    if state.failed {
+                        Text("Couldn't read that image.")
+                            .font(.system(size: 15, design: .rounded))
+                            .foregroundStyle(Theme.inkSoft)
+                    } else if state.analyzing {
                     VStack(spacing: 14) {
                         ProgressView()
                             .tint(Theme.inkSoft)
@@ -339,6 +362,7 @@ struct ShareComposerView: View {
                 }
                 .disabled(state.pending == nil || state.choice == nil || state.kept)
                 .padding(.bottom, 26)
+                }
             }
         }
     }
