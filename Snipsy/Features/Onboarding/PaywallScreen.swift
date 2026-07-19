@@ -27,9 +27,7 @@ struct PaywallScreen: View {
             PaperBackdrop()
                 .ignoresSafeArea()
 
-            if let weekly = purchases.weekly,
-               let yearly = purchases.yearly,
-               let lifetime = purchases.lifetime {
+            if purchases.weekly != nil || purchases.yearly != nil || purchases.lifetime != nil {
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
 
@@ -50,7 +48,7 @@ struct PaywallScreen: View {
 
                     Spacer(minLength: 0)
 
-                    plansView(weekly: weekly, yearly: yearly, lifetime: lifetime)
+                    plansView(weekly: purchases.weekly, yearly: purchases.yearly, lifetime: purchases.lifetime)
                         .padding(.top, 20)
                         .entrance(shown: stage >= 2)
 
@@ -59,15 +57,12 @@ struct PaywallScreen: View {
                     VStack(spacing: 14) {
                         Button {
                             Task {
-                                let packageToPurchase: Package
-                                switch selectedPlan {
-                                case .weekly:
-                                    packageToPurchase = weekly
-                                case .yearly:
-                                    packageToPurchase = yearly
-                                case .lifetime:
-                                    packageToPurchase = lifetime
+                                let packageToPurchase: Package? = switch selectedPlan {
+                                case .weekly: purchases.weekly
+                                case .yearly: purchases.yearly
+                                case .lifetime: purchases.lifetime
                                 }
+                                guard let packageToPurchase else { return }
                                 
                                 if await purchases.purchase(package: packageToPurchase) {
                                     onUnlocked()
@@ -143,6 +138,13 @@ struct PaywallScreen: View {
         .sheet(item: $doc) { LegalDocView(doc: $0) }
         .task {
             await purchases.loadOffering()
+            if purchases.yearly != nil {
+                selectedPlan = .yearly
+            } else if purchases.weekly != nil {
+                selectedPlan = .weekly
+            } else if purchases.lifetime != nil {
+                selectedPlan = .lifetime
+            }
         }
         .onAppear {
             Task { @MainActor in
@@ -198,34 +200,40 @@ struct PaywallScreen: View {
 
     // MARK: - Subviews & Subview Logic
 
-    private func plansView(weekly: Package, yearly: Package, lifetime: Package) -> some View {
+    private func plansView(weekly: Package?, yearly: Package?, lifetime: Package?) -> some View {
         VStack(spacing: 12) {
             // Lifetime Card
-            planCardView(
-                plan: .lifetime,
-                title: "Lifetime",
-                subtitle: "Pay once. Yours forever.",
-                package: lifetime,
-                period: ""
-            )
+            if let lifetime {
+                planCardView(
+                    plan: .lifetime,
+                    title: "Lifetime",
+                    subtitle: "Pay once. Yours forever.",
+                    package: lifetime,
+                    period: ""
+                )
+            }
             
             // Yearly Card
-            planCardView(
-                plan: .yearly,
-                title: "Yearly",
-                subtitle: yearlyWeeklyEquivalentSubtitle,
-                package: yearly,
-                period: "year"
-            )
+            if let yearly {
+                planCardView(
+                    plan: .yearly,
+                    title: "Yearly",
+                    subtitle: yearlyWeeklyEquivalentSubtitle(yearly),
+                    package: yearly,
+                    period: "year"
+                )
+            }
             
             // Weekly Card
-            planCardView(
-                plan: .weekly,
-                title: "Weekly",
-                subtitle: "Billed weekly. Cancel anytime.",
-                package: weekly,
-                period: "week"
-            )
+            if let weekly {
+                planCardView(
+                    plan: .weekly,
+                    title: "Weekly",
+                    subtitle: "Billed weekly. Cancel anytime.",
+                    package: weekly,
+                    period: "week"
+                )
+            }
         }
         .padding(.horizontal, 24)
     }
@@ -289,7 +297,7 @@ struct PaywallScreen: View {
                 
                 // Right Column
                 VStack(alignment: .trailing, spacing: 2) {
-                    if plan == .yearly, let strikethrough = yearlyStrikethroughPrice {
+                    if plan == .yearly, purchases.weekly != nil, let strikethrough = yearlyStrikethroughPrice {
                         Text(strikethrough)
                             .font(.system(size: 12, design: .rounded))
                             .foregroundStyle(Theme.inkSoft)
@@ -320,7 +328,7 @@ struct PaywallScreen: View {
                     .strokeBorder(isSelected ? Theme.postalRed : Theme.inkSoft.opacity(0.3), lineWidth: isSelected ? 2 : 1)
             )
             .overlay(alignment: .topTrailing) {
-                if plan == .yearly, let savePercent = yearlySavePercent, savePercent > 0 {
+                if plan == .yearly, purchases.weekly != nil, let savePercent = yearlySavePercent, savePercent > 0 {
                     Text("SAVE \(savePercent)%")
                         .font(.system(size: 9, weight: .bold, design: .rounded))
                         .padding(.horizontal, 8)
@@ -389,8 +397,7 @@ struct PaywallScreen: View {
         return 19.99
     }
 
-    private var yearlyWeeklyEquivalentSubtitle: String {
-        guard let yearly = purchases.yearly else { return "" }
+    private func yearlyWeeklyEquivalentSubtitle(_ yearly: Package) -> String {
         let yearlyVal = Double(truncating: yearly.storeProduct.price as NSDecimalNumber)
         let weeklyVal = yearlyVal / 52.0
         
@@ -443,27 +450,29 @@ struct PaywallScreen: View {
     }
 
     private var ctaText: String {
-        guard let weekly = purchases.weekly,
-              let yearly = purchases.yearly,
-              let lifetime = purchases.lifetime
-        else { return "" }
-
         switch selectedPlan {
         case .weekly:
-            if isWeeklyEligibleForTrial, let trialLabel = trialPeriodLabel(for: weekly) {
-                return "Try \(trialLabel) free, then \(weekly.storeProduct.localizedPriceString)/week"
-            } else {
-                return "Continue for \(weekly.storeProduct.localizedPriceString)/week"
+            if let weekly = purchases.weekly {
+                if isWeeklyEligibleForTrial, let trialLabel = trialPeriodLabel(for: weekly) {
+                    return "Try \(trialLabel) free, then \(weekly.storeProduct.localizedPriceString)/week"
+                } else {
+                    return "Continue for \(weekly.storeProduct.localizedPriceString)/week"
+                }
             }
         case .yearly:
-            if isYearlyEligibleForTrial, let trialLabel = trialPeriodLabel(for: yearly) {
-                return "Try \(trialLabel) free, then \(yearly.storeProduct.localizedPriceString)/year"
-            } else {
-                return "Continue for \(yearly.storeProduct.localizedPriceString)/year"
+            if let yearly = purchases.yearly {
+                if isYearlyEligibleForTrial, let trialLabel = trialPeriodLabel(for: yearly) {
+                    return "Try \(trialLabel) free, then \(yearly.storeProduct.localizedPriceString)/year"
+                } else {
+                    return "Continue for \(yearly.storeProduct.localizedPriceString)/year"
+                }
             }
         case .lifetime:
-            return "Unlock Lifetime for \(lifetime.storeProduct.localizedPriceString)"
+            if let lifetime = purchases.lifetime {
+                return "Unlock Lifetime for \(lifetime.storeProduct.localizedPriceString)"
+            }
         }
+        return ""
     }
 
     private var subCTAText: String {
