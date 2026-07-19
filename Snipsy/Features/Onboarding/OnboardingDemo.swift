@@ -69,11 +69,12 @@ final class OnboardingDemo {
                     await MainActor.run { [weak self] in self?.hero = s }
                 }
             }
+            let finalLoaded = loaded
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                self.subjects = loaded
-                self.share = loaded.count > 1 ? loaded[1] : loaded.first
-                self.drawer = loaded.map(\.stickerRender)
+                self.subjects = finalLoaded
+                self.share = finalLoaded.count > 1 ? finalLoaded[1] : finalLoaded.first
+                self.drawer = finalLoaded.map(\.stickerRender)
             }
         }
     }

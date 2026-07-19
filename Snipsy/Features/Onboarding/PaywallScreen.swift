@@ -1,8 +1,8 @@
 import SwiftUI
+import RevenueCat
 
-/// The gate between onboarding and the camera: one lifetime purchase, no
-/// subscription. Hard by design — the close affordance arrives late and
-/// closing only returns to onboarding's last slide, never into the app.
+/// The gate between onboarding and the camera: three purchase options (weekly, yearly, lifetime).
+/// Designs the price cards similarly to YumeShip, complete with free trial check and badges.
 struct PaywallScreen: View {
     let purchases: PurchaseController
     let demo: OnboardingDemo
@@ -14,96 +14,119 @@ struct PaywallScreen: View {
     @State private var closeVisible = false
     @State private var stage = 0
     @State private var doc: LegalDoc? = nil
+    @State private var selectedPlan: PaywallPlan = .yearly
+
+    enum PaywallPlan {
+        case weekly
+        case yearly
+        case lifetime
+    }
 
     var body: some View {
         ZStack {
             PaperBackdrop()
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
+            if let weekly = purchases.weekly,
+               let yearly = purchases.yearly,
+               let lifetime = purchases.lifetime {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
 
-                VStack(spacing: 12) {
-                    stickerFan
-                        .padding(.bottom, 10)
-                    RansomText(text: "KEEP EVERY MOMENT", fontSize: 16, ink: Theme.ink)
-                    Text("The coffee, the concert, the two of you —\nturned into stamps and stickers you keep forever.")
-                        .font(.system(size: 15, design: .rounded))
-                        .foregroundStyle(Theme.inkSoft)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(3)
-                }
-                .entrance(shown: stage >= 1)
-
-                VStack(alignment: .leading, spacing: 18) {
-                    outcome("scissors", "Photos become die-cut stickers")
-                    outcome("seal.fill", "Moments become dated stamps")
-                    outcome("message.fill", "Your collection rides in iMessage")
-                    outcome("infinity", "One purchase — yours for life")
-                }
-                .padding(.top, 38)
-                .padding(.horizontal, 58)
-                .entrance(shown: stage >= 2)
-
-                Spacer(minLength: 0)
-
-                VStack(spacing: 14) {
-                    Button {
-                        Task {
-                            if await purchases.purchase() { onUnlocked() }
-                        }
-                    } label: {
-                        HStack(spacing: 8) {
-                            if purchases.purchasing {
-                                ProgressView().tint(.white)
-                            } else {
-                                Image(systemName: "seal.fill")
-                                    .font(.system(size: 15, weight: .semibold))
-                            }
-                            Text(purchases.priceText.map {
-                                "Unlock Snipsy — \($0)"
-                            } ?? "Unlock Snipsy for Life")
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 34)
-                        .frame(height: 54)
-                        .frame(maxWidth: .infinity)
-                        .background(Theme.postalRed, in: Capsule())
-                        .padding(.horizontal, 44)
+                    VStack(spacing: 12) {
+                        stickerFan
+                            .padding(.bottom, 10)
+                        RansomText(text: "KEEP EVERY MOMENT", fontSize: 16, ink: Theme.ink)
                     }
-                    .buttonStyle(PressableButtonStyle())
-                    .disabled(purchases.purchasing)
+                    .entrance(shown: stage >= 1)
 
-                    Text("One-time purchase · No subscription")
-                        .font(.system(size: 12.5, design: .rounded))
-                        .foregroundStyle(Theme.inkSoft)
+                    VStack(alignment: .leading, spacing: 14) {
+                        outcome("square.stack", "Layer photos, stickers, & text on a canvas")
+                        outcome("scissors", "Convert photos into die-cut stickers")
+                        outcome("seal.fill", "Turn moments into dated postage stamps")
+                    }
+                    .padding(.horizontal, 58)
+                    .entrance(shown: stage >= 2)
 
-                    HStack(spacing: 18) {
+                    Spacer(minLength: 0)
+
+                    plansView(weekly: weekly, yearly: yearly, lifetime: lifetime)
+                        .padding(.top, 20)
+                        .entrance(shown: stage >= 2)
+
+                    Spacer(minLength: 0)
+
+                    VStack(spacing: 14) {
                         Button {
                             Task {
-                                if await purchases.restore() { onUnlocked() }
+                                let packageToPurchase: Package
+                                switch selectedPlan {
+                                case .weekly:
+                                    packageToPurchase = weekly
+                                case .yearly:
+                                    packageToPurchase = yearly
+                                case .lifetime:
+                                    packageToPurchase = lifetime
+                                }
+                                
+                                if await purchases.purchase(package: packageToPurchase) {
+                                    onUnlocked()
+                                }
                             }
                         } label: {
-                            Text("Restore Purchase").underline()
+                            HStack(spacing: 8) {
+                                if purchases.purchasing {
+                                    ProgressView().tint(.white)
+                                } else {
+                                    Image(systemName: "seal.fill")
+                                        .font(.system(size: 15, weight: .semibold))
+                                }
+                                Text(ctaText)
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 24)
+                            .frame(height: 54)
+                            .frame(maxWidth: .infinity)
+                            .background(Theme.postalRed, in: Capsule())
+                            .padding(.horizontal, 32)
                         }
-                        Button { doc = .terms } label: {
-                            Text("Terms").underline()
+                        .buttonStyle(PressableButtonStyle())
+                        .disabled(purchases.purchasing)
+
+                        Text(subCTAText)
+                            .font(.system(size: 12.5, design: .rounded))
+                            .foregroundStyle(Theme.inkSoft)
+
+                        HStack(spacing: 18) {
+                            Button {
+                                Task {
+                                    if await purchases.restore() { onUnlocked() }
+                                }
+                            } label: {
+                                Text("Restore Purchase").underline()
+                            }
+                            Button { doc = .terms } label: {
+                                Text("Terms").underline()
+                            }
+                            Button { doc = .privacy } label: {
+                                Text("Privacy").underline()
+                            }
                         }
-                        Button { doc = .privacy } label: {
-                            Text("Privacy").underline()
-                        }
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(Theme.inkSoft.opacity(0.8))
+                        .buttonStyle(.plain)
                     }
-                    .font(.system(size: 12, design: .rounded))
-                    .foregroundStyle(Theme.inkSoft.opacity(0.8))
-                    .buttonStyle(.plain)
+                    .padding(.bottom, 30)
+                    .entrance(shown: stage >= 3)
                 }
-                .padding(.bottom, 40)
-                .entrance(shown: stage >= 3)
+            } else {
+                VStack {
+                    ProgressView()
+                        .tint(Theme.ink)
+                }
             }
 
-            // The exit, fashionably late and deliberately quiet — in the
-            // exact spot Skip occupied on the onboarding slides.
             if closeVisible {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
@@ -170,6 +193,295 @@ struct PaywallScreen: View {
                 .font(.system(size: 14.5, design: .rounded))
                 .foregroundStyle(Theme.ink.opacity(0.92))
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Subviews & Subview Logic
+
+    private func plansView(weekly: Package, yearly: Package, lifetime: Package) -> some View {
+        VStack(spacing: 12) {
+            // Lifetime Card
+            planCardView(
+                plan: .lifetime,
+                title: "Lifetime",
+                subtitle: "Pay once. Yours forever.",
+                package: lifetime,
+                period: ""
+            )
+            
+            // Yearly Card
+            planCardView(
+                plan: .yearly,
+                title: "Yearly",
+                subtitle: yearlyWeeklyEquivalentSubtitle,
+                package: yearly,
+                period: "year"
+            )
+            
+            // Weekly Card
+            planCardView(
+                plan: .weekly,
+                title: "Weekly",
+                subtitle: "Billed weekly. Cancel anytime.",
+                package: weekly,
+                period: "week"
+            )
+        }
+        .padding(.horizontal, 24)
+    }
+
+    @ViewBuilder
+    private func planCardView(
+        plan: PaywallPlan,
+        title: String,
+        subtitle: String,
+        package: Package,
+        period: String
+    ) -> some View {
+        let isSelected = selectedPlan == plan
+        let priceString = package.storeProduct.localizedPriceString
+        
+        Button {
+            selectedPlan = plan
+        } label: {
+            HStack(spacing: 12) {
+                // Left Column
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(title)
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(isSelected ? Theme.postalRed : Theme.ink)
+                        
+                        if plan == .lifetime {
+                            Text("ONE-TIME")
+                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Theme.postalRed.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+                                .foregroundStyle(Theme.postalRed)
+                        }
+                        
+                        if plan == .yearly {
+                            Text("BEST VALUE")
+                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Theme.postalRed.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+                                .foregroundStyle(Theme.postalRed)
+                                
+                            if isYearlyEligibleForTrial, let trialLabel = trialPeriodLabel(for: package) {
+                                Text("\(trialLabel.uppercased()) TRIAL")
+                                    .font(.system(size: 8, weight: .bold, design: .rounded))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+                                    .foregroundStyle(Color.blue)
+                            }
+                        }
+                    }
+                    
+                    Text(subtitle)
+                        .font(.system(size: 12, design: .rounded))
+                        .foregroundStyle(Theme.inkSoft)
+                }
+                
+                Spacer()
+                
+                // Right Column
+                VStack(alignment: .trailing, spacing: 2) {
+                    if plan == .yearly, let strikethrough = yearlyStrikethroughPrice {
+                        Text(strikethrough)
+                            .font(.system(size: 12, design: .rounded))
+                            .foregroundStyle(Theme.inkSoft)
+                            .strikethrough()
+                    }
+                    
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text(priceString)
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                        
+                        if !period.isEmpty {
+                            Text("/ \(period)")
+                                .font(.system(size: 12, design: .rounded))
+                                .foregroundStyle(Theme.inkSoft)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSelected ? Theme.postalRed.opacity(0.04) : Color.white.opacity(0.7))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(isSelected ? Theme.postalRed : Theme.inkSoft.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+            )
+            .overlay(alignment: .topTrailing) {
+                if plan == .yearly, let savePercent = yearlySavePercent, savePercent > 0 {
+                    Text("SAVE \(savePercent)%")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.postalRed)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .offset(x: -12, y: -10)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func periodLabel(for package: Package) -> String {
+        guard let period = package.storeProduct.subscriptionPeriod else { return "" }
+        switch period.unit {
+        case .day:
+            return period.value == 1 ? "day" : "\(period.value) days"
+        case .week:
+            return period.value == 1 ? "week" : "\(period.value) weeks"
+        case .month:
+            return period.value == 1 ? "month" : "\(period.value) months"
+        case .year:
+            return period.value == 1 ? "year" : "\(period.value) years"
+        @unknown default:
+            return ""
+        }
+    }
+
+    private func trialPeriodLabel(for package: Package) -> String? {
+        guard let intro = package.storeProduct.introductoryDiscount,
+              intro.price == 0
+        else { return nil }
+        
+        let period = intro.subscriptionPeriod
+        switch period.unit {
+        case .day:
+            return period.value == 1 ? "1 day" : "\(period.value) days"
+        case .week:
+            return period.value == 1 ? "1 week" : "\(period.value) weeks"
+        case .month:
+            return period.value == 1 ? "1 month" : "\(period.value) months"
+        case .year:
+            return period.value == 1 ? "1 year" : "\(period.value) years"
+        @unknown default:
+            return nil
+        }
+    }
+
+
+
+    // MARK: - Computed Properties for Plan Pricing & Details
+
+    private var weeklyPriceValue: Double {
+        if let weekly = purchases.weekly {
+            return Double(truncating: weekly.storeProduct.price as NSDecimalNumber)
+        }
+        return 2.99
+    }
+    
+    private var yearlyPriceValue: Double {
+        if let yearly = purchases.yearly {
+            return Double(truncating: yearly.storeProduct.price as NSDecimalNumber)
+        }
+        return 19.99
+    }
+
+    private var yearlyWeeklyEquivalentSubtitle: String {
+        guard let yearly = purchases.yearly else { return "" }
+        let yearlyVal = Double(truncating: yearly.storeProduct.price as NSDecimalNumber)
+        let weeklyVal = yearlyVal / 52.0
+        
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = yearly.storeProduct.priceFormatter?.locale
+        formatter.currencySymbol = yearly.storeProduct.priceFormatter?.currencySymbol ?? "$"
+        return (formatter.string(from: NSNumber(value: weeklyVal)) ?? "") + "/week"
+    }
+
+    private var yearlyStrikethroughPrice: String? {
+        let weeklyVal = weeklyPriceValue
+        let strikethroughVal = weeklyVal * 54
+        
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        if let weekly = purchases.weekly {
+            formatter.locale = weekly.storeProduct.priceFormatter?.locale
+            formatter.currencySymbol = weekly.storeProduct.priceFormatter?.currencySymbol ?? "$"
+        } else {
+            formatter.locale = Locale(identifier: "en_US")
+            formatter.currencySymbol = "$"
+        }
+        return formatter.string(from: NSNumber(value: strikethroughVal))
+    }
+
+    private var yearlySavePercent: Int? {
+        let weeklyVal = weeklyPriceValue
+        let yearlyVal = yearlyPriceValue
+        let strikethroughVal = weeklyVal * 54
+        guard strikethroughVal > 0 else { return nil }
+        let pct = ((strikethroughVal - yearlyVal) / strikethroughVal) * 100
+        return max(0, Int(round(pct)))
+    }
+
+    private var isYearlyEligibleForTrial: Bool {
+        guard let yearly = purchases.yearly else {
+            return false
+        }
+        let productID = yearly.storeProduct.productIdentifier
+        return purchases.introEligibility[productID] == .eligible
+    }
+
+    private var isWeeklyEligibleForTrial: Bool {
+        guard let weekly = purchases.weekly else {
+            return false
+        }
+        let productID = weekly.storeProduct.productIdentifier
+        return purchases.introEligibility[productID] == .eligible
+    }
+
+    private var ctaText: String {
+        guard let weekly = purchases.weekly,
+              let yearly = purchases.yearly,
+              let lifetime = purchases.lifetime
+        else { return "" }
+
+        switch selectedPlan {
+        case .weekly:
+            if isWeeklyEligibleForTrial, let trialLabel = trialPeriodLabel(for: weekly) {
+                return "Try \(trialLabel) free, then \(weekly.storeProduct.localizedPriceString)/week"
+            } else {
+                return "Continue for \(weekly.storeProduct.localizedPriceString)/week"
+            }
+        case .yearly:
+            if isYearlyEligibleForTrial, let trialLabel = trialPeriodLabel(for: yearly) {
+                return "Try \(trialLabel) free, then \(yearly.storeProduct.localizedPriceString)/year"
+            } else {
+                return "Continue for \(yearly.storeProduct.localizedPriceString)/year"
+            }
+        case .lifetime:
+            return "Unlock Lifetime for \(lifetime.storeProduct.localizedPriceString)"
+        }
+    }
+
+    private var subCTAText: String {
+        switch selectedPlan {
+        case .lifetime:
+            return "One-time purchase. No subscription"
+        case .weekly:
+            if isWeeklyEligibleForTrial {
+                return "No payment due now. Cancel Anytime"
+            } else {
+                return "Cancel anytime. Secure checkout"
+            }
+        case .yearly:
+            if isYearlyEligibleForTrial {
+                return "No payment due now. Cancel Anytime"
+            } else {
+                return "Cancel anytime. Secure checkout"
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import UIKit
 import Observation
 
@@ -18,11 +18,11 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
     var flashOn = false
     var frontCamera = false
 
-    let session = AVCaptureSession()
-
+    nonisolated let session = AVCaptureSession()
     @ObservationIgnored private let sessionQueue = DispatchQueue(label: "snipsy.camera.session")
-    @ObservationIgnored private let photoOutput = AVCapturePhotoOutput()
+    @ObservationIgnored nonisolated private let photoOutput = AVCapturePhotoOutput()
     @ObservationIgnored private var photoContinuation: CheckedContinuation<UIImage, Error>?
+
     @ObservationIgnored private var currentDevice: AVCaptureDevice?
 
     // MARK: Lifecycle

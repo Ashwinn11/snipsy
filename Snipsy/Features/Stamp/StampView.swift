@@ -293,10 +293,8 @@ struct StampView: View {
     @ViewBuilder
     private func dressing(_ w: CGFloat) -> some View {
         let content = contentRect(w)
-        let pic = pictureRect(w)
 
         ZStack(alignment: .topLeading) {
-            // Tinted — white keyline on the picture edge + engraved hairline.
             Rectangle()
                 .strokeBorder(Color(red: 0.97, green: 0.94, blue: 0.88).opacity(0.7),
                               lineWidth: 1)
