@@ -35,6 +35,11 @@ struct MockPhoneCard<Content: View>: View {
 /// every mock (share-sheet row, drawer tab).
 enum AppIconLoader {
     static let image: UIImage? = {
+        // The full 1024² icon art, kept as its own imageset — the bundle's
+        // CFBundleIconFiles entry resolves to the 60-pt variant (≤180 px),
+        // which visibly upscales at the onboarding's 108-pt size.
+        if let art = UIImage(named: "AppIconArt") { return art }
+        // Fallback: the largest icon iOS baked into the bundle.
         guard
             let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
             let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
