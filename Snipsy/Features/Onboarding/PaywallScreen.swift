@@ -15,6 +15,8 @@ struct PaywallScreen: View {
     @State private var stage = 0
     @State private var doc: LegalDoc? = nil
     @State private var selectedPlan: PaywallPlan = .yearly
+    /// Restore came back with no active entitlement on this Apple Account.
+    @State private var noRestoreFound = false
 
     enum PaywallPlan {
         case weekly
@@ -34,14 +36,14 @@ struct PaywallScreen: View {
                     VStack(spacing: 12) {
                         stickerFan
                             .padding(.bottom, 10)
-                        RansomText(text: "KEEP EVERY MOMENT", fontSize: 16, ink: Theme.ink)
+                        RansomText(text: "KEEP EVERY DATE", fontSize: 16, ink: Theme.ink)
                     }
                     .entrance(shown: stage >= 1)
 
                     VStack(alignment: .leading, spacing: 14) {
-                        outcome("square.stack", "Layer photos, stickers, & text on a canvas")
-                        outcome("scissors", "Convert photos into die-cut stickers")
-                        outcome("seal.fill", "Turn moments into dated postage stamps")
+                        outcome("calendar", "Build a dated memory page in minutes")
+                        outcome("square.stack", "12 stamp templates to lay it out on")
+                        outcome("scissors", "Die-cut, polaroid, or outlined photos")
                     }
                     .padding(.horizontal, 58)
                     .entrance(shown: stage >= 2)
@@ -96,11 +98,18 @@ struct PaywallScreen: View {
                         HStack(spacing: 18) {
                             Button {
                                 Task {
-                                    if await purchases.restore() { onUnlocked() }
+                                    if await purchases.restore() {
+                                        onUnlocked()
+                                    } else {
+                                        // Silence here reads as a broken
+                                        // button — say so.
+                                        noRestoreFound = true
+                                    }
                                 }
                             } label: {
                                 Text("Restore Purchase").underline()
                             }
+                            .disabled(purchases.purchasing)
                             Button { doc = .terms } label: {
                                 Text("Terms").underline()
                             }
@@ -136,6 +145,13 @@ struct PaywallScreen: View {
             }
         }
         .sheet(item: $doc) { LegalDocView(doc: $0) }
+        .alert("Nothing to restore", isPresented: $noRestoreFound) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("No previous purchase was found on this Apple Account. "
+                 + "If you bought Snipsy with a different account, sign in "
+                 + "with that one and try again.")
+        }
         .task {
             await purchases.loadOffering()
             if purchases.yearly != nil {
@@ -161,17 +177,34 @@ struct PaywallScreen: View {
     }
 
     /// The collection as one tossed pile: three fanned behind the hero.
+    /// The thing being sold: a dated memory page, with the die-cuts that
+    /// go on it fanned behind. Renders the real template so the pitch and
+    /// the product can't drift apart.
     private var stickerFan: some View {
         ZStack {
             if demo.drawer.count >= 3 {
-                fanned(demo.drawer[1], width: 78, degrees: -19, dx: -62, dy: 10)
-                fanned(demo.drawer[2], width: 72, degrees: 16, dx: 62, dy: 12)
+                fanned(demo.drawer[1], width: 64, degrees: -19, dx: -68, dy: 14)
+                fanned(demo.drawer[2], width: 60, degrees: 16, dx: 68, dy: 16)
             }
-            if let hero = demo.hero {
-                fanned(hero.stickerRender, width: 96, degrees: -7, dx: 0, dy: 6)
-            }
+            memoryPage
+                .rotationEffect(.degrees(-4))
+                .shadow(color: Theme.shadow.opacity(0.26), radius: 10, y: 6)
         }
         .frame(height: 128)
+    }
+
+    private var memoryPage: some View {
+        ZStack {
+            CanvasBackgroundView(background: .paper(.sweetheart), date: Date())
+            if let hero = demo.hero {
+                Image(uiImage: hero.stickerRender)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 56)
+                    .offset(y: -8)
+            }
+        }
+        .frame(width: 86)
     }
 
     private func fanned(_ render: UIImage, width: CGFloat, degrees: Double,

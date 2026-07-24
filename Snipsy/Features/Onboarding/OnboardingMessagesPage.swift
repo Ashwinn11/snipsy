@@ -41,8 +41,8 @@ struct OnboardingMessagesPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "PEEL THEM IN MESSAGES", fontSize: 14, ink: Theme.ink)
-                Text("Your collection waits behind the plus button\nin any conversation.")
+                RansomText(text: "SEND IT STRAIGHT OVER", fontSize: 14, ink: Theme.ink)
+                Text("Everything you've made waits behind the plus\nbutton in any conversation.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)

@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// First run (and after Delete All Data): five pages on paper. The pitch
-/// is a performance — page 1 die-cuts a bundled photo with the real
-/// product choreography; page 2 builds a live canvas collage; pages 3–4
-/// preview the share sheet and Messages drawer in miniature; page 5 holds
-/// the legal gate and the camera CTA.
+/// is a performance — page 1 builds a live memory page (the product's
+/// primary act); page 2 die-cuts a bundled photo with the real choreography;
+/// pages 3–4 preview the share sheet and Messages drawer in miniature;
+/// page 5 holds the legal gate and the CTA.
 struct OnboardingScreen: View {
     let model: AppModel
     let screenSize: CGSize
@@ -19,11 +19,11 @@ struct OnboardingScreen: View {
             PaperBackdrop()
 
             TabView(selection: $page) {
-                OnboardingDemoPage(
+                OnboardingCanvasPage(
                     demo: demo, haptics: model.haptics,
                     isActive: page == 0, screenSize: screenSize)
                     .tag(0)
-                OnboardingCanvasPage(
+                OnboardingDemoPage(
                     demo: demo, haptics: model.haptics,
                     isActive: page == 1, screenSize: screenSize)
                     .tag(1)
@@ -35,14 +35,10 @@ struct OnboardingScreen: View {
                     demo: demo, haptics: model.haptics,
                     isActive: page == 3, screenSize: screenSize)
                     .tag(3)
+                // The paywall is the gate, always — an existing entitlement
+                // doesn't skip it. Premium users restore from inside it.
                 OnboardingFinalPage(safeArea: safeArea) {
-                    if model.purchases.unlocked {
-                        withAnimation(.easeInOut(duration: 0.55)) {
-                            model.completeOnboarding()
-                        }
-                    } else {
-                        showPaywall = true
-                    }
+                    showPaywall = true
                 }
                 .tag(4)
             }

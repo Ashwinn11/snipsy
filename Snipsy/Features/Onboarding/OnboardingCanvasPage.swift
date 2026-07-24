@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Page 2: canvas pitch. Two-column grid, animates once top → bottom
-/// then **stays** on the finished composition — no loop.
+/// Page 1: the pitch. The memory page builds itself — a dated stamp
+/// template filling with photos, die-cuts and hand lettering. Two-column
+/// grid, animates once top → bottom then **stays** on the finished
+/// composition — no loop.
 ///
 ///   Left col (top → bottom): couple1 photo | lily sticker | ransom "love"
 ///   Right col (top → bottom): couple2 sticker | puppy sticker
@@ -31,9 +33,9 @@ struct OnboardingCanvasPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "BUILD A MEMORY", fontSize: 16, ink: Theme.ink)
-                Text("Layer photos, stickers, and text —\nall on one canvas.")
-                    .font(.system(size: 14.5, design: .rounded))
+                RansomText(text: "SNIPSY", fontSize: 24, ink: Theme.ink)
+                Text("Turn a day together into something\nthey'll actually keep.")
+                    .font(.system(size: 15, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
             }
@@ -183,8 +185,10 @@ struct OnboardingCanvasPage: View {
             .offset(x: w * 0.03, y: h * 0.76)
 
         // ── Bottom: die-cut "forever & always" ──────────────────────────────
-        // Layered white shadows create the sticker-contour border.
-        DieCutLabel(text: "forever & always", fontSize: w * 0.076)
+        // The real die-cut text — same heavy-rounded voice and dilated
+        // contour the canvas editor cuts, so the pitch shows the product.
+        DieCutText(text: "forever & always", fontSize: w * 0.076,
+                   ink: Color(hex: 0x1C3050))
             .scaleEffect(diecutEl == 0 ? 0.60 : 1)
             .opacity(diecutEl)
             .animation(.spring(response: 0.44, dampingFraction: 0.64), value: diecutEl)
@@ -354,23 +358,3 @@ struct RansomLettering: View {
     }
 }
 
-// MARK: - Die-cut text label
-
-/// Stacked white shadow layers build up a solid white contour around the
-/// glyphs — exactly how the app renders die-cut text stickers.
-struct DieCutLabel: View {
-    let text: String
-    var fontSize: CGFloat = 18
-
-    var body: some View {
-        Text(text)
-            .font(Theme.handwritten(fontSize))
-            .foregroundStyle(Color(hex: 0x1C3050))
-            // Three overlapping white shadow halos = solid die-cut border
-            .shadow(color: .white, radius: 5)
-            .shadow(color: .white, radius: 4)
-            .shadow(color: .white, radius: 3)
-            // Subtle drop shadow beneath the whole sticker
-            .shadow(color: Color(hex: 0x2A5070).opacity(0.18), radius: 4, y: 2)
-    }
-}

@@ -63,10 +63,15 @@ final class OnboardingDemo {
                 guard let s = await Self.loadSubject(spec.file, title: spec.title)
                 else { continue }
                 loaded.append(s)
-                if loaded.count == 1 {
-                    // Publish the hero early — page 1 starts while the
-                    // remaining subjects are still being processed.
-                    await MainActor.run { [weak self] in self?.hero = s }
+                let soFar = loaded
+                // Publish as each one lands. The memory page leads the
+                // onboarding and draws from `subjects`, so waiting for all
+                // four (three of which run Vision live on first launch)
+                // would leave the very first screen half-built.
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    if self.hero == nil { self.hero = s }
+                    self.subjects = soFar
                 }
             }
             let finalLoaded = loaded

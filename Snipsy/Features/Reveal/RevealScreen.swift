@@ -59,6 +59,10 @@ struct RevealScreen: View {
     }
     @State private var options = false
     @State private var selection: ArtifactChoice? = nil
+    /// True while the showing selection is the one the reveal made for the
+    /// user (the default die cut) rather than one they tapped — keeps the
+    /// chooser's prompt up so the default doesn't read as final.
+    @State private var autoSelected = false
     @State private var selectedVariant: StampVariant = .tinted
 
     // Instant formats — crossfaded over the stamp stack by value, one fade
@@ -368,10 +372,22 @@ struct RevealScreen: View {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 options = true
             }
+
+            // The die cut is the default outcome — it plays itself, so the
+            // reveal lands on a finished sticker instead of a raw photo
+            // waiting on a tap. Only when there IS a cut to make; a classic
+            // capture (no mask) still asks. A tap inside this beat wins.
+            if pending.style == .cutout, pending.sticker != nil {
+                try? await Task.sleep(for: .seconds(0.3))
+                guard case .reveal = model.phase else { return }
+                if selection == nil { select(.sticker, auto: true) }
+            }
+
             // The first-ever output screen is the wow moment — worth one
-            // of the year's three rating prompts. After the entrance has
-            // fully settled, and only if we're still on this screen.
-            try? await Task.sleep(for: .seconds(1.6))
+            // of the year's three rating prompts. Held until after the cut
+            // has run (punch 0.45s + wave 1.15s + settle), so the prompt
+            // never lands mid-shatter.
+            try? await Task.sleep(for: .seconds(2.8))
             if case .reveal = model.phase {
                 model.reviews.fire(.firstReveal)
             }
@@ -388,9 +404,10 @@ struct RevealScreen: View {
     /// shatter fast, never reverses it. Gen guards protect only the
     /// stage-mutating tails — one-shot ambient tails (chrome reveal, holo
     /// decay) must run regardless, or an early re-tap strands them.
-    private func select(_ choice: ArtifactChoice) {
+    private func select(_ choice: ArtifactChoice, auto: Bool = false) {
         guard selection != choice else { return }
         model.haptics.tick()
+        autoSelected = auto
         let first = selection == nil
         switchGen += 1
         let gen = switchGen
@@ -646,10 +663,12 @@ struct RevealScreen: View {
         let rowY = screenSize.height - max(safeArea.bottom, 16) - 158
 
         return VStack(spacing: 14) {
-            Text("Make it a…")
+            // The default cut isn't a decision the user made — keep the
+            // prompt up (reworded) until they actually pick something.
+            Text(autoSelected ? "Or make it a…" : "Make it a…")
                 .font(.system(size: 14, design: .rounded))
                 .foregroundStyle(Theme.inkSoft)
-                .opacity(selection == nil ? 1 : 0)
+                .opacity(selection == nil || autoSelected ? 1 : 0)
 
             ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 13) {

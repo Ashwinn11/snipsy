@@ -36,10 +36,11 @@ struct OnboardingDemoPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "SNIPSY", fontSize: 24, ink: Theme.ink)
-                Text("Turn your moments into stamps & stickers.")
-                    .font(.system(size: 16, design: .rounded))
+                RansomText(text: "CUT ANYONE OUT", fontSize: 16, ink: Theme.ink)
+                Text("Any photo lifts into a die-cut sticker\nfor your next page.")
+                    .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
+                    .multilineTextAlignment(.center)
             }
 
             Spacer(minLength: 0)

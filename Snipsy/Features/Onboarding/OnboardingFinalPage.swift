@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Page 4: the gate. The app icon breathes over the closing pitch and the
-/// CTA hands off to the paywall (or straight in, once unlocked).
+/// Page 5: the gate. The app icon breathes over the closing pitch and the
+/// CTA hands off to the paywall (or straight to the canvas, once unlocked).
 struct OnboardingFinalPage: View {
     let safeArea: EdgeInsets
     var onStart: () -> Void
@@ -19,8 +19,8 @@ struct OnboardingFinalPage: View {
                            value: breathe)
 
             VStack(spacing: 10) {
-                RansomText(text: "START YOUR COLLECTION", fontSize: 14, ink: Theme.ink)
-                Text("Fill it with the moments you keep —\ncut, stamped, and yours forever.")
+                RansomText(text: "MAKE THE FIRST ONE", fontSize: 14, ink: Theme.ink)
+                Text("One page after every date.\nThey'll start waiting for it.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -33,7 +33,7 @@ struct OnboardingFinalPage: View {
             Button {
                 onStart()
             } label: {
-                Text("Start Collecting")
+                Text("Make a Memory")
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 42)
