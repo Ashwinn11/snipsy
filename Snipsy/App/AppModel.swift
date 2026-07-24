@@ -41,6 +41,9 @@ final class AppModel {
     /// Independent of Phase: the editor has no continuity contract with
     /// the camera feed and returns to the album intact.
     var canvasSession: CanvasSession? = nil
+    /// The stamp/sticker ceremony (camera → develop → reveal), now a modal
+    /// secondary flow presented over the memory-maker home.
+    var showStampCapture = false
 
     /// Collection pill frame in full-screen coordinates (fly-to-album target).
     var pillFrame: CGRect = .zero
@@ -192,7 +195,8 @@ final class AppModel {
     func completeOnboarding() {
         hasOnboarded = true
         UserDefaults.standard.set(true, forKey: "snipsy.hasOnboarded")
-        camera.start()
+        // The camera now starts on demand (stamp ceremony / canvas camera),
+        // not on entry — the home is the memory canvas.
         haptics.success()
     }
 

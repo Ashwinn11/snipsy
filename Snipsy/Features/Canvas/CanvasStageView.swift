@@ -11,7 +11,7 @@ struct CanvasStageView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
-                CanvasBackgroundView(background: doc.background)
+                CanvasBackgroundView(background: doc.background, date: doc.date)
                 ForEach(doc.layers) { layer in
                     CanvasLayerContent(content: layer.content,
                                        canvasWidth: geo.size.width,
@@ -32,22 +32,336 @@ struct CanvasStageView: View {
 /// (which may carry a live TextField) never sit under a shader modifier.
 struct CanvasBackgroundView: View {
     let background: CanvasDocument.Background
+    /// The memory's date, printed as the stamp template's header. `nil`
+    /// still renders the frame (template gallery thumbnails) without the date.
+    var date: Date? = nil
 
     var body: some View {
         switch background {
         case .paper(let variant):
-            GeometryReader { geo in
-                PerforatedRect()
-                    .fill(variant.canvasPaper)
-                    .colorEffect(ShaderLibrary.paperGrain(.float(0.62), .float(0.55)))
-                    .shadow(color: Theme.shadow.opacity(0.30),
-                            radius: 0.05 * geo.size.width, y: 0.024 * geo.size.width)
-            }
-            .aspectRatio(1 / 1.3125, contentMode: .fit)
+            StampTemplateBackground(variant: variant, date: date)
         case .polaroid:
             PolaroidStock(showsRecess: true)
+                .overlay {
+                    if let date {
+                        GeometryReader { geo in
+                            PolaroidTemplateDate(date: date, width: geo.size.width)
+                        }
+                        .allowsHitTesting(false)
+                    }
+                }
         case .card:
             CardStock()
+                .overlay {
+                    if let date {
+                        GeometryReader { geo in
+                            CardTemplateDate(date: date, width: geo.size.width)
+                        }
+                        .allowsHitTesting(false)
+                    }
+                }
+        }
+    }
+}
+
+/// A stamp template as a canvas background: the edition's full dressed frame
+/// (perforated paper, keylines, chevrons, denomination motifs — the real
+/// `StampView` furniture, minus the caption) with a dated header printed in
+/// the top margin. The user drops photos, text and stickers on top; the
+/// flatten renders this identically so the kept artifact bakes in the frame.
+struct StampTemplateBackground: View {
+    let variant: StampVariant
+    /// nil → no date printed (gallery thumbnail).
+    var date: Date? = nil
+
+    var body: some View {
+        // Empty dressed stamp — paper + edition furniture, no photo/caption.
+        StampView(image: nil, style: .classic, tint: variant.canvasPaper,
+                  title: "", number: 0, variant: variant,
+                  showCaption: false, templateMode: true)
+            .overlay {
+                if let date {
+                    GeometryReader { geo in
+                        StampTemplateHeader(date: date, ink: variant.canvasInk,
+                                            width: geo.size.width, variant: variant)
+                    }
+                    .allowsHitTesting(false)
+                }
+            }
+    }
+}
+
+/// The memory's date printed the way its edition would print it — each
+/// variant sets its own voice, alignment and height within the band, so no
+/// two templates date-stamp alike.
+///
+/// It always prints in the CAPTION BAND (1.1375w → 1.3125w). That is the
+/// only clear real estate: the picture area is where the user's photos land
+/// (they'd cover anything under them), the perforation bites 0.032w off
+/// every edge, and airmail's chevron ring occupies 0.038w–0.066w of the top
+/// margin — there is no top strip wide enough to set type in.
+struct StampTemplateHeader: View {
+    let date: Date
+    let ink: Color
+    let width: CGFloat
+    var variant: StampVariant = .tinted
+
+    /// Stamp geometry, mirrored from `StampView.contentRect`.
+    private var w: CGFloat { width }
+    private var sheetH: CGFloat { 1.3125 * width }
+    /// Vertical center of the caption band under the picture frame.
+    private var bandY: CGFloat { 1.225 * width }
+    /// Center of the bar-captioned editions' denomination / duty bar,
+    /// matching `StampView.captionBarStock`.
+    private var barY: CGFloat { 1.205 * width }
+
+    private var day: String { Self.day.string(from: date).uppercased() }
+    private var weekday: String { Self.weekday.string(from: date).uppercased() }
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            slot
+        }
+        .frame(width: w, height: sheetH, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private var slot: some View {
+        switch variant {
+
+        // Classic postal line: № side gets the date, the far side the day.
+        case .tinted:
+            HStack(spacing: 0) {
+                Text(day)
+                Spacer(minLength: 0)
+                Text(weekday)
+            }
+            .font(Theme.stampEngraved(0.05 * w))
+            .kerning(0.05 * w * 0.1)
+            .foregroundStyle(ink.opacity(0.82))
+            .padding(.horizontal, 0.085 * w)
+            .frame(width: w)
+            .position(x: 0.5 * w, y: bandY)
+
+        // Cameo plaque: the date engraved between two hairlines, day beneath.
+        case .ivory:
+            VStack(spacing: 0.012 * w) {
+                HStack(spacing: 0.03 * w) {
+                    rule(0.14 * w)
+                    Text(day)
+                        .font(Theme.stampEngraved(0.052 * w))
+                        .kerning(0.052 * w * 0.14)
+                    rule(0.14 * w)
+                }
+                Text(weekday)
+                    .font(.system(size: 0.028 * w, weight: .regular, design: .serif))
+                    .kerning(0.028 * w * 0.4)
+            }
+            .foregroundStyle(ink.opacity(0.8))
+            .position(x: 0.5 * w, y: bandY)
+
+        // Poster: type set large and low-contrast, hanging off the left. The
+        // scrim reaches down to 1.32w, so this rides higher than the rest.
+        case .ink:
+            VStack(alignment: .leading, spacing: -0.006 * w) {
+                Text(day)
+                    .font(.system(size: 0.072 * w, weight: .bold).width(.condensed))
+                Text(weekday)
+                    .font(.system(size: 0.026 * w, weight: .light).width(.expanded))
+                    .kerning(0.026 * w * 0.3)
+                    .opacity(0.75)
+            }
+            .foregroundStyle(ink.opacity(0.9))
+            .frame(width: 0.83 * w, alignment: .leading)
+            .position(x: 0.5 * w, y: 1.20 * w)
+
+        // Par avion: the postal line in the edition's two inks.
+        case .airmail:
+            HStack(spacing: 0.022 * w) {
+                Text(day).foregroundStyle(Color(hex: 0x274896))
+                Text("·").foregroundStyle(Color(hex: 0x274896).opacity(0.5))
+                Text(weekday).foregroundStyle(Theme.postalRed.opacity(0.9))
+            }
+            .font(.system(size: 0.036 * w, weight: .semibold).width(.condensed))
+            .kerning(0.036 * w * 0.22)
+            .position(x: 0.5 * w, y: bandY)
+
+        // Reversed out of the denomination bar the edition already prints.
+        case .commemorative:
+            HStack(spacing: 0) {
+                Text(day)
+                Spacer(minLength: 0.03 * w)
+                Text(weekday)
+            }
+            .font(.system(size: 0.038 * w, weight: .semibold).width(.condensed))
+            .kerning(0.038 * w * 0.16)
+            .foregroundStyle(Color(hex: 0xFCEDE4))
+            .padding(.horizontal, 0.045 * w)
+            .frame(width: 0.85 * w)
+            .position(x: 0.5 * w, y: barY)
+
+        // Edition plate: wide-kerned caps between foil asterisks.
+        case .foil:
+            HStack(spacing: 0.026 * w) {
+                Text("✦").opacity(0.7)
+                Text(day)
+                Text("✦").opacity(0.7)
+                Text(weekday)
+                Text("✦").opacity(0.7)
+            }
+            .font(.system(size: 0.034 * w, weight: .semibold).width(.condensed))
+            .kerning(0.034 * w * 0.3)
+            .foregroundStyle(Color(hex: 0xFBEFC4))
+            .shadow(color: Color(red: 0.24, green: 0.16, blue: 0.06).opacity(0.6),
+                    radius: 1, y: 1)
+            .position(x: 0.5 * w, y: bandY)
+
+        // Struck into the duty bar, in the edition's monospace voice.
+        case .revenue:
+            HStack(spacing: 0) {
+                Text(day)
+                Spacer(minLength: 0.03 * w)
+                Text(weekday)
+            }
+            .font(.system(size: 0.028 * w, design: .monospaced))
+            .foregroundStyle(Color(hex: 0xB9C6A6))
+            .padding(.horizontal, 0.045 * w)
+            .frame(width: 0.85 * w)
+            .position(x: 0.5 * w, y: barY)
+
+        // Definitive series: the day tracked small over the engraved date.
+        case .botanical:
+            VStack(spacing: 0.004 * w) {
+                Text(weekday)
+                    .font(.system(size: 0.026 * w, weight: .semibold, design: .serif))
+                    .kerning(0.026 * w * 0.5)
+                    .opacity(0.7)
+                Text(day)
+                    .font(Theme.stampEngraved(0.056 * w))
+            }
+            .foregroundStyle(ink.opacity(0.88))
+            .position(x: 0.5 * w, y: bandY)
+
+        // After dark: the date glows, set hard right under the neon keyline.
+        case .night:
+            HStack(spacing: 0.02 * w) {
+                Text(day)
+                Text(weekday).opacity(0.7)
+            }
+            .font(.system(size: 0.034 * w, weight: .semibold).width(.condensed))
+            .kerning(0.034 * w * 0.24)
+            .foregroundStyle(Color(hex: 0x6FE9FF))
+            .shadow(color: Color(hex: 0x6FE9FF).opacity(0.8), radius: 0.02 * w)
+            .frame(width: 0.83 * w, alignment: .trailing)
+            .position(x: 0.5 * w, y: bandY)
+
+        // Keepsake: a hand-written line with a heart between.
+        case .sweetheart:
+            HStack(spacing: 0.018 * w) {
+                Text(Self.dayMixed.string(from: date))
+                Text("♥").font(.system(size: 0.034 * w))
+                    .foregroundStyle(Theme.postalRed.opacity(0.75))
+                Text(Self.weekdayMixed.string(from: date))
+            }
+            .font(Theme.handwritten(0.058 * w))
+            .foregroundStyle(Color(hex: 0x7A3A3C).opacity(0.9))
+            .position(x: 0.5 * w, y: bandY)
+        }
+    }
+
+    private func rule(_ length: CGFloat) -> some View {
+        Rectangle()
+            .fill(ink.opacity(0.4))
+            .frame(width: length, height: 1)
+    }
+
+    private static let day: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d"; return f
+    }()
+    private static let weekday: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "EEEE"; return f
+    }()
+    private static let dayMixed: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d"; return f
+    }()
+    private static let weekdayMixed: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "EEEE"; return f
+    }()
+}
+
+/// Pen on the instant-photo band — where a polaroid's caption always goes.
+struct PolaroidTemplateDate: View {
+    let date: Date
+    let width: CGFloat
+
+    var body: some View {
+        let w = width
+        HStack(spacing: 0.02 * w) {
+            Text(Self.day.string(from: date))
+            Text("·").opacity(0.5)
+            Text(Self.weekday.string(from: date))
+        }
+        .font(Theme.handwritten(0.062 * w))
+        .foregroundStyle(Theme.stampInk.opacity(0.7))
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        // The band runs 0.95w → 1.22w; sit in the middle of it.
+        .position(x: 0.5 * w, y: 1.085 * w)
+        .frame(width: w, height: PolaroidView.aspect * w, alignment: .topLeading)
+    }
+
+    private static let day: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d"; return f
+    }()
+    private static let weekday: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "EEEE"; return f
+    }()
+}
+
+/// Engraved on the scrapbook card's caption line.
+struct CardTemplateDate: View {
+    let date: Date
+    let width: CGFloat
+
+    var body: some View {
+        let w = width
+        VStack(spacing: 0.012 * w) {
+            Text(Self.day.string(from: date).uppercased())
+                .font(Theme.stampEngraved(0.052 * w))
+                .kerning(0.052 * w * 0.13)
+                .foregroundStyle(Theme.stampInk.opacity(0.82))
+            Text(Self.weekday.string(from: date).uppercased())
+                .font(.system(size: 0.028 * w, weight: .medium, design: .serif))
+                .kerning(0.028 * w * 0.4)
+                .foregroundStyle(Theme.stampInk.opacity(0.45))
+        }
+        .lineLimit(1)
+        // The card's own caption line sits at 1.19w; the photo bottoms at
+        // 1.11w, so this whole block clears it.
+        .position(x: 0.5 * w, y: 1.205 * w)
+        .frame(width: w, height: CardView.aspect * w, alignment: .topLeading)
+    }
+
+    private static let day: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMM d"; return f
+    }()
+    private static let weekday: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "EEEE"; return f
+    }()
+}
+
+extension CanvasDocument.Background {
+    /// Where this stock prints its date, in unit coordinates of the stage.
+    /// The editor hangs its tap-to-edit region here so the touch target
+    /// always lands on the printed date.
+    var dateSlot: CGRect {
+        switch self {
+        // Stamp caption band: 1.1375w → 1.3125w of a 1.3125w sheet.
+        case .paper: CGRect(x: 0, y: 0.862, width: 1, height: 0.138)
+        // Polaroid band: 0.95w → 1.22w of a 1.22w print.
+        case .polaroid: CGRect(x: 0, y: 0.778, width: 1, height: 0.222)
+        // Card: below the photo (1.11w) on a 1.30w card.
+        case .card: CGRect(x: 0, y: 0.854, width: 1, height: 0.146)
         }
     }
 }
@@ -69,6 +383,16 @@ extension StampVariant {
         case .sweetheart: Color(hex: 0xE39AA6)
         }
     }
+
+    /// Header/footer ink for the stamp template — dark on light papers,
+    /// warm cream on dark ones, so the postal furniture always reads.
+    var canvasInk: Color {
+        let ui = UIColor(canvasPaper)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let luma = 0.299 * r + 0.587 * g + 0.114 * b
+        return luma >= 0.55 ? Theme.stampInk : Color(hex: 0xF2EADB)
+    }
 }
 
 /// One layer's pixels/glyphs at a given canvas width — no transform, no
@@ -82,19 +406,36 @@ struct CanvasLayerContent: View {
 
     var body: some View {
         switch content {
-        case .image(let file, let cutoutFile, let showCutout):
-            // Photos cut through Vision (subject lift), not the contour —
-            // layer.dieCut plays no part here.
-            let name = showCutout ? (cutoutFile ?? file) : file
+        case .image(let file, let cutoutFile, let treatment):
+            // Die-cut renders the lifted subject once Vision has produced it;
+            // until then (or if no subject) it falls back to the plain photo.
+            let dieCutReady = treatment == .dieCut && cutoutFile != nil
+            let name = dieCutReady ? (cutoutFile ?? file) : file
             if let image = resolver(name) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(RoundedRectangle(
-                        cornerRadius: showCutout ? 0 : canvasWidth * 0.012))
-                    .shadow(color: Theme.shadow.opacity(0.18),
-                            radius: canvasWidth * 0.008, y: canvasWidth * 0.004)
-                    .frame(width: scale * canvasWidth)
+                let w = scale * canvasWidth
+                let shadow = Theme.shadow.opacity(0.18)
+                let r = canvasWidth * 0.008
+                let y = canvasWidth * 0.004
+                switch treatment {
+                case .polaroid:
+                    PolaroidLayer(image: image, width: w)
+                case .outline:
+                    DieCutContour(margin: max(3, canvasWidth * 0.012)) {
+                        Image(uiImage: image).resizable().scaledToFit()
+                            .frame(width: w)
+                    }
+                    .shadow(color: shadow, radius: r, y: y)
+                case .dieCut where dieCutReady:
+                    Image(uiImage: image).resizable().scaledToFit()
+                        .shadow(color: shadow, radius: r, y: y)
+                        .frame(width: w)
+                case .plain, .dieCut:
+                    // Plain photo (also the die-cut fallback before/without a lift).
+                    Image(uiImage: image).resizable().scaledToFit()
+                        .clipShape(RoundedRectangle(cornerRadius: canvasWidth * 0.012))
+                        .shadow(color: shadow, radius: r, y: y)
+                        .frame(width: w)
+                }
             }
         case .text(let string, let style):
             let fontSize = Self.fontSize(scale: scale, canvasWidth: canvasWidth)
@@ -153,6 +494,30 @@ struct CanvasLayerContent: View {
     /// Text sizes by font, not frame — pinch drives the type size.
     static func fontSize(scale: CGFloat, canvasWidth: CGFloat) -> CGFloat {
         max(10, scale * canvasWidth * 0.5)
+    }
+}
+
+/// A photo dropped as a small instant-photo: warm-white frame, thick lower
+/// band, no caption. Mirrors PolaroidView's window geometry (aspect 1.22).
+struct PolaroidLayer: View {
+    let image: UIImage
+    let width: CGFloat
+
+    var body: some View {
+        let w = width
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 0.02 * w)
+                .fill(Color(hex: 0xFDFBF4))
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 0.88 * w, height: 0.89 * w)
+                .clipped()
+                .overlay(Rectangle().strokeBorder(Theme.shadow.opacity(0.10), lineWidth: 1))
+                .offset(x: 0.06 * w, y: 0.06 * w)
+        }
+        .frame(width: w, height: 1.22 * w)
+        .shadow(color: Theme.shadow.opacity(0.20), radius: 0.02 * w, y: 0.01 * w)
     }
 }
 

@@ -70,6 +70,19 @@ struct StampView: View {
 
     var assembly: Assembly = .dressed
 
+    /// When false, the caption strip (№ / date / title) is omitted entirely —
+    /// used to render the stamp as an empty dressed frame for the canvas
+    /// template backgrounds (the memory maker prints its own dated header).
+    var showCaption: Bool = true
+
+    /// Renders the edition as an empty template for the memory canvas: the
+    /// picture window prints as a bare well (there is no photo yet) and the
+    /// bar-captioned editions keep their denomination/duty bar as blank
+    /// stock. Without this, `image == nil` drops the picture plate and
+    /// `showCaption == false` drops the bar — half of what makes those
+    /// editions recognisable.
+    var templateMode: Bool = false
+
     /// Set true where shimmer will ever run (reveal, detail); must not change
     /// during the view's lifetime.
     var holoEnabled: Bool = false
@@ -173,11 +186,19 @@ struct StampView: View {
                     .allowsHitTesting(false)
 
                 // ── Caption strip ────────────────────────────────────
-                captionLayer(w)
-                    .opacity(assembly.paper)
-                    // Invisible in sticker form (paper 0.001) but still
-                    // laid out — it must not catch rename taps there.
-                    .allowsHitTesting(assembly.paper > 0.5)
+                if showCaption {
+                    captionLayer(w)
+                        .opacity(assembly.paper)
+                        // Invisible in sticker form (paper 0.001) but still
+                        // laid out — it must not catch rename taps there.
+                        .allowsHitTesting(assembly.paper > 0.5)
+                } else if templateMode, barCaptioned {
+                    // The bar IS the edition's furniture; the memory canvas
+                    // prints its own date into it.
+                    captionBarStock(w)
+                        .opacity(assembly.paper)
+                        .allowsHitTesting(false)
+                }
             }
             .compositingGroup()
             // Shader effects cannot rasterize platform-backed views: with
@@ -353,7 +374,7 @@ struct StampView: View {
                 .shadow(color: Color(hex: 0xFCFBF6), radius: 1.5)
                 .shadow(color: Color(hex: 0xFCFBF6), radius: 1.5)
                 .position(x: 0.5 * w, y: 0.13 * w)
-                .opacity(variant == .airmail ? 1 : 0)
+                .opacity(variant == .airmail && !templateMode ? 1 : 0)
 
             // Commemorative — red keyline + the denomination bar at the foot.
             Rectangle()
@@ -389,7 +410,7 @@ struct StampView: View {
                 .shadow(color: Color(red: 0.24, green: 0.16, blue: 0.06).opacity(0.6),
                         radius: 1, y: 1)
                 .position(x: 0.5 * w, y: 0.115 * w)
-                .opacity(variant == .foil ? 1 : 0)
+                .opacity(variant == .foil && !templateMode ? 1 : 0)
 
             // Revenue — double rule, revenue strip, duty bar.
             Rectangle()
@@ -421,7 +442,7 @@ struct StampView: View {
                 .kerning(0.028 * w * 0.22)
                 .foregroundStyle(Color(hex: 0x2E422C).opacity(0.85))
                 .position(x: 0.5 * w, y: 0.12 * w)
-                .opacity(variant == .botanical ? 1 : 0)
+                .opacity(variant == .botanical && !templateMode ? 1 : 0)
 
             // Night — the neon keyline glowing around the picture.
             RoundedRectangle(cornerRadius: 2)
@@ -898,6 +919,16 @@ struct StampView: View {
         .frame(width: 0.85 * w, height: 0.12 * w)
         .background(barColor)
         .position(x: 0.5 * w, y: 1.205 * w)
+    }
+
+    /// The caption bar's stock with no type on it — the commemorative's
+    /// denomination bar, the revenue's duty bar. Same rect and colour as
+    /// `captionBar`, so a template and a real stamp print the same band.
+    private func captionBarStock(_ w: CGFloat) -> some View {
+        Rectangle()
+            .fill(variant == .commemorative ? Theme.postalRed : Color(hex: 0x2A3C52))
+            .frame(width: 0.85 * w, height: 0.12 * w)
+            .position(x: 0.5 * w, y: 1.205 * w)
     }
 
     @ViewBuilder

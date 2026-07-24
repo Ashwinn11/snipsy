@@ -69,9 +69,9 @@ struct AlbumScreen: View {
             Spacer()
             Button {
                 model.haptics.tick()
-                model.canvasSession = CanvasSession()
+                model.showStampCapture = true
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: "camera")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                     .frame(width: 42, height: 42)

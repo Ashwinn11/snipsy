@@ -59,35 +59,28 @@ struct CanvasSelectionBar: View {
     var body: some View {
         if let layer = editor.selectedLayer {
             VStack(spacing: 8) {
-                // Text voice gets its own row — with zoom in the common
-                // bar, one capsule can't hold both on a small phone.
-                // Stickers and doodles are already transparent cutouts —
-                // only photos earn the scissors, only text earns a voice.
+                // Text voice / image treatment each get their own row — with
+                // zoom in the common bar, one capsule can't hold both on a
+                // small phone.
                 if case .text(_, let style) = layer.content {
                     barCapsule { textControls(layer: layer, style: style) }
                 }
+                if case .image(_, _, let treatment) = layer.content {
+                    barCapsule { treatmentControls(layer: layer, current: treatment) }
+                }
 
                 barCapsule {
-                    // One cut for everything: photos lift their subject
-                    // through Vision, everything else wears the contour.
-                    Button {
-                        if case .image = layer.content {
-                            Task { await editor.toggleCutout(for: layer.id) }
-                        } else {
+                    // Stickers, doodles and text wear a single white contour;
+                    // photos choose a treatment above instead.
+                    if !isImage(layer) {
+                        Button {
                             editor.toggleDieCut(layer.id)
-                        }
-                    } label: {
-                        if editor.cutoutBusy.contains(layer.id) {
-                            ProgressView().controlSize(.small)
-                                .frame(width: 30, height: 30)
-                        } else {
-                            barIcon("scissors", tint: cutActive(layer)
+                        } label: {
+                            barIcon("scissors", tint: layer.dieCut
                                     ? Theme.postalRed : Theme.ink)
                         }
+                        Divider().frame(height: 22)
                     }
-                    .disabled(editor.cutoutBusy.contains(layer.id))
-
-                    Divider().frame(height: 22)
 
                     Button { editor.nudgeScale(layer.id, factor: 1 / 1.15) } label: {
                         barIcon("minus.magnifyingglass")
@@ -115,6 +108,41 @@ struct CanvasSelectionBar: View {
                 }
             }
         }
+    }
+
+    private func isImage(_ layer: CanvasLayer) -> Bool {
+        if case .image = layer.content { return true }
+        return false
+    }
+
+    /// Photo treatment row: die-cut / polaroid / outline, applied to the
+    /// selected image. Die-cut runs Vision the first time (spinner).
+    @ViewBuilder
+    private func treatmentControls(layer: CanvasLayer,
+                                   current: ImageTreatment) -> some View {
+        treatmentButton(.dieCut, "scissors", "Cut", layer: layer, current: current)
+        treatmentButton(.polaroid, "photo", "Polaroid", layer: layer, current: current)
+        treatmentButton(.outline, "square.dashed", "Outline", layer: layer, current: current)
+    }
+
+    private func treatmentButton(_ treatment: ImageTreatment, _ icon: String,
+                                 _ label: String, layer: CanvasLayer,
+                                 current: ImageTreatment) -> some View {
+        Button {
+            editor.setTreatment(treatment, for: layer.id)
+        } label: {
+            if treatment == .dieCut, editor.cutoutBusy.contains(layer.id) {
+                ProgressView().controlSize(.small).frame(width: 52, height: 34)
+            } else {
+                VStack(spacing: 2) {
+                    Image(systemName: icon).font(.system(size: 14, weight: .semibold))
+                    Text(label).font(.system(size: 8.5, weight: .semibold, design: .rounded))
+                }
+                .foregroundStyle(current == treatment ? Theme.postalRed : Theme.ink)
+                .frame(width: 52, height: 34)
+            }
+        }
+        .disabled(editor.cutoutBusy.contains(layer.id))
     }
 
     /// One glass row. The whole capsule eats taps — a near-miss between
@@ -176,11 +204,6 @@ struct CanvasSelectionBar: View {
         }
     }
 
-    /// Whether the selected layer currently wears its cut.
-    private func cutActive(_ layer: CanvasLayer) -> Bool {
-        if case .image(_, _, let showing) = layer.content { return showing }
-        return layer.dieCut
-    }
 
     private func barIcon(_ name: String, tint: Color = Theme.ink) -> some View {
         Image(systemName: name)
@@ -263,20 +286,26 @@ struct CanvasBackgroundSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private var choices: [CanvasDocument.Background] {
-        [.card, .polaroid] + StampVariant.allCases.map { .paper($0) }
+        // The same twelve stocks the reveal chooser offers: the instant
+        // photo, the scrapbook card, then one per stamp edition. Every one
+        // of them prints the date.
+        [.polaroid, .card] + StampVariant.allCases.map { .paper($0) }
     }
 
+    /// A fixed date so the thumbnails read as dated stamps without churning.
+    private static let sampleDate = Date(timeIntervalSince1970: 1_752_460_800)
+
     var body: some View {
-        sheetShell(title: "Paper") {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 14)],
-                      spacing: 14) {
+        sheetShell(title: "Templates") {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 16)],
+                      spacing: 18) {
                 ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
                     Button {
                         editor.setBackground(choice)
                         dismiss()
                     } label: {
-                        CanvasBackgroundView(background: choice)
-                            .frame(width: 58)
+                        CanvasBackgroundView(background: choice, date: Self.sampleDate)
+                            .frame(width: 78)
                             .overlay {
                                 if editor.doc.background == choice {
                                     RoundedRectangle(cornerRadius: 5)

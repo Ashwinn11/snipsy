@@ -72,6 +72,15 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
         Task { @MainActor in self.currentDevice = device }
     }
 
+    /// Release the capture session — called when the stamp-capture flow is
+    /// dismissed so the camera doesn't run behind the memory canvas.
+    func stop() {
+        sessionQueue.async { [self] in
+            if session.isRunning { session.stopRunning() }
+            Task { @MainActor in self.isRunning = false }
+        }
+    }
+
     func flip() {
         frontCamera.toggle()
         let position: AVCaptureDevice.Position = frontCamera ? .front : .back

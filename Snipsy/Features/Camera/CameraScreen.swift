@@ -8,6 +8,10 @@ struct CameraScreen: View {
     let model: AppModel
     let screenSize: CGSize
     let safeArea: EdgeInsets
+    /// Set when hosted in the modal stamp-capture flow: the bottom-left slot
+    /// becomes a close button (back to the memory canvas) instead of the
+    /// collection pill, which belongs to the home now.
+    var onClose: (() -> Void)? = nil
 
     @State private var focusPoint: CGPoint? = nil
     @State private var focusPulse = false
@@ -128,8 +132,23 @@ struct CameraScreen: View {
         // Bottom bar
         let barY = screenSize.height - max(safeArea.bottom, 16) - 54
 
-        CollectionPill(model: model)
+        if let onClose {
+            Button {
+                model.haptics.tick()
+                onClose()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
+                    .frame(width: 48, height: 48)
+            }
+            .background(.black.opacity(0.32), in: Circle())
             .position(x: 66, y: barY)
+        } else {
+            CollectionPill(model: model)
+                .position(x: 66, y: barY)
+        }
 
         ShutterButton {
             let size = screenSize

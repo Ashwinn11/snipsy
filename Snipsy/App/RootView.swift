@@ -2,6 +2,9 @@ import SwiftUI
 
 struct RootView: View {
     @State private var model = AppModel()
+    /// The home surface's blank memory — a fresh stamp template. Held in
+    /// State so the base editor keeps its in-progress work for the session.
+    @State private var homeSession = CanvasSession(seed: CanvasDocument.newMemory())
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -16,36 +19,10 @@ struct RootView: View {
             )
 
             ZStack {
-                CameraScreen(model: model, screenSize: fullSize, safeArea: insets)
-
-                // Crossfaded so camera chrome never pops out under an overlay.
-                // The frozen frame matches the live feed pixel-for-pixel, so
-                // only the chrome visibly fades.
-                Group {
-                    switch model.phase {
-                    case .camera:
-                        EmptyView()
-                    case .developing(let capture):
-                        DevelopOverlay(capture: capture, model: model, screenSize: fullSize)
-                            .transition(.opacity)
-                    case .reveal(let pending):
-                        RevealScreen(pending: pending, model: model,
-                                     screenSize: fullSize, safeArea: insets)
-                            .transition(.opacity)
-                    }
-                }
-                .animation(.easeOut(duration: 0.2), value: model.phase.kind)
-
-
-                // Shutter blackout — above every phase, so the frozen frame's
-                // heavy first render happens behind it, never as a visible
-                // snap. Fades in fast on capture, eases out once the develop
-                // overlay has actually committed a frame.
-                Color.black
-                    .opacity(model.blackout ? 0.88 : 0)
-                    .animation(.easeOut(duration: model.blackout ? 0.12 : 0.22),
-                               value: model.blackout)
-                    .allowsHitTesting(false)
+                // The memory maker is the app's home — always mounted.
+                CanvasEditorScreen(model: model, session: homeSession,
+                                   screenSize: fullSize, safeArea: insets,
+                                   mode: .home)
 
                 if model.showAlbum {
                     AlbumScreen(model: model, safeArea: insets)
@@ -69,13 +46,20 @@ struct RootView: View {
             }
             .frame(width: fullSize.width, height: fullSize.height)
             .ignoresSafeArea()
+            // The stamp/sticker ceremony — the original camera flow, now a
+            // secondary modal launched from the collection.
+            .fullScreenCover(isPresented: Binding(
+                get: { model.showStampCapture },
+                set: { model.showStampCapture = $0 }
+            )) {
+                StampCaptureFlow(model: model, screenSize: fullSize,
+                                 safeArea: insets) {
+                    model.showStampCapture = false
+                }
+            }
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
-        .onAppear {
-            // The camera (and its permission prompt) waits for onboarding.
-            if model.hasOnboarded { model.camera.start() }
-        }
         .onChange(of: scenePhase) { _, phase in
             // Stamps kept via the share extension land while we're away —
             // and shares whose sticker couldn't be cut in the extension
@@ -114,6 +98,60 @@ struct RootView: View {
         try? await ShaderLibrary.liquidPoke(
             .float2(CGPoint.zero), .float(10), .float(13)
         ).compile(as: .distortionEffect)
+    }
+}
+
+/// The stamp/sticker ceremony as a self-contained modal: the live camera,
+/// the grain-dissolve develop, and the reveal — the app's original flow,
+/// now a secondary path reached from the collection. The camera runs only
+/// while this cover is up.
+struct StampCaptureFlow: View {
+    let model: AppModel
+    let screenSize: CGSize
+    let safeArea: EdgeInsets
+    var onClose: () -> Void
+
+    var body: some View {
+        ZStack {
+            CameraScreen(model: model, screenSize: screenSize,
+                         safeArea: safeArea, onClose: onClose)
+
+            // Crossfaded so camera chrome never pops out under an overlay.
+            // The frozen frame matches the live feed pixel-for-pixel, so
+            // only the chrome visibly fades.
+            Group {
+                switch model.phase {
+                case .camera:
+                    EmptyView()
+                case .developing(let capture):
+                    DevelopOverlay(capture: capture, model: model, screenSize: screenSize)
+                        .transition(.opacity)
+                case .reveal(let pending):
+                    RevealScreen(pending: pending, model: model,
+                                 screenSize: screenSize, safeArea: safeArea)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: 0.2), value: model.phase.kind)
+
+            // Shutter blackout — above every phase, so the frozen frame's
+            // heavy first render happens behind it, never as a visible snap.
+            Color.black
+                .opacity(model.blackout ? 0.88 : 0)
+                .animation(.easeOut(duration: model.blackout ? 0.12 : 0.22),
+                           value: model.blackout)
+                .allowsHitTesting(false)
+        }
+        .frame(width: screenSize.width, height: screenSize.height)
+        .ignoresSafeArea()
+        .onAppear { model.camera.start() }
+        .onDisappear {
+            // Leaving the ceremony: release the camera and reset to idle so
+            // reopening always starts clean at the viewfinder.
+            model.camera.stop()
+            model.phase = .camera
+            model.blackout = false
+        }
     }
 }
 

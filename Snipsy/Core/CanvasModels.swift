@@ -64,17 +64,91 @@ struct TextStyleValue: Codable, Equatable {
     }
 }
 
+/// How a photo layer is presented. The chooser after a multi-pick applies
+/// one of these to the whole batch; a placed layer can switch later.
+enum ImageTreatment: String, Codable, Equatable {
+    /// The photo as-is, softly rounded.
+    case plain
+    /// Vision lifts the subject and drops the background (uses cutoutFile).
+    case dieCut
+    /// The photo in a white instant-photo frame.
+    case polaroid
+    /// The rectangular photo wearing a plain white sticker border — no
+    /// subject recognition.
+    case outline
+}
+
 /// What one canvas layer holds. Pixels live in files under the store's
 /// images/ directory; the model carries only references.
-enum LayerContent: Codable, Equatable {
-    /// cutoutFile appears once Vision has run on this layer; showCutout
-    /// picks which renders — toggling back never re-runs Vision.
-    case image(file: String, cutoutFile: String?, showCutout: Bool)
+enum LayerContent: Equatable {
+    /// cutoutFile appears once a die-cut lift has run on this layer; the
+    /// treatment decides how the layer renders (toggling never re-runs
+    /// Vision — the lift is cached in cutoutFile).
+    case image(file: String, cutoutFile: String?, treatment: ImageTreatment)
     case text(string: String, style: TextStyleValue)
     /// A saved die-cut copied into the creation — survives source deletion.
     case sticker(file: String)
     /// Namespaced id resolved by DoodleCatalog: "washi.rose", "emoji.❤️".
     case doodle(id: String)
+}
+
+extension LayerContent: Codable {
+    private enum CaseKey: String, CodingKey { case image, text, sticker, doodle }
+    private enum ImageKey: String, CodingKey {
+        case file, cutoutFile, treatment, showCutout
+    }
+    private enum TextKey: String, CodingKey { case string, style }
+    private enum StickerKey: String, CodingKey { case file }
+    private enum DoodleKey: String, CodingKey { case id }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CaseKey.self)
+        if let img = try? c.nestedContainer(keyedBy: ImageKey.self, forKey: .image) {
+            let file = try img.decode(String.self, forKey: .file)
+            let cutoutFile = try img.decodeIfPresent(String.self, forKey: .cutoutFile)
+            let treatment: ImageTreatment
+            if let t = try img.decodeIfPresent(ImageTreatment.self, forKey: .treatment) {
+                treatment = t
+            } else {
+                // Migrate legacy `showCutout` flag: true → die-cut, else plain.
+                let showCutout = (try? img.decode(Bool.self, forKey: .showCutout)) ?? false
+                treatment = showCutout ? .dieCut : .plain
+            }
+            self = .image(file: file, cutoutFile: cutoutFile, treatment: treatment)
+        } else if let txt = try? c.nestedContainer(keyedBy: TextKey.self, forKey: .text) {
+            self = .text(string: try txt.decode(String.self, forKey: .string),
+                         style: try txt.decode(TextStyleValue.self, forKey: .style))
+        } else if let stk = try? c.nestedContainer(keyedBy: StickerKey.self, forKey: .sticker) {
+            self = .sticker(file: try stk.decode(String.self, forKey: .file))
+        } else if let ddl = try? c.nestedContainer(keyedBy: DoodleKey.self, forKey: .doodle) {
+            self = .doodle(id: try ddl.decode(String.self, forKey: .id))
+        } else {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: "Unknown LayerContent case"))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CaseKey.self)
+        switch self {
+        case .image(let file, let cutoutFile, let treatment):
+            var img = c.nestedContainer(keyedBy: ImageKey.self, forKey: .image)
+            try img.encode(file, forKey: .file)
+            try img.encodeIfPresent(cutoutFile, forKey: .cutoutFile)
+            try img.encode(treatment, forKey: .treatment)
+        case .text(let string, let style):
+            var txt = c.nestedContainer(keyedBy: TextKey.self, forKey: .text)
+            try txt.encode(string, forKey: .string)
+            try txt.encode(style, forKey: .style)
+        case .sticker(let file):
+            var stk = c.nestedContainer(keyedBy: StickerKey.self, forKey: .sticker)
+            try stk.encode(file, forKey: .file)
+        case .doodle(let id):
+            var ddl = c.nestedContainer(keyedBy: DoodleKey.self, forKey: .doodle)
+            try ddl.encode(id, forKey: .id)
+        }
+    }
 }
 
 /// One draggable element of a composition. Z-order is the layer's position
@@ -128,6 +202,23 @@ struct CanvasDocument: Codable, Equatable {
     /// Canvas height / width. Stamp paper 1.3125, polaroid ≈1.22, card 1.30.
     var aspect: CGFloat = 1.30
     var layers: [CanvasLayer] = []
+    /// The memory's date — printed as the stamp template's header
+    /// ("JUL 14 / TUESDAY").
+    var date: Date = Date()
+
+    init(background: Background = .card, aspect: CGFloat = 1.30,
+         layers: [CanvasLayer] = [], date: Date = Date()) {
+        self.background = background
+        self.aspect = aspect
+        self.layers = layers
+        self.date = date
+    }
+
+    /// A fresh stamp-template document — the memory maker's default page.
+    static func newMemory(variant: StampVariant = .tinted) -> CanvasDocument {
+        CanvasDocument(background: .paper(variant),
+                       aspect: aspect(for: .paper(variant)))
+    }
 
     /// The stage aspect each background stock wants.
     static func aspect(for background: Background) -> CGFloat {
@@ -136,5 +227,20 @@ struct CanvasDocument: Codable, Equatable {
         case .polaroid: 1.22
         case .card: 1.30
         }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case background, aspect, layers, date
+    }
+
+    /// Backward-compatible decode: canvases saved before the template
+    /// header existed have no `date` — default it instead of failing (and
+    /// losing the creation).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        background = try c.decode(Background.self, forKey: .background)
+        aspect = try c.decode(CGFloat.self, forKey: .aspect)
+        layers = try c.decodeIfPresent([CanvasLayer].self, forKey: .layers) ?? []
+        date = try c.decodeIfPresent(Date.self, forKey: .date) ?? Date()
     }
 }

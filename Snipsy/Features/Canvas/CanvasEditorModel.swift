@@ -113,18 +113,23 @@ final class CanvasEditorModel {
     // MARK: Layers
 
     /// Cascade new layers a step down-right so a multi-pick doesn't stack
-    /// into one invisible pile.
-    func addImageLayer(_ image: UIImage, cascade: Int = 0) {
+    /// into one invisible pile. `treatment` is the mode chosen for the batch;
+    /// die-cut kicks off the subject lift in the background.
+    func addImageLayer(_ image: UIImage, cascade: Int = 0,
+                       treatment: ImageTreatment = .plain) {
         push()
         let file = store.saveLayerImage(image)
         sessionFiles.insert(file)
         let step = CGFloat(cascade % 5) * 0.04
         let layer = CanvasLayer(
-            content: .image(file: file, cutoutFile: nil, showCutout: false),
+            content: .image(file: file, cutoutFile: nil, treatment: treatment),
             transform: LayerTransform(x: 0.5 + step, y: 0.45 + step, scale: 0.55)
         )
         doc.layers.append(layer)
         selectedLayerID = layer.id
+        if treatment == .dieCut {
+            Task { await fillDieCut(id: layer.id) }
+        }
     }
 
     func addTextLayer() {
@@ -241,10 +246,18 @@ final class CanvasEditorModel {
         doc.aspect = CanvasDocument.aspect(for: background)
     }
 
-    // MARK: Cutout
+    /// Set the stamp template's header date in one undo step. No-op (no
+    /// history churn) when nothing actually changed.
+    func setDate(_ date: Date) {
+        guard doc.date != date else { return }
+        push()
+        doc.date = date
+    }
 
-    /// The universal white contour — everything but photos, which cut
-    /// through Vision below.
+    // MARK: Treatment
+
+    /// The universal white contour — everything but photos, which choose a
+    /// treatment (die-cut / polaroid / outline) instead.
     func toggleDieCut(_ id: UUID) {
         guard let i = doc.layers.firstIndex(where: { $0.id == id }) else { return }
         if case .image = doc.layers[i].content { return }
@@ -252,20 +265,29 @@ final class CanvasEditorModel {
         doc.layers[i].dieCut.toggle()
     }
 
-    /// Toggle the die-cut treatment on an image layer. First enable runs
-    /// Vision once; after that the flag just flips.
-    func toggleCutout(for id: UUID) async {
+    /// Switch a photo layer's treatment. Die-cut lazily runs the subject lift
+    /// the first time (caching it in cutoutFile); switching away and back
+    /// never re-runs Vision.
+    func setTreatment(_ treatment: ImageTreatment, for id: UUID) {
         guard let i = doc.layers.firstIndex(where: { $0.id == id }),
-              case .image(let file, let cutoutFile, let showing) = doc.layers[i].content
-        else { return }
-
-        if let cutoutFile {
-            push()
-            doc.layers[i].content = .image(file: file, cutoutFile: cutoutFile,
-                                           showCutout: !showing)
-            return
+              case .image(let file, let cutoutFile, let old) = doc.layers[i].content,
+              old != treatment else { return }
+        push()
+        doc.layers[i].content = .image(file: file, cutoutFile: cutoutFile,
+                                       treatment: treatment)
+        if treatment == .dieCut, cutoutFile == nil {
+            Task { await fillDieCut(id: id) }
         }
-        guard !cutoutBusy.contains(id), let bitmap = store.layerImage(named: file)
+    }
+
+    /// Run the subject lift for a die-cut layer that has no cached cutout yet,
+    /// then store it. No `push()` — this is the async completion of the add /
+    /// switch that already pushed. Falls back to plain when no subject is found.
+    private func fillDieCut(id: UUID) async {
+        guard let i = doc.layers.firstIndex(where: { $0.id == id }),
+              case .image(let file, nil, .dieCut) = doc.layers[i].content,
+              !cutoutBusy.contains(id),
+              let bitmap = store.layerImage(named: file)
         else { return }
 
         cutoutBusy.insert(id)
@@ -274,15 +296,16 @@ final class CanvasEditorModel {
 
         // The layer may have been deleted or undone away during the ~1s run.
         guard let j = doc.layers.firstIndex(where: { $0.id == id }),
-              case .image(let f, _, _) = doc.layers[j].content else { return }
+              case .image(let f, _, .dieCut) = doc.layers[j].content else { return }
         guard let sticker = analysis.sticker else {
+            // No liftable subject — fall back to the plain photo.
+            doc.layers[j].content = .image(file: f, cutoutFile: nil, treatment: .plain)
             showToast("No subject found")
             return
         }
-        push()
         let newFile = store.saveLayerImage(sticker)
         sessionFiles.insert(newFile)
-        doc.layers[j].content = .image(file: f, cutoutFile: newFile, showCutout: true)
+        doc.layers[j].content = .image(file: f, cutoutFile: newFile, treatment: .dieCut)
     }
 
     private func showToast(_ text: String) {
@@ -291,6 +314,25 @@ final class CanvasEditorModel {
             try? await Task.sleep(for: .seconds(1.8))
             if toast == text { toast = nil }
         }
+    }
+
+    /// Public toast — the home surface flashes "Kept ✓" after a save.
+    func flashToast(_ text: String) { showToast(text) }
+
+    /// Home mode: after Keep, wipe the stage back to a fresh stamp template
+    /// so the next memory starts clean. The just-saved files now belong to
+    /// the kept stamp, so `sessionFiles` is cleared (they are no longer
+    /// this session's orphans to collect).
+    func resetForNewMemory(variant: StampVariant = .tinted) {
+        doc = CanvasDocument.newMemory(variant: variant)
+        title = ""
+        selectedLayerID = nil
+        editingTextID = nil
+        cutoutBusy.removeAll()
+        undoStack.removeAll()
+        redoStack.removeAll()
+        sessionFiles.removeAll()
+        scaleRun = nil
     }
 
     // MARK: Session end
