@@ -38,8 +38,8 @@ struct OnboardingSharePage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "FROM ANY PHOTO", fontSize: 16, ink: Theme.ink)
-                Text("Share a shot from anywhere and it lands\nready for the next page.")
+                RansomText(text: "NOTHING GETS LOST", fontSize: 16, ink: Theme.ink)
+                Text("Any photo you already have\ncan become the next one.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)

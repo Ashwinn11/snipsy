@@ -36,8 +36,8 @@ struct OnboardingDemoPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "CUT ANYONE OUT", fontSize: 16, ink: Theme.ink)
-                Text("Any photo lifts into a die-cut sticker\nfor your next page.")
+                RansomText(text: "THE TWO OF YOU, KEPT", fontSize: 16, ink: Theme.ink)
+                Text("Cut them out of the crowd\nand onto the page.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
