@@ -58,7 +58,14 @@ enum ShareInbox {
 @Observable
 final class StampStore {
 
-    private(set) var stamps: [Stamp] = []   // newest first
+    private(set) var stamps: [Stamp] = [] {  // newest first
+        didSet { rebuildFolders() }
+    }
+    private(set) var folders: [MonthFolder] = []
+
+    private func rebuildFolders() {
+        folders = MonthFolder.shelf(from: stamps)
+    }
 
     @ObservationIgnored private let cache = NSCache<NSString, UIImage>()
 
@@ -377,5 +384,27 @@ final class StampStore {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         stamps = (try? decoder.decode([Stamp].self, from: data)) ?? []
+        prewarmCache()
+    }
+
+    /// Pre-decode stamp images in the background so opening the album serves 100% cache hits.
+    private func prewarmCache() {
+        let items = stamps
+        let dir = imagesDir
+        Task.detached(priority: .utility) { [weak self] in
+            for stamp in items {
+                let url = dir.appendingPathComponent(stamp.imageFile)
+                if let raw = UIImage(contentsOfFile: url.path),
+                   let prepped = raw.preparingForDisplay() ?? Optional(raw) {
+                    await self?.cacheImage(prepped, for: stamp.imageFile)
+                }
+            }
+        }
+    }
+
+    private func cacheImage(_ image: UIImage, for key: String) {
+        if cache.object(forKey: key as NSString) == nil {
+            cache.setObject(image, forKey: key as NSString)
+        }
     }
 }

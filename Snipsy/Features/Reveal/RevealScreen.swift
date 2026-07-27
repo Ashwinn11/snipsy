@@ -179,6 +179,7 @@ struct RevealScreen: View {
         // depend on the parent's (occasionally overshooting) proposal.
         .frame(width: screenSize.width, height: screenSize.height)
         .onAppear {
+            stampNumber = model.store.nextNumber
             wireWaveDriver()
             runEntrance()
         }
@@ -201,6 +202,8 @@ struct RevealScreen: View {
         titleFocused = false
     }
 
+    @State private var stampNumber: Int = 1
+
     @ViewBuilder
     private var stampLayer: some View {
         let frame = stampFrame
@@ -214,7 +217,7 @@ struct RevealScreen: View {
                     style: pending.style,
                     tint: pending.tint.color,
                     title: title,
-                    number: model.store.nextNumber,
+                    number: stampNumber,
                     date: .now,
                     variant: selectedVariant,
                     stickerBox: pending.stickerBox,
@@ -698,7 +701,7 @@ struct RevealScreen: View {
                             style: pending.style,
                             tint: pending.tint.color,
                             title: "",
-                            number: model.store.nextNumber,
+                            number: stampNumber,
                             variant: v,
                             stickerBox: pending.stickerBox,
                             rawCrop: pending.capture.cropImage,
@@ -755,9 +758,10 @@ struct RevealScreen: View {
     private var chrome: some View {
         let barY = screenSize.height - max(safeArea.bottom, 16) - 50
         // Retake is the only exit before a choice is made — it rises with
-        // the options row. Keep still waits for a selection. Both stay
-        // mounted in one HStack so the retake button never changes place.
-        let retakeShown = options && !flying
+        // the options row. Keep still waits for a selection. Both hide
+        // while editing text so they don't stick over the keyboard/field.
+        let retakeShown = options && !flying && !editingTitle
+        let keepShown = chromeVisible && !editingTitle
 
         Group {
             HStack(spacing: 14) {
@@ -788,9 +792,9 @@ struct RevealScreen: View {
                     .background(Theme.postalRed, in: Capsule())
                 }
                 .buttonStyle(PressableButtonStyle())
-                .opacity(chromeVisible ? 1 : 0)
-                .offset(y: chromeVisible ? 0 : 14)
-                .allowsHitTesting(chromeVisible)
+                .opacity(keepShown ? 1 : 0)
+                .offset(y: keepShown ? 0 : 14)
+                .allowsHitTesting(keepShown)
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
                     keepWidth = $0
                 }
@@ -798,7 +802,7 @@ struct RevealScreen: View {
             // Lone retake sits dead-center; when Keep fades in it glides
             // left into the pair. chromeVisible flips inside springs, so
             // the slide rides the same animation.
-            .offset(x: chromeVisible ? 0 : (keepWidth + 14) / 2)
+            .offset(x: keepShown ? 0 : (keepWidth + 14) / 2)
             .position(x: screenSize.width / 2, y: barY)
         }
     }

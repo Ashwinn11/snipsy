@@ -27,6 +27,21 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
 
     // MARK: Lifecycle
 
+    func prewarm() {
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+        authorization = .authorized
+        sessionQueue.async { [self] in
+            if session.inputs.isEmpty {
+                session.beginConfiguration()
+                session.sessionPreset = .photo
+                attachInput(position: .back)
+                if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
+                photoOutput.maxPhotoQualityPrioritization = .speed
+                session.commitConfiguration()
+            }
+        }
+    }
+
     func start() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -138,13 +153,14 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
             ImageOptimizer.downsampled(data: $0, maxPixel: 3072)
         }
         Task { @MainActor in
-            defer { photoContinuation = nil }
+            guard let cont = photoContinuation else { return }
+            photoContinuation = nil
             if let error {
-                photoContinuation?.resume(throwing: error)
+                cont.resume(throwing: error)
             } else if let image {
-                photoContinuation?.resume(returning: image)
+                cont.resume(returning: image)
             } else {
-                photoContinuation?.resume(throwing: CameraError.noImage)
+                cont.resume(throwing: CameraError.noImage)
             }
         }
     }

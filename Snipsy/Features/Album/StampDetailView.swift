@@ -193,10 +193,14 @@ struct StampDetailView: View {
     }
 
     private var metaLine: String {
+        "Collected \(Self.metaFormatter.string(from: current.date))"
+    }
+
+    private static let metaFormatter: DateFormatter = {
         let df = DateFormatter()
         df.dateFormat = "MMMM d, yyyy · h:mm a"
-        return "Collected \(df.string(from: current.date))"
-    }
+        return df
+    }()
 
     // MARK: Actions
 
@@ -245,7 +249,10 @@ struct StampDetailView: View {
             }
             .glassEffect(.regular.interactive(), in: .circle)
         }
-        .task { await renderShareImage() }
+        .task {
+            try? await Task.sleep(for: .seconds(0.45))
+            await renderShareImage()
+        }
     }
 
     /// Decorate: open this artifact on the canvas — compositions re-open

@@ -20,13 +20,14 @@ struct MonthScreen: View {
         let f = DateFormatter(); f.dateFormat = "EEEE d"; return f
     }()
 
-    /// This month's stamps by calendar day, newest day first.
-    private var dayGroups: [(day: Date, title: String, stamps: [Stamp])] {
+    @State private var dayGroups: [(day: Date, title: String, stamps: [Stamp])] = []
+
+    private func computeDayGroups() {
         let calendar = Calendar.current
         let groups = Dictionary(grouping: folder.stamps) {
             calendar.startOfDay(for: $0.date)
         }
-        return groups.keys.sorted(by: >).map { day in
+        dayGroups = groups.keys.sorted(by: >).map { day in
             (day, Self.dayFormatter.string(from: day),
              groups[day]!.sorted { $0.date > $1.date })
         }
@@ -54,6 +55,8 @@ struct MonthScreen: View {
             }
         }
         .ignoresSafeArea()
+        .onAppear { computeDayGroups() }
+        .onChange(of: folder.stamps) { _, _ in computeDayGroups() }
         .offset(x: dragX)
         // Horizontal-dominant drags peel the page back; anything vertical
         // belongs to the scroll view.

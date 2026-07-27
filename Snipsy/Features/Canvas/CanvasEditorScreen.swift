@@ -78,17 +78,21 @@ struct CanvasEditorScreen: View {
             topBar(editor)
                 .position(x: screenSize.width / 2, y: safeArea.top + 32)
 
-            // Bottom-anchored so the selection bar (one row or two) grows
-            // upward over the stage — the rail never sinks.
+            // Bottom-anchored so the selection bar replaces the tool rail
+            // when a layer is selected — preventing 3 rows from covering the template.
             VStack(spacing: 10) {
                 CanvasSelectionBar(editor: editor)
-                CanvasToolRail(editor: editor,
-                               pickedItems: $pickedItems,
-                               showCamera: $showCamera,
-                               showStickers: $showStickers,
-                               showDoodles: $showDoodles,
-                               showBackgrounds: $showBackgrounds)
+                if editor.selectedLayerID == nil {
+                    CanvasToolRail(editor: editor,
+                                   pickedItems: $pickedItems,
+                                   showCamera: $showCamera,
+                                   showStickers: $showStickers,
+                                   showDoodles: $showDoodles,
+                                   showBackgrounds: $showBackgrounds)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .animation(.easeInOut(duration: 0.2), value: editor.selectedLayerID != nil)
             .padding(.bottom, max(safeArea.bottom, 16) + 10)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
 

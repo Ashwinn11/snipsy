@@ -72,6 +72,7 @@ final class AppModel {
     init() {
         // Pick up a prior unlock before onboarding's gate can ask again.
         Task { await purchases.refresh() }
+        camera.prewarm()
     }
 
     var inCameraPhase: Bool {

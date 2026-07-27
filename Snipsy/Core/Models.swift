@@ -136,3 +136,47 @@ struct PendingStamp {
     /// What gets persisted and shown on the finished stamp.
     var displayImage: UIImage { sticker ?? capture.cropImage }
 }
+
+/// One month of the collection, as the shelf sees it.
+struct MonthFolder: Identifiable, Equatable {
+    let month: Date
+    /// "July"
+    let name: String
+    /// "2026"
+    let year: String
+    /// Newest first — the order the album has always used.
+    let stamps: [Stamp]
+
+    var id: Date { month }
+
+    var countLine: String {
+        stamps.count == 1 ? "1 stamp" : "\(stamps.count) stamps"
+    }
+    var memoriesLine: String {
+        stamps.count == 1 ? "1 memory" : "\(stamps.count) memories"
+    }
+
+    private static let nameFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "MMMM"; return f
+    }()
+    private static let yearFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "yyyy"; return f
+    }()
+
+    /// Group a collection into month folders, newest month first.
+    static func shelf(from stamps: [Stamp]) -> [MonthFolder] {
+        let calendar = Calendar.current
+        let groups = Dictionary(grouping: stamps) { stamp in
+            calendar.dateInterval(of: .month, for: stamp.date)?.start
+                ?? calendar.startOfDay(for: stamp.date)
+        }
+        return groups.keys.sorted(by: >).map { month in
+            MonthFolder(
+                month: month,
+                name: nameFormatter.string(from: month),
+                year: yearFormatter.string(from: month),
+                stamps: groups[month]!.sorted { $0.date > $1.date }
+            )
+        }
+    }
+}

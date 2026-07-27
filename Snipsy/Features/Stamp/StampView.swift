@@ -278,205 +278,199 @@ struct StampView: View {
                 .shadow(color: Theme.shadow.opacity(0.30), radius: 0.05 * w, y: 0.024 * w)
                 .shadow(color: Theme.shadow.opacity(0.16), radius: 0.009 * w, y: 0.005 * w)
 
-            // Under-picture plates. Like every treatment they stay mounted;
-            // switching variants only animates opacity, never view identity.
-
-            // Foil — the gold plate the picture is set into.
-            RoundedRectangle(cornerRadius: 2)
-                .fill(LinearGradient(
-                    colors: [Color(hex: 0xB8862F), Color(hex: 0xF6E7B0),
-                             Color(hex: 0xC9A24B), Color(hex: 0xF8EFCB),
-                             Color(hex: 0xA9791F)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 0.90 * w, height: 1.11 * w)
-                .offset(x: 0.05 * w, y: 0.05 * w)
-                .opacity(variant == .foil ? 1 : 0)
-
-            // Night — the aurora glow the picture floats on.
-            RadialGradient(
-                colors: [Color(hex: 0x6FE9FF).opacity(0.45),
-                         Color(hex: 0xB478FF).opacity(0.16), .clear],
-                center: UnitPoint(x: 0.5, y: 0.45),
-                startRadius: 0, endRadius: 0.62 * w
-            )
-            .frame(width: 0.96 * w, height: 1.17 * w)
-            .offset(x: 0.02 * w, y: 0.02 * w)
-            .blur(radius: 3)
-            .opacity(variant == .night ? 1 : 0)
+            // Under-picture plates: mounted only for the variant that needs it
+            switch variant {
+            case .foil:
+                // Foil — the gold plate the picture is set into.
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(LinearGradient(
+                        colors: [Color(hex: 0xB8862F), Color(hex: 0xF6E7B0),
+                                 Color(hex: 0xC9A24B), Color(hex: 0xF8EFCB),
+                                 Color(hex: 0xA9791F)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 0.90 * w, height: 1.11 * w)
+                    .offset(x: 0.05 * w, y: 0.05 * w)
+            case .night:
+                // Night — the aurora glow the picture floats on.
+                RadialGradient(
+                    colors: [Color(hex: 0x6FE9FF).opacity(0.45),
+                             Color(hex: 0xB478FF).opacity(0.16), .clear],
+                    center: UnitPoint(x: 0.5, y: 0.45),
+                    startRadius: 0, endRadius: 0.62 * w
+                )
+                .frame(width: 0.96 * w, height: 1.17 * w)
+                .offset(x: 0.02 * w, y: 0.02 * w)
+                .blur(radius: 3)
+            default:
+                EmptyView()
+            }
         }
     }
 
     // MARK: Edition dressing
 
-    /// Everything an edition prints OVER the picture: keylines, bars,
-    /// scrims, marks. All treatments stay mounted; switching variants only
-    /// animates opacity, never view identity.
+    /// Everything an edition prints OVER the picture: keylines, bars, scrims, marks.
+    /// Evaluated lazily per active variant to avoid mounting 10 overlapping view trees.
     @ViewBuilder
     private func dressing(_ w: CGFloat) -> some View {
         let content = contentRect(w)
 
         ZStack(alignment: .topLeading) {
-            Rectangle()
-                .strokeBorder(Color(red: 0.97, green: 0.94, blue: 0.88).opacity(0.7),
-                              lineWidth: 1)
-                .frame(width: content.width, height: content.height)
-                .offset(x: content.minX, y: content.minY)
-                .opacity(variant == .tinted ? 1 : 0)
-            Rectangle()
-                .strokeBorder(Theme.stampInk.opacity(0.34), lineWidth: 1)
-                .frame(width: content.width - 0.04 * w,
-                       height: content.height - 0.04 * w)
-                .offset(x: content.minX + 0.02 * w, y: content.minY + 0.02 * w)
-                .opacity(variant == .tinted && tintLuminance >= 0.62 ? 1 : 0)
+            switch variant {
+            case .tinted:
+                Rectangle()
+                    .strokeBorder(Color(red: 0.97, green: 0.94, blue: 0.88).opacity(0.7),
+                                  lineWidth: 1)
+                    .frame(width: content.width, height: content.height)
+                    .offset(x: content.minX, y: content.minY)
+                if tintLuminance >= 0.62 {
+                    Rectangle()
+                        .strokeBorder(Theme.stampInk.opacity(0.34), lineWidth: 1)
+                        .frame(width: content.width - 0.04 * w,
+                               height: content.height - 0.04 * w)
+                        .offset(x: content.minX + 0.02 * w, y: content.minY + 0.02 * w)
+                }
 
-            // Ivory — the engraved cameo: double oval ring + spandrel rosettes.
-            Ellipse()
-                .strokeBorder(Theme.stampInk.opacity(0.55), lineWidth: 1.5)
-                .frame(width: 0.70 * w, height: 0.90 * w)
-                .offset(x: 0.15 * w, y: 0.57 * w - 0.45 * w)
-                .opacity(variant == .ivory ? 1 : 0)
-            Ellipse()
-                .strokeBorder(Theme.stampInk.opacity(0.28), lineWidth: 0.8)
-                .frame(width: 0.64 * w, height: 0.82 * w)
-                .offset(x: 0.18 * w, y: 0.57 * w - 0.41 * w)
-                .opacity(variant == .ivory ? 1 : 0)
-            ForEach(0..<4, id: \.self) { i in
-                Text("✦")
-                    .font(.system(size: 0.05 * w))
-                    .foregroundStyle(Theme.stampInk.opacity(0.5))
-                    .position(x: i % 2 == 0 ? 0.135 * w : 0.865 * w,
-                              y: i < 2 ? 0.145 * w : 0.945 * w)
-                    .opacity(variant == .ivory ? 1 : 0)
-            }
+            case .ivory:
+                // Ivory — the engraved cameo: double oval ring + spandrel rosettes.
+                Ellipse()
+                    .strokeBorder(Theme.stampInk.opacity(0.55), lineWidth: 1.5)
+                    .frame(width: 0.70 * w, height: 0.90 * w)
+                    .offset(x: 0.15 * w, y: 0.57 * w - 0.45 * w)
+                Ellipse()
+                    .strokeBorder(Theme.stampInk.opacity(0.28), lineWidth: 0.8)
+                    .frame(width: 0.64 * w, height: 0.82 * w)
+                    .offset(x: 0.18 * w, y: 0.57 * w - 0.41 * w)
+                ForEach(0..<4, id: \.self) { i in
+                    Text("✦")
+                        .font(.system(size: 0.05 * w))
+                        .foregroundStyle(Theme.stampInk.opacity(0.5))
+                        .position(x: i % 2 == 0 ? 0.135 * w : 0.865 * w,
+                                  y: i < 2 ? 0.145 * w : 0.945 * w)
+                }
 
-            // Ink — the poster scrim the picture melts into, and a red tick.
-            LinearGradient(
-                colors: [.clear, Color(hex: 0x2A2621)],
-                startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.66)
-            )
-            .frame(width: w, height: 0.58 * w)
-            .offset(y: 0.74 * w)
-            .opacity(variant == .ink ? 1 : 0)
-            Rectangle()
-                .fill(Color(hex: 0xE0644A))
-                .frame(width: 0.07 * w, height: max(1.5, 0.0076 * w))
-                .position(x: 0.5 * w, y: 1.05 * w)
-                .opacity(variant == .ink ? 1 : 0)
+            case .ink:
+                // Ink — the poster scrim the picture melts into, and a red tick.
+                LinearGradient(
+                    colors: [.clear, Color(hex: 0x2A2621)],
+                    startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.66)
+                )
+                .frame(width: w, height: 0.58 * w)
+                .offset(y: 0.74 * w)
+                Rectangle()
+                    .fill(Color(hex: 0xE0644A))
+                    .frame(width: 0.07 * w, height: max(1.5, 0.0076 * w))
+                    .position(x: 0.5 * w, y: 1.05 * w)
 
-            // Airmail — chevron ring + the par avion mark.
-            AirmailBorder(inset: 0.038 * w, band: 0.028 * w)
-                .opacity(variant == .airmail ? 1 : 0)
-            Text("PAR AVION")
-                .font(.system(size: 0.036 * w, weight: .semibold, design: .serif))
-                .italic()
-                .kerning(0.036 * w * 0.12)
-                .foregroundStyle(Color(hex: 0x274896))
-                .shadow(color: Color(hex: 0xFCFBF6), radius: 1.5)
-                .shadow(color: Color(hex: 0xFCFBF6), radius: 1.5)
-                .position(x: 0.5 * w, y: 0.13 * w)
-                .opacity(variant == .airmail && !templateMode ? 1 : 0)
+            case .airmail:
+                // Airmail — chevron ring + the par avion mark.
+                AirmailBorder(inset: 0.038 * w, band: 0.028 * w)
+                if !templateMode {
+                    Text("PAR AVION")
+                        .font(.system(size: 0.036 * w, weight: .semibold, design: .serif))
+                        .italic()
+                        .kerning(0.036 * w * 0.12)
+                        .foregroundStyle(Color(hex: 0x274896))
+                        .shadow(color: Color(hex: 0xFCFBF6), radius: 1.5)
+                        .shadow(color: Color(hex: 0xFCFBF6), radius: 1.5)
+                        .position(x: 0.5 * w, y: 0.13 * w)
+                }
 
-            // Commemorative — red keyline + the denomination bar at the foot.
-            Rectangle()
-                .strokeBorder(Theme.postalRed, lineWidth: 2)
-                .frame(width: content.width, height: content.height)
-                .offset(x: content.minX, y: content.minY)
-                .opacity(variant == .commemorative ? 1 : 0)
+            case .commemorative:
+                // Commemorative — red keyline + the denomination bar at the foot.
+                Rectangle()
+                    .strokeBorder(Theme.postalRed, lineWidth: 2)
+                    .frame(width: content.width, height: content.height)
+                    .offset(x: content.minX, y: content.minY)
 
-            // Foil — hairline around the picture, the edition mark, and a
-            // frozen sheen (the live shimmer rides the holo shader).
-            Rectangle()
-                .strokeBorder(Color(red: 0.24, green: 0.17, blue: 0.12).opacity(0.4),
-                              lineWidth: 1)
-                .frame(width: 0.844 * w, height: 1.054 * w)
-                .offset(x: 0.078 * w, y: 0.078 * w)
-                .opacity(variant == .foil ? 1 : 0)
-            LinearGradient(
-                stops: [.init(color: .clear, location: 0.30),
-                        .init(color: .white.opacity(0.28), location: 0.46),
-                        .init(color: Color(hex: 0xBEE6FF).opacity(0.20), location: 0.50),
-                        .init(color: Color(hex: 0xFFCDEB).opacity(0.22), location: 0.54),
-                        .init(color: .clear, location: 0.70)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            .frame(width: 0.90 * w, height: 1.11 * w)
-            .offset(x: 0.05 * w, y: 0.05 * w)
-            .blendMode(.screen)
-            .opacity(variant == .foil ? 1 : 0)
-            Text("SPECIAL EDITION ✦")
-                .font(.system(size: 0.03 * w, weight: .semibold).width(.condensed))
-                .kerning(0.03 * w * 0.3)
-                .foregroundStyle(Color(hex: 0xFBEFC4))
-                .shadow(color: Color(red: 0.24, green: 0.16, blue: 0.06).opacity(0.6),
-                        radius: 1, y: 1)
-                .position(x: 0.5 * w, y: 0.115 * w)
-                .opacity(variant == .foil && !templateMode ? 1 : 0)
+            case .foil:
+                // Foil — hairline around the picture, the edition mark, and a sheen.
+                Rectangle()
+                    .strokeBorder(Color(red: 0.24, green: 0.17, blue: 0.12).opacity(0.4),
+                                  lineWidth: 1)
+                    .frame(width: 0.844 * w, height: 1.054 * w)
+                    .offset(x: 0.078 * w, y: 0.078 * w)
+                LinearGradient(
+                    stops: [.init(color: .clear, location: 0.30),
+                            .init(color: .white.opacity(0.28), location: 0.46),
+                            .init(color: Color(hex: 0xBEE6FF).opacity(0.20), location: 0.50),
+                            .init(color: Color(hex: 0xFFCDEB).opacity(0.22), location: 0.54),
+                            .init(color: .clear, location: 0.70)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+                .frame(width: 0.90 * w, height: 1.11 * w)
+                .offset(x: 0.05 * w, y: 0.05 * w)
+                .blendMode(.screen)
+                if !templateMode {
+                    Text("SPECIAL EDITION ✦")
+                        .font(.system(size: 0.03 * w, weight: .semibold).width(.condensed))
+                        .kerning(0.03 * w * 0.3)
+                        .foregroundStyle(Color(hex: 0xFBEFC4))
+                        .shadow(color: Color(red: 0.24, green: 0.16, blue: 0.06).opacity(0.6),
+                                radius: 1, y: 1)
+                        .position(x: 0.5 * w, y: 0.115 * w)
+                }
 
-            // Revenue — double rule, revenue strip, duty bar.
-            Rectangle()
-                .strokeBorder(Color(hex: 0x2A3C52), lineWidth: 1.2)
-                .frame(width: content.width, height: content.height)
-                .offset(x: content.minX, y: content.minY)
-                .opacity(variant == .revenue ? 1 : 0)
-            Rectangle()
-                .strokeBorder(Color(hex: 0x2A3C52).opacity(0.8), lineWidth: 1)
-                .frame(width: content.width - 0.024 * w,
-                       height: content.height - 0.024 * w)
-                .offset(x: content.minX + 0.012 * w, y: content.minY + 0.012 * w)
-                .opacity(variant == .revenue ? 1 : 0)
+            case .revenue:
+                // Revenue — double rule, revenue strip, duty bar.
+                Rectangle()
+                    .strokeBorder(Color(hex: 0x2A3C52), lineWidth: 1.2)
+                    .frame(width: content.width, height: content.height)
+                    .offset(x: content.minX, y: content.minY)
+                Rectangle()
+                    .strokeBorder(Color(hex: 0x2A3C52).opacity(0.8), lineWidth: 1)
+                    .frame(width: content.width - 0.024 * w,
+                           height: content.height - 0.024 * w)
+                    .offset(x: content.minX + 0.012 * w, y: content.minY + 0.012 * w)
 
-            // Botanical — fine double rule + the series line.
-            Rectangle()
-                .strokeBorder(Color(hex: 0x2E422C).opacity(0.5), lineWidth: 1)
-                .frame(width: content.width, height: content.height)
-                .offset(x: content.minX, y: content.minY)
-                .opacity(variant == .botanical ? 1 : 0)
-            Rectangle()
-                .strokeBorder(Color(hex: 0x2E422C).opacity(0.3), lineWidth: 0.8)
-                .frame(width: content.width - 0.046 * w,
-                       height: content.height - 0.046 * w)
-                .offset(x: content.minX + 0.023 * w, y: content.minY + 0.023 * w)
-                .opacity(variant == .botanical ? 1 : 0)
-            Text("DEFINITIVE SERIES")
-                .font(.system(size: 0.028 * w, weight: .semibold, design: .serif))
-                .kerning(0.028 * w * 0.22)
-                .foregroundStyle(Color(hex: 0x2E422C).opacity(0.85))
-                .position(x: 0.5 * w, y: 0.12 * w)
-                .opacity(variant == .botanical && !templateMode ? 1 : 0)
+            case .botanical:
+                // Botanical — fine double rule + the series line.
+                Rectangle()
+                    .strokeBorder(Color(hex: 0x2E422C).opacity(0.5), lineWidth: 1)
+                    .frame(width: content.width, height: content.height)
+                    .offset(x: content.minX, y: content.minY)
+                Rectangle()
+                    .strokeBorder(Color(hex: 0x2E422C).opacity(0.3), lineWidth: 0.8)
+                    .frame(width: content.width - 0.046 * w,
+                           height: content.height - 0.046 * w)
+                    .offset(x: content.minX + 0.023 * w, y: content.minY + 0.023 * w)
+                if !templateMode {
+                    Text("DEFINITIVE SERIES")
+                        .font(.system(size: 0.028 * w, weight: .semibold, design: .serif))
+                        .kerning(0.028 * w * 0.22)
+                        .foregroundStyle(Color(hex: 0x2E422C).opacity(0.85))
+                        .position(x: 0.5 * w, y: 0.12 * w)
+                }
 
-            // Night — the neon keyline glowing around the picture.
-            RoundedRectangle(cornerRadius: 2)
-                .strokeBorder(Color(hex: 0x6FE9FF), lineWidth: 1.5)
-                .frame(width: content.width, height: content.height)
-                .offset(x: content.minX, y: content.minY)
-                .shadow(color: Color(hex: 0x6FE9FF).opacity(0.7), radius: 0.038 * w)
-                .shadow(color: Color(hex: 0x6FE9FF).opacity(0.45), radius: 0.012 * w)
-                .opacity(variant == .night ? 1 : 0)
+            case .night:
+                // Night — the neon keyline glowing around the picture.
+                RoundedRectangle(cornerRadius: 2)
+                    .strokeBorder(Color(hex: 0x6FE9FF), lineWidth: 1.5)
+                    .frame(width: content.width, height: content.height)
+                    .offset(x: content.minX, y: content.minY)
+                    .shadow(color: Color(hex: 0x6FE9FF).opacity(0.7), radius: 0.038 * w)
+                    .shadow(color: Color(hex: 0x6FE9FF).opacity(0.45), radius: 0.012 * w)
 
-            // Sweetheart — white + rose hairlines and the corner florets.
-            Rectangle()
-                .strokeBorder(Color(red: 1.0, green: 0.96, blue: 0.95).opacity(0.72),
-                              lineWidth: 1)
-                .frame(width: content.width, height: content.height)
-                .offset(x: content.minX, y: content.minY)
-                .opacity(variant == .sweetheart ? 1 : 0)
-            Rectangle()
-                .strokeBorder(Color(hex: 0x7A3A3C).opacity(0.42), lineWidth: 1)
-                .frame(width: content.width - 0.046 * w,
-                       height: content.height - 0.046 * w)
-                .offset(x: content.minX + 0.023 * w, y: content.minY + 0.023 * w)
-                .opacity(variant == .sweetheart ? 1 : 0)
-            ForEach(0..<2, id: \.self) { i in
-                Text("✦")
-                    .font(.system(size: 0.04 * w))
-                    .foregroundStyle(Color(hex: 0x7A3A3C).opacity(0.6))
-                    .position(x: i == 0 ? 0.13 * w : 0.87 * w, y: 0.12 * w)
-                    .opacity(variant == .sweetheart ? 1 : 0)
+            case .sweetheart:
+                // Sweetheart — white + rose hairlines and the corner florets.
+                Rectangle()
+                    .strokeBorder(Color(red: 1.0, green: 0.96, blue: 0.95).opacity(0.72),
+                                  lineWidth: 1)
+                    .frame(width: content.width, height: content.height)
+                    .offset(x: content.minX, y: content.minY)
+                Rectangle()
+                    .strokeBorder(Color(hex: 0x7A3A3C).opacity(0.42), lineWidth: 1)
+                    .frame(width: content.width - 0.046 * w,
+                           height: content.height - 0.046 * w)
+                    .offset(x: content.minX + 0.023 * w, y: content.minY + 0.023 * w)
+                ForEach(0..<2, id: \.self) { i in
+                    Text("✦")
+                        .font(.system(size: 0.04 * w))
+                        .foregroundStyle(Color(hex: 0x7A3A3C).opacity(0.6))
+                        .position(x: i == 0 ? 0.13 * w : 0.87 * w, y: 0.12 * w)
+                }
             }
         }
-        // The dressing never outlines the raw punch stage — it rides the
-        // paper's own fade via the caller's opacity, so nothing here needs
-        // per-piece assembly gating.
         .frame(width: w, height: 1.3125 * w, alignment: .topLeading)
     }
 
@@ -979,10 +973,8 @@ struct StampView: View {
         }
     }
 
+    @ViewBuilder
     private func staggeredTitle(font: Font, width w: CGFloat) -> some View {
-        // The stagger renders every glyph as its own Text, so no scale
-        // factor can fit the line — size the type analytically to the
-        // span the № and date leave free.
         let chars = Array(titleDisplay.prefix(18))
         let n = max(chars.count, 1)
         let base = titleSize(w)
@@ -990,22 +982,34 @@ struct StampView: View {
         let estimated = CGFloat(n) * base * ((condensed ? 0.55 : 0.72) + titleTracking)
         let fit = min(1, 0.40 * w / max(estimated, 1))
         let size = base * fit
-        return HStack(spacing: size * titleTracking) {
-            ForEach(Array(chars.enumerated()), id: \.offset) { i, ch in
-                let p = letterProgress(i, of: n)
-                Text(String(ch))
-                    .font(titleFont(size: size))
-                    .foregroundStyle(markInk.opacity(variant == .night ? 1 : 0.82))
-                    .shadow(color: variant == .night
-                                ? Color(hex: 0x6FE9FF).opacity(0.8) : .clear,
-                            radius: variant == .night ? 0.03 * w : 0)
-                    .opacity(p)
-                    .offset(y: (1 - p) * 0.03 * w)
-                    .blur(radius: (1 - p) * 1.5)
+
+        if assembly.caption >= 1.0 {
+            Text(titleDisplay)
+                .font(titleFont(size: size))
+                .foregroundStyle(markInk.opacity(variant == .night ? 1 : 0.82))
+                .shadow(color: variant == .night
+                            ? Color(hex: 0x6FE9FF).opacity(0.8) : .clear,
+                        radius: variant == .night ? 0.03 * w : 0)
+                .lineLimit(1)
+                .fixedSize()
+        } else {
+            HStack(spacing: size * titleTracking) {
+                ForEach(Array(chars.enumerated()), id: \.offset) { i, ch in
+                    let p = letterProgress(i, of: n)
+                    Text(String(ch))
+                        .font(titleFont(size: size))
+                        .foregroundStyle(markInk.opacity(variant == .night ? 1 : 0.82))
+                        .shadow(color: variant == .night
+                                    ? Color(hex: 0x6FE9FF).opacity(0.8) : .clear,
+                                radius: variant == .night ? 0.03 * w : 0)
+                        .opacity(p)
+                        .offset(y: (1 - p) * 0.03 * w)
+                        .blur(radius: (1 - p) * 1.5)
+                }
             }
+            .lineLimit(1)
+            .fixedSize()
         }
-        .lineLimit(1)
-        .fixedSize()
     }
 
     private func letterProgress(_ i: Int, of n: Int) -> Double {

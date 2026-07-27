@@ -15,7 +15,7 @@ struct AlbumScreen: View {
     @State private var pushedMonth: Date? = nil
 
     private var folders: [MonthFolder] {
-        MonthFolder.shelf(from: model.store.stamps)
+        model.store.folders
     }
 
     /// The pushed month resolved against the current store.
@@ -92,6 +92,7 @@ struct AlbumScreen: View {
 
             Button {
                 model.haptics.tick()
+                model.camera.start()
                 model.showStampCapture = true
             } label: {
                 Image(systemName: "camera")

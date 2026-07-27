@@ -46,27 +46,28 @@ struct CanvasLayerView: View {
         if editingText, case .text(let string, let style) = layer.content {
             // Inline editing: a bare field in the layer's own voice. Safe
             // anywhere on the stage — no shader wraps the layer stack.
-            // When the cut is on, a contour mirror rides beneath the field
-            // (same idiom as the reveal's sticker tag) so the scissors
-            // read in real time while typing.
+            // When ransom or die cut is active, a mirror rides beneath the
+            // field so the chips or contour read in real time while typing.
+            // A stable ZStack keeps the TextField's view identity intact across
+            // voice switches so the keyboard never closes.
             let fontSize = CanvasLayerContent.fontSize(
                 scale: liveScale, canvasWidth: canvasSize.width)
-            Group {
+            ZStack {
                 if style.design == .ransom {
-                    ransomField(string: string, style: style, fontSize: fontSize)
-                } else {
-                    ZStack {
-                        if layer.dieCut {
-                            DieCutText(text: string.isEmpty ? TextStyleValue.placeholder : string,
-                                       fontSize: fontSize, ink: .clear, spread: 0.18,
-                                       font: style.font(size: fontSize))
-                        }
-                        textField(string: string, style: style, fontSize: fontSize)
-                            .foregroundStyle(style.color.color)
-                            .tint(Theme.postalRed)
-                            .fixedSize()
-                    }
+                    RansomText(text: string.isEmpty ? TextStyleValue.placeholder : string,
+                               fontSize: fontSize,
+                               ink: style.color.color)
+                        .opacity(string.isEmpty ? 0.45 : 1)
+                } else if layer.dieCut {
+                    DieCutText(text: string.isEmpty ? TextStyleValue.placeholder : string,
+                               fontSize: fontSize, ink: .clear, spread: 0.18,
+                               font: style.font(size: fontSize))
                 }
+
+                textField(string: string, style: style, fontSize: fontSize)
+                    .foregroundStyle(style.design == .ransom ? Color.clear : style.color.color)
+                    .tint(style.design == .ransom ? Color.clear : Theme.postalRed)
+                    .fixedSize()
             }
             .onAppear { textFocused = true }
             .onChange(of: editingText) { _, editing in
@@ -82,8 +83,7 @@ struct CanvasLayerView: View {
         }
     }
 
-    /// The keyboard's proxy. Styling is left to the caller so it can either
-    /// draw the glyphs itself or hand that job to a mirror.
+    /// The keyboard's proxy.
     private func textField(string: String, style: TextStyleValue,
                            fontSize: CGFloat) -> some View {
         TextField(TextStyleValue.placeholder, text: Binding(
@@ -96,29 +96,6 @@ struct CanvasLayerView: View {
         .submitLabel(.done)
         .onSubmit { editor.editingTextID = nil }
         .focused($textFocused)
-    }
-
-    /// Ransom is not a Font — it is `RansomText`, a run of paper chips each
-    /// with its own face, tilt and stock, so no TextField can wear it. The
-    /// editor used to give up and close itself the moment you picked it,
-    /// which left the one voice in the set uneditable.
-    ///
-    /// Instead the real render does the drawing and an invisible field sits
-    /// on top of it purely to hold the keyboard — the same mirror idiom the
-    /// die cut already uses, with the roles reversed. The caret is hidden
-    /// because chip metrics and plain-text metrics do not line up; the
-    /// chips appearing as you type are the feedback.
-    private func ransomField(string: String, style: TextStyleValue,
-                             fontSize: CGFloat) -> some View {
-        RansomText(text: string.isEmpty ? TextStyleValue.placeholder : string,
-                   fontSize: fontSize,
-                   ink: style.color.color)
-            .opacity(string.isEmpty ? 0.45 : 1)
-            .overlay {
-                textField(string: string, style: style, fontSize: fontSize)
-                    .foregroundStyle(.clear)
-                    .tint(.clear)
-            }
     }
 
     // MARK: Gestures
