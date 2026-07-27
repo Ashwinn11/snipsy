@@ -275,7 +275,7 @@ struct OnboardingSharePage: View {
                 StampView(
                     image: subject.sticker,
                     style: .cutout,
-                    tint: OnboardingDemo.shareTint.color,
+                    tint: subject.tint.color,
                     title: subject.title,
                     number: 1,
                     variant: .airmail,
@@ -332,7 +332,7 @@ struct OnboardingSharePage: View {
                 StampView(
                     image: subject.sticker,
                     style: .cutout,
-                    tint: OnboardingDemo.shareTint.color,
+                    tint: subject.tint.color,
                     title: "",
                     number: 1,
                     variant: v,

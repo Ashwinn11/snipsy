@@ -168,9 +168,10 @@ struct CanvasSelectionBar: View {
             let i = all.firstIndex(of: s.design) ?? 0
             s.design = all[(i + 1) % all.count]
             editor.setTextStyle(s, for: layer.id)
-            // The inline field can't wear ransom chips — the real render
-            // must take over for the voice to show.
-            if s.design == .ransom { editor.editingTextID = nil }
+            // Ransom used to close the editor here, because the inline
+            // field couldn't wear its chips. It no longer has to — the
+            // field hands the drawing to a live RansomText mirror (see
+            // CanvasLayerView.ransomField), so every voice stays editable.
         } label: {
             Text("Aa")
                 .font(style.font(size: 17))

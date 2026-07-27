@@ -79,7 +79,7 @@ struct OnboardingDemoPage: View {
             StampView(
                 image: assets.sticker,
                 style: .cutout,
-                tint: OnboardingDemo.heroTint.color,
+                tint: assets.tint.color,
                 title: demo.hero?.title ?? "",
                 number: 1,
                 date: .now,

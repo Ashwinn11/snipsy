@@ -51,25 +51,22 @@ struct CanvasLayerView: View {
             // read in real time while typing.
             let fontSize = CanvasLayerContent.fontSize(
                 scale: liveScale, canvasWidth: canvasSize.width)
-            ZStack {
-                if layer.dieCut {
-                    DieCutText(text: string.isEmpty ? "Your words" : string,
-                               fontSize: fontSize, ink: .clear, spread: 0.18,
-                               font: style.font(size: fontSize))
+            Group {
+                if style.design == .ransom {
+                    ransomField(string: string, style: style, fontSize: fontSize)
+                } else {
+                    ZStack {
+                        if layer.dieCut {
+                            DieCutText(text: string.isEmpty ? TextStyleValue.placeholder : string,
+                                       fontSize: fontSize, ink: .clear, spread: 0.18,
+                                       font: style.font(size: fontSize))
+                        }
+                        textField(string: string, style: style, fontSize: fontSize)
+                            .foregroundStyle(style.color.color)
+                            .tint(Theme.postalRed)
+                            .fixedSize()
+                    }
                 }
-                TextField("Your words", text: Binding(
-                    get: { string },
-                    set: { editor.setText($0, for: layer.id) }
-                ))
-                .font(style.font(size: fontSize))
-                .foregroundStyle(style.color.color)
-                .tint(Theme.postalRed)
-                .multilineTextAlignment(.center)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-                .onSubmit { editor.editingTextID = nil }
-                .fixedSize()
-                .focused($textFocused)
             }
             .onAppear { textFocused = true }
             .onChange(of: editingText) { _, editing in
@@ -83,6 +80,45 @@ struct CanvasLayerView: View {
                                resolver: { editor.bitmap(for: $0) })
                 .contentShape(Rectangle())
         }
+    }
+
+    /// The keyboard's proxy. Styling is left to the caller so it can either
+    /// draw the glyphs itself or hand that job to a mirror.
+    private func textField(string: String, style: TextStyleValue,
+                           fontSize: CGFloat) -> some View {
+        TextField(TextStyleValue.placeholder, text: Binding(
+            get: { string },
+            set: { editor.setText($0, for: layer.id) }
+        ))
+        .font(style.font(size: fontSize))
+        .multilineTextAlignment(.center)
+        .autocorrectionDisabled()
+        .submitLabel(.done)
+        .onSubmit { editor.editingTextID = nil }
+        .focused($textFocused)
+    }
+
+    /// Ransom is not a Font — it is `RansomText`, a run of paper chips each
+    /// with its own face, tilt and stock, so no TextField can wear it. The
+    /// editor used to give up and close itself the moment you picked it,
+    /// which left the one voice in the set uneditable.
+    ///
+    /// Instead the real render does the drawing and an invisible field sits
+    /// on top of it purely to hold the keyboard — the same mirror idiom the
+    /// die cut already uses, with the roles reversed. The caret is hidden
+    /// because chip metrics and plain-text metrics do not line up; the
+    /// chips appearing as you type are the feedback.
+    private func ransomField(string: String, style: TextStyleValue,
+                             fontSize: CGFloat) -> some View {
+        RansomText(text: string.isEmpty ? TextStyleValue.placeholder : string,
+                   fontSize: fontSize,
+                   ink: style.color.color)
+            .opacity(string.isEmpty ? 0.45 : 1)
+            .overlay {
+                textField(string: string, style: style, fontSize: fontSize)
+                    .foregroundStyle(.clear)
+                    .tint(.clear)
+            }
     }
 
     // MARK: Gestures

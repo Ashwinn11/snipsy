@@ -3,11 +3,13 @@ import UIKit
 
 /// Snipsy design tokens. See docs/DESIGN.md.
 enum Theme {
-    // MARK: Palette — the sunny cream album (light-only).
-    /// Screen "paper": warm cream pages, a hair lighter than any stamp
-    /// paper (stampTint caps V at 0.90) so stamps read as objects on it.
-    static let paper      = Color(hex: 0xF8F2E3)
-    static let paperDeep  = Color(hex: 0xEFE6D0)
+    // MARK: Palette — the off-white album (light-only).
+    /// Screen "paper": a warm off-white. Deliberately NOT pure white —
+    /// white is the die-cut outline, and the page must never compete with
+    /// it — but close enough that stamps and folders read as objects
+    /// sitting on a sheet rather than on a cream card.
+    static let paper      = Color(hex: 0xF4F2ED)
+    static let paperDeep  = Color(hex: 0xE8E5DD)
     /// Screen ink: dark warm coffee brown for text/marks ON the cream pages.
     static let ink        = Color(hex: 0x4A3728)
     static let inkSoft    = Color(hex: 0x7E6E58)
@@ -25,10 +27,29 @@ enum Theme {
     static let springTight  = Animation.spring(response: 0.32, dampingFraction: 0.85)
 
     // MARK: Type
-    /// UI chrome — SF Rounded heavy, the die-cut voice. Titles, headers,
-    /// and brand marks all speak in this one weight.
+    /// The app's voice: Plus Jakarta Sans, bundled under Resources/Fonts.
+    ///
+    /// The chrome used to speak in SF Rounded Heavy — the same face the
+    /// die cut prints in (see `DieCutText`). That made the app read as a
+    /// sticker rather than as the shelf a sticker sits on. The two voices
+    /// are now deliberately different: the die cut keeps SF Rounded Heavy,
+    /// everything else speaks here.
+    enum Face: String {
+        case regular   = "PlusJakartaSans-Regular"
+        case medium    = "PlusJakartaSans-Medium"
+        case semibold  = "PlusJakartaSans-SemiBold"
+        case bold      = "PlusJakartaSans-Bold"
+        case extraBold = "PlusJakartaSans-ExtraBold"
+    }
+
+    /// Titles, headers and month names.
     static func display(_ size: CGFloat) -> Font {
-        .system(size: size, weight: .heavy, design: .rounded)
+        .custom(Face.extraBold.rawValue, fixedSize: size)
+    }
+
+    /// Everything else — counts, captions, controls, body.
+    static func ui(_ size: CGFloat, _ face: Face = .medium) -> Font {
+        .custom(face.rawValue, fixedSize: size)
     }
     /// Stamp ARTIFACT only — the printed collectible keeps its serif voice.
     static func stampEngraved(_ size: CGFloat) -> Font {

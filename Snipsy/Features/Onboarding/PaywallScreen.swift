@@ -38,6 +38,7 @@ struct PaywallScreen: View {
                             .padding(.bottom, 10)
                         RansomText(text: "KEEP EVERY DATE", fontSize: 16, ink: Theme.ink)
                     }
+                    .padding(.bottom, 18)
                     .entrance(shown: stage >= 1)
 
                     VStack(alignment: .leading, spacing: 14) {
@@ -182,9 +183,14 @@ struct PaywallScreen: View {
     /// the product can't drift apart.
     private var stickerFan: some View {
         ZStack {
-            if demo.drawer.count >= 3 {
-                fanned(demo.drawer[1], width: 64, degrees: -19, dx: -68, dy: 14)
-                fanned(demo.drawer[2], width: 60, degrees: 16, dx: 68, dy: 16)
+            // Named, not indexed into `drawer` — position depends on load
+            // order, which is exactly how the hero ended up being whatever
+            // finished Vision first.
+            if let couple = demo.stickerRender("couple2") {
+                fanned(couple, width: 64, degrees: -19, dx: -68, dy: 14)
+            }
+            if let coffee = demo.stickerRender("coffee") {
+                fanned(coffee, width: 60, degrees: 16, dx: 68, dy: 16)
             }
             memoryPage
                 .rotationEffect(.degrees(-4))
@@ -193,18 +199,31 @@ struct PaywallScreen: View {
         .frame(height: 128)
     }
 
+    /// A real stamp, rendered by the real `StampView` — perforated paper,
+    /// caption, date and all. Not a photo pasted on a paper background.
+    ///
+    /// `.classic` is the app's own definition of a stamp: "No mask
+    /// available; the full crop fills the stamp frame." Only a STICKER
+    /// wears the die cut, which is why `rawCrop` goes in as the image and
+    /// no mask is passed. The paywall was previously selling a cut-out on
+    /// stamp stock — a thing the product never makes.
+    @ViewBuilder
     private var memoryPage: some View {
-        ZStack {
+        if let subject = demo.subject(OnboardingDemo.paywallKey) {
+            StampView(
+                image: subject.photo,
+                style: .classic,
+                tint: subject.tint.color,
+                title: subject.title,
+                number: 1,
+                date: Date(),
+                variant: .sweetheart
+            )
+            .frame(width: 86)
+        } else {
             CanvasBackgroundView(background: .paper(.sweetheart), date: Date())
-            if let hero = demo.hero {
-                Image(uiImage: hero.stickerRender)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 56)
-                    .offset(y: -8)
-            }
+                .frame(width: 86)
         }
-        .frame(width: 86)
     }
 
     private func fanned(_ render: UIImage, width: CGFloat, degrees: Double,

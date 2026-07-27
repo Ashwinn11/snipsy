@@ -75,6 +75,9 @@ struct CameraScreen: View {
 
     @ViewBuilder
     private func chrome(viewfinder vf: CGRect) -> some View {
+        let topLeftY = safeArea.top + 24
+        let barY = screenSize.height - max(safeArea.bottom, 16) - 54
+
         // Library import — an old photo takes the same ride as a live shot.
         PhotosPicker(selection: $pickedItem, matching: .images) {
             Image(systemName: "photo.on.rectangle")
@@ -86,7 +89,7 @@ struct CameraScreen: View {
         // Fixed scrim, not glass: liquid glass refracts the live feed, so
         // the chrome would flicker with every exposure change.
         .background(.black.opacity(0.32), in: Circle())
-        .position(x: 46, y: safeArea.top + 24)
+        .position(x: onClose != nil ? 66 : 46, y: onClose != nil ? barY : topLeftY)
         .onChange(of: pickedItem) { _, item in
             guard let item else { return }
             Task { @MainActor in
@@ -144,7 +147,7 @@ struct CameraScreen: View {
                     .frame(width: 48, height: 48)
             }
             .background(.black.opacity(0.32), in: Circle())
-            .position(x: 66, y: barY)
+            .position(x: 46, y: topLeftY)
         } else {
             CollectionPill(model: model)
                 .position(x: 66, y: barY)

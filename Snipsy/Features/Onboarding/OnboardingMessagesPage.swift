@@ -110,8 +110,9 @@ struct OnboardingMessagesPage: View {
                 // The landed sticker: its own outgoing "message".
                 HStack {
                     Spacer(minLength: 0)
-                    if let hero = demo.hero {
-                        Image(uiImage: hero.stickerRender)
+                    // The bubble above literally reads "coffee first".
+                    if let hero = demo.stickerRender(OnboardingDemo.messagesKey) {
+                        Image(uiImage: hero)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 112)

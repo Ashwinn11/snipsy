@@ -12,7 +12,19 @@ final class CanvasEditorModel {
     var title: String
     var selectedLayerID: UUID? = nil
     /// Text layer currently in inline editing.
-    var editingTextID: UUID? = nil
+    ///
+    /// Entering and leaving edit mode manage the seeded placeholder. A new
+    /// layer arrives holding "Your words" so it is visible on the stage,
+    /// but that is real content — meaning every caption started with a
+    /// select-all-delete. It now clears on entry and comes back if you
+    /// leave without typing, so an untouched layer looks exactly as before.
+    var editingTextID: UUID? = nil {
+        didSet {
+            guard editingTextID != oldValue else { return }
+            if let leaving = oldValue { restorePlaceholder(leaving) }
+            if let entering = editingTextID { clearPlaceholder(entering) }
+        }
+    }
     /// Image layers with a Vision cutout in flight.
     var cutoutBusy: Set<UUID> = []
     /// Brief toast line ("No subject found").
@@ -135,7 +147,7 @@ final class CanvasEditorModel {
     func addTextLayer() {
         push()
         let layer = CanvasLayer(
-            content: .text(string: "Your words", style: TextStyleValue()),
+            content: .text(string: TextStyleValue.placeholder, style: TextStyleValue()),
             transform: LayerTransform(x: 0.5, y: 0.5, scale: 0.28)
         )
         doc.layers.append(layer)
@@ -225,6 +237,27 @@ final class CanvasEditorModel {
     func setTransform(_ transform: LayerTransform, for id: UUID) {
         guard let i = doc.layers.firstIndex(where: { $0.id == id }) else { return }
         doc.layers[i].transform = transform
+    }
+
+    /// Editing began: drop the seeded placeholder so typing starts on an
+    /// empty field. The field shows the same words in grey, so nothing
+    /// looks different — there is just nothing to delete first.
+    private func clearPlaceholder(_ id: UUID) {
+        guard let i = doc.layers.firstIndex(where: { $0.id == id }),
+              case .text(let string, let style) = doc.layers[i].content,
+              string == TextStyleValue.placeholder else { return }
+        doc.layers[i].content = .text(string: "", style: style)
+    }
+
+    /// Editing ended with nothing typed: put the placeholder back, or the
+    /// layer renders as nothing and becomes impossible to find or tap.
+    private func restorePlaceholder(_ id: UUID) {
+        guard let i = doc.layers.firstIndex(where: { $0.id == id }),
+              case .text(let string, let style) = doc.layers[i].content,
+              string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+        doc.layers[i].content = .text(string: TextStyleValue.placeholder,
+                                      style: style)
     }
 
     func setText(_ string: String, for id: UUID) {

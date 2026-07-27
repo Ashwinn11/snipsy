@@ -14,6 +14,12 @@ struct LayerTransform: Codable, Equatable {
 /// A text layer's persisted voice. System font designs only — the app
 /// bundles no font files.
 struct TextStyleValue: Codable, Equatable {
+    /// What a fresh text layer holds so it is visible on the stage before
+    /// anything is typed. Treated as a placeholder, not as content: the
+    /// editor clears it on entry and puts it back if you leave without
+    /// typing. Nothing should ever compare against the bare literal.
+    static let placeholder = "Your words"
+
     enum DesignValue: String, Codable, CaseIterable {
         case rounded, serif, monospaced, condensed, handwritten, script, ransom
     }
@@ -55,8 +61,10 @@ struct TextStyleValue: Codable, Equatable {
         case .condensed: .system(size: size, weight: w).width(.condensed)
         case .handwritten: Theme.handwritten(size)
         case .script: Theme.script(size)
-        // Ransom is a per-glyph treatment (RansomText), not a Font — this
-        // stands in for live editing and previews.
+        // Ransom is a per-glyph treatment (RansomText), not a Font. Nothing
+        // on the stage uses this any more — the layer render and the inline
+        // editor both go through RansomText — but the toolbar's "Aa" chip
+        // still needs *some* Font to draw itself with.
         case .ransom: .system(size: size, weight: w, design: .rounded)
         }
         if italic { f = f.italic() }

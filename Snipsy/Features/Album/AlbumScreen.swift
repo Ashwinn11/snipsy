@@ -1,17 +1,37 @@
 import SwiftUI
 
-/// The collector's book: serif day headers, a two-column grid of slightly
-/// tilted stamps on dot-grid paper, matched-geometry morph into detail.
+/// The collector's shelf: one folder per month, stacked down the page.
+/// Tapping a folder opens its cover and slides the stamps out; tapping
+/// twice goes inside.
 struct AlbumScreen: View {
     let model: AppModel
     let safeArea: EdgeInsets
 
-    @Namespace private var ns
-    @State private var selected: Stamp? = nil
     @State private var showSettings = false
+    /// The folder currently showing its contents — one at a time.
+    @State private var openMonth: Date? = nil
+    /// The month drilled into. Held as a date, not a snapshot, so the page
+    /// stays live against the store (and dismisses if the month empties).
+    @State private var pushedMonth: Date? = nil
+
+    private var folders: [MonthFolder] {
+        MonthFolder.shelf(from: model.store.stamps)
+    }
+
+    /// The pushed month resolved against the current store.
+    private var pushed: (folder: MonthFolder, index: Int)? {
+        guard let month = pushedMonth,
+              let i = folders.firstIndex(where: { $0.month == month })
+        else { return nil }
+        return (folders[i], i)
+    }
 
     var body: some View {
         GeometryReader { geo in
+            // The fan reaches 1.15 W right of the folder's centre, so the
+            // row budget is 1.65 W plus margins.
+            let folderWidth = min(164, geo.size.width * 0.42)
+
             ZStack {
                 PaperBackdrop(showsGrid: true)
 
@@ -21,23 +41,27 @@ struct AlbumScreen: View {
                         EmptyAlbumView()
                             .frame(maxHeight: .infinity)
                     } else {
-                        grid(bottomInset: safeArea.bottom)
+                        shelf(bottomInset: safeArea.bottom,
+                              folderWidth: folderWidth)
                     }
                 }
+                .scaleEffect(pushed == nil ? 1 : 0.96)
 
-                if let stamp = selected {
-                    StampDetailView(
-                        stamp: stamp,
+                if let pushed {
+                    MonthScreen(
+                        folder: pushed.folder,
+                        stock: FolderStock.stock(at: pushed.index),
                         model: model,
-                        ns: ns,
                         screenSize: geo.size,
+                        safeArea: safeArea,
                         onClose: {
-                            withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                                selected = nil
+                            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                                pushedMonth = nil
                             }
                         }
                     )
-                    .zIndex(5)
+                    .transition(.move(edge: .trailing))
+                    .zIndex(8)
                 }
             }
         }
@@ -58,15 +82,12 @@ struct AlbumScreen: View {
 
     private func header(topInset: CGFloat) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Collection")
-                    .font(Theme.display(34))
-                    .foregroundStyle(Theme.ink)
-                Text(countLine)
-                    .font(.system(size: 14, design: .rounded))
-                    .foregroundStyle(Theme.inkSoft)
-            }
+            Text("Collection")
+                .font(Theme.display(34))
+                .foregroundStyle(Theme.ink)
+
             Spacer()
+
             Button {
                 model.haptics.tick()
                 model.showStampCapture = true
@@ -105,206 +126,78 @@ struct AlbumScreen: View {
         .padding(.bottom, 20)
     }
 
-    private var countLine: String {
-        let n = model.store.stamps.count
-        return n == 1 ? "1 memory" : "\(n) memories"
-    }
+    // MARK: Shelf
 
-    // MARK: Timeline
-
-    private static let monthTitleFormatter: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "MMM yyyy"; return f
-    }()
-    private static let monthNameFormatter: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "MMMM"; return f
-    }()
-
-    /// The timeline grouped month-first: each section owns its day groups,
-    /// and its header is the pinnable month divider.
-    private var monthSections:
-        [(month: Date, title: String, days: [(day: Date, title: String, stamps: [Stamp])])] {
-        let calendar = Calendar.current
-        var out: [(month: Date, title: String,
-                   days: [(day: Date, title: String, stamps: [Stamp])])] = []
-        for group in model.store.dayGroups {
-            let month = calendar.dateInterval(of: .month, for: group.day)?.start ?? group.day
-            let day = (day: group.day, title: group.title, stamps: group.stamps)
-            if out.last?.month == month {
-                out[out.count - 1].days.append(day)
-            } else {
-                out.append((month, Self.monthTitleFormatter.string(from: month), [day]))
-            }
-        }
-        return out
-    }
-
-    /// Every month in the collection, newest first — the jump menu's entries.
-    private var months: [(month: Date, label: String)] {
-        let calendar = Calendar.current
-        var seen = Set<Date>()
-        var out: [(Date, String)] = []
-        for group in model.store.dayGroups {
-            let month = calendar.dateInterval(of: .month, for: group.day)?.start ?? group.day
-            guard seen.insert(month).inserted else { continue }
-            out.append((month, Self.monthNameFormatter.string(from: month)))
-        }
-        return out
-    }
-
-    /// Months grouped by year, newest first — the jump menu shows year
-    /// sections only when the collection actually spans years.
-    private var jumpYears: [(year: Int, months: [(month: Date, label: String)])] {
-        let calendar = Calendar.current
-        var out: [(year: Int, months: [(month: Date, label: String)])] = []
-        for m in months {
-            let year = calendar.component(.year, from: m.month)
-            if out.last?.year == year {
-                out[out.count - 1].months.append(m)
-            } else {
-                out.append((year, [m]))
-            }
-        }
-        return out
-    }
-
-    /// The month divider IS the navigation: it pins to the top while its
-    /// month scrolls past (you always know where you are), and tapping it
-    /// opens the jump menu. No chip rows, no extra chrome.
-    @ViewBuilder
-    private func monthHeader(month: Date, title: String,
-                             proxy: ScrollViewProxy) -> some View {
-        if months.count > 1 {
-            Menu {
-                if jumpYears.count > 1 {
-                    ForEach(jumpYears, id: \.year) { group in
-                        Section(String(group.year)) {
-                            monthButtons(group.months, current: month, proxy: proxy)
-                        }
-                    }
-                } else {
-                    monthButtons(months, current: month, proxy: proxy)
-                }
-            } label: {
-                headerLine(title, chevron: true)
-            }
-            .buttonStyle(.plain)
-            .background(Theme.paper.padding(.horizontal, -26))
-        } else {
-            headerLine(title, chevron: false)
-                .background(Theme.paper.padding(.horizontal, -26))
-        }
-    }
-
-    private func monthButtons(_ items: [(month: Date, label: String)],
-                              current: Date, proxy: ScrollViewProxy) -> some View {
-        ForEach(items, id: \.month) { m in
-            Button {
-                model.haptics.tick()
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
-                    proxy.scrollTo(m.month, anchor: .top)
-                }
-            } label: {
-                if m.month == current {
-                    Label(m.label, systemImage: "checkmark")
-                } else {
-                    Text(m.label)
+    private func shelf(bottomInset: CGFloat, folderWidth: CGFloat) -> some View {
+        let overhang = folderWidth * FolderGeometry.aspect
+            * (FolderGeometry.openMagnification - 1) / 2
+        return ScrollView(showsIndicators: false) {
+            LazyVStack(spacing: 34) {
+                ForEach(Array(folders.enumerated()), id: \.element.id) { i, folder in
+                    shelfRow(folder, index: i, folderWidth: folderWidth)
                 }
             }
+            .padding(.horizontal, 26)
+            // The open cover magnifies to 1.30 H, overhanging its row by
+            // 0.15 H at EACH end. Without this the scroll view clips the
+            // top row's cover the moment it opens.
+            .padding(.top, overhang + 8)
+            .padding(.bottom, bottomInset + overhang + 44)
         }
     }
 
-    private func headerLine(_ title: String, chevron: Bool) -> some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Text(title)
-                    .font(Theme.display(26))
-                    .foregroundStyle(Theme.ink)
-                if chevron {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Theme.inkSoft)
-                }
-            }
-            Line()
-                .stroke(Theme.inkSoft.opacity(0.4),
-                        style: StrokeStyle(lineWidth: 1, dash: [2.5, 4]))
-                .frame(height: 1)
+    private func shelfRow(_ folder: MonthFolder, index: Int,
+                          folderWidth: CGFloat) -> some View {
+        let isOpen = openMonth == folder.month
+        return HStack(spacing: 0) {
+            MonthFolderView(
+                folder: folder,
+                store: model.store,
+                stock: FolderStock.stock(at: index),
+                open: isOpen ? 1 : 0,
+                width: folderWidth
+            )
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 7)
+        // The row keeps the folder's height; the fan overflows to the right
+        // into the empty half, which is deliberately never clipped.
+        .frame(height: folderWidth * FolderGeometry.aspect)
         .contentShape(Rectangle())
-    }
-
-    // MARK: Grid
-
-    private func grid(bottomInset: CGFloat) -> some View {
-        ScrollViewReader { proxy in
-            ScrollView(showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 34,
-                           pinnedViews: [.sectionHeaders]) {
-                    ForEach(monthSections, id: \.month) { section in
-                        Section {
-                            ForEach(section.days, id: \.day) { row in
-                                dayBlock(row)
-                            }
-                        } header: {
-                            monthHeader(month: section.month, title: section.title,
-                                        proxy: proxy)
-                                .id(section.month)
-                        }
-                    }
-                }
-                .padding(.horizontal, 26)
-                .padding(.top, 4)
-                .padding(.bottom, bottomInset + 36)
-            }
-        }
-    }
-
-    private func dayBlock(
-        _ row: (day: Date, title: String, stamps: [Stamp])
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(row.title)
-                    .font(Theme.display(21))
-                    .foregroundStyle(Theme.ink.opacity(0.8))
-                Text(row.stamps.count == 1 ? "1 stamp" : "\(row.stamps.count) stamps")
-                    .font(.system(size: 12.5, design: .rounded))
-                    .foregroundStyle(Theme.inkSoft)
-            }
-
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 24),
-                    GridItem(.flexible(), spacing: 24),
-                ],
-                spacing: 30
-            ) {
-                ForEach(Array(row.stamps.enumerated()), id: \.element.id) { i, stamp in
-                    cell(stamp, index: i)
-                }
-            }
-        }
-    }
-
-    private func cell(_ stamp: Stamp, index: Int) -> some View {
-        Button {
-            model.haptics.tick()
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                selected = stamp
-            }
-        } label: {
-            ArtifactView(stamp: stamp, image: model.store.image(for: stamp))
-                .rotationEffect(.degrees(index.isMultiple(of: 2) ? -2.2 : 2.4))
-        }
-        .buttonStyle(PressableButtonStyle())
-        .matchedGeometryEffect(id: stamp.id, in: ns, isSource: selected?.id != stamp.id)
-        .opacity(selected?.id == stamp.id ? 0 : 1)
+        // An open fan must draw over the rows below it.
+        .zIndex(isOpen ? 1 : 0)
+        // Exclusively, not two stacked .onTapGesture — that fires the
+        // single tap immediately and the preview flickers under the push.
+        .gesture(
+            TapGesture(count: 2)
+                .onEnded { drill(folder) }
+                .exclusively(
+                    before: TapGesture(count: 1).onEnded { preview(folder) }
+                )
+        )
         .modifier(StaggeredAppear(index: index))
+    }
+
+    private func preview(_ folder: MonthFolder) {
+        model.haptics.tick()
+        // The reference's own easing: 0.7s cubic-bezier(.23,1,.32,1). It
+        // glides to a stop — a spring here reads as a different object.
+        withAnimation(FolderGeometry.curve) {
+            openMonth = (openMonth == folder.month) ? nil : folder.month
+        }
+    }
+
+    private func drill(_ folder: MonthFolder) {
+        model.haptics.thunk()
+        // The cover swings as the page slides in — the folder you opened is
+        // still open behind you when you come back.
+        withAnimation(FolderGeometry.curve) {
+            openMonth = folder.month
+            pushedMonth = folder.month
+        }
     }
 }
 
-/// Cells drift up and fade in, staggered by grid position.
+/// Cells drift up and fade in, staggered by position.
 struct StaggeredAppear: ViewModifier {
     let index: Int
     @State private var shown = false
@@ -346,7 +239,7 @@ struct EmptyAlbumView: View {
                     .font(Theme.display(21))
                     .foregroundStyle(Theme.ink)
                 Text("Frame something you love and press the shutter.")
-                    .font(.system(size: 14.5, design: .rounded))
+                    .font(Theme.ui(14.5))
                     .foregroundStyle(Theme.inkSoft)
             }
         }

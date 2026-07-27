@@ -216,8 +216,12 @@ final class StampStore {
         }
         let stamp = Stamp(
             id: id,
+            // The date the user set in the editor, NOT the moment they hit
+            // save. It is already printed on the stamp's header, so filing
+            // the memory under today instead made the picker cosmetic —
+            // a backdated memory landed in the wrong month.
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
-            date: Date(),
+            date: doc.date,
             number: nextNumber,
             style: .classic,
             tint: .paper,
@@ -228,18 +232,27 @@ final class StampStore {
             canvas: doc
         )
         cache.setObject(preview, forKey: file as NSString)
-        stamps.insert(stamp, at: 0)
+        insertNewestFirst(stamp)
         save()
         writeDrawerCopy(for: stamp, display: preview)
         return stamp
     }
 
-    /// Re-save an edited composition in place — id, number and date
-    /// survive; layer files the new document dropped are collected.
+    /// `stamps` is documented newest-first and the album leans on that, so
+    /// a backdated memory cannot simply go at index 0.
+    private func insertNewestFirst(_ stamp: Stamp) {
+        let i = stamps.firstIndex { $0.date <= stamp.date } ?? stamps.count
+        stamps.insert(stamp, at: i)
+    }
+
+    /// Re-save an edited composition in place — id and number survive.
+    /// The date follows the document: it is user-editable, so changing it
+    /// has to re-file the memory, not just reprint its header.
     func updateCanvas(_ id: UUID, doc: CanvasDocument, preview: UIImage) {
         guard let i = stamps.firstIndex(where: { $0.id == id }) else { return }
         let oldFiles = Set(stamps[i].allImageFiles)
         stamps[i].canvas = doc
+        stamps[i].date = doc.date
         let kept = Set(stamps[i].allImageFiles)
         for file in oldFiles.subtracting(kept) {
             try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(file))
@@ -252,8 +265,11 @@ final class StampStore {
             }
         }
         cache.setObject(preview, forKey: stamps[i].imageFile as NSString)
+        // Re-filing invalidates `i`, so take the value before sorting.
+        let updated = stamps[i]
+        stamps.sort { $0.date > $1.date }
         save()
-        writeDrawerCopy(for: stamps[i], display: preview)
+        writeDrawerCopy(for: updated, display: preview)
     }
 
     /// Park a canvas layer bitmap under images/; returns its file name.

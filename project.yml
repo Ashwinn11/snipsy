@@ -39,11 +39,17 @@ targets:
       path: Snipsy/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.3"
-        CFBundleVersion: "2"
+        CFBundleShortVersionString: "1.4"
+        CFBundleVersion: "3"
         NSCameraUsageDescription: "Snipsy uses the camera so you can turn your moments into collectible stamps and stickers."
         NSPhotoLibraryAddUsageDescription: "Snipsy saves the stamps and stickers you export to your photo library."
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIAppFonts:
+          - PlusJakartaSans-Regular.ttf
+          - PlusJakartaSans-Medium.ttf
+          - PlusJakartaSans-SemiBold.ttf
+          - PlusJakartaSans-Bold.ttf
+          - PlusJakartaSans-ExtraBold.ttf
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIUserInterfaceStyle: Light
@@ -56,8 +62,8 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
         ENABLE_PREVIEWS: "YES"
-        CURRENT_PROJECT_VERSION: "2"
-        MARKETING_VERSION: "1.3"
+        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "1.4"
   SnipsyStickers:
     type: app-extension.messages
     platform: iOS
@@ -72,8 +78,8 @@ targets:
       path: SnipsyStickers/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.3"
-        CFBundleVersion: "2"
+        CFBundleShortVersionString: "1.4"
+        CFBundleVersion: "3"
         UIUserInterfaceStyle: Light
         NSExtension:
           NSExtensionPointIdentifier: com.apple.message-payload-provider
@@ -83,8 +89,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark.stickers
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
-        CURRENT_PROJECT_VERSION: "2"
-        MARKETING_VERSION: "1.3"
+        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "1.4"
         ASSETCATALOG_COMPILER_APPICON_NAME: iMessage App Icon
   SnipsyShare:
     type: app-extension
@@ -105,6 +111,9 @@ targets:
       - path: Snipsy/Features/Artifact/ArtifactView.swift
       - path: Snipsy/Features/Artifact/PolaroidView.swift
       - path: Snipsy/Features/Artifact/CardView.swift
+      # The share sheet draws its own chrome with Theme, so it needs the
+      # same faces registered — otherwise .custom silently falls back.
+      - path: Snipsy/Resources/Fonts
       - path: Snipsy/Shaders/Paper.metal
       - path: Snipsy/Shaders/Holo.metal
       - path: Snipsy/Shaders/Liquid.metal
@@ -117,9 +126,15 @@ targets:
       path: SnipsyShare/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.3"
-        CFBundleVersion: "2"
+        CFBundleShortVersionString: "1.4"
+        CFBundleVersion: "3"
         UIUserInterfaceStyle: Light
+        UIAppFonts:
+          - PlusJakartaSans-Regular.ttf
+          - PlusJakartaSans-Medium.ttf
+          - PlusJakartaSans-SemiBold.ttf
+          - PlusJakartaSans-Bold.ttf
+          - PlusJakartaSans-ExtraBold.ttf
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
@@ -131,5 +146,5 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark.share
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
-        CURRENT_PROJECT_VERSION: "2"
-        MARKETING_VERSION: "1.3"
+        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "1.4"

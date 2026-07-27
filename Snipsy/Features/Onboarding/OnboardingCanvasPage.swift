@@ -1,13 +1,16 @@
 import SwiftUI
 
 /// Page 1: the pitch. The memory page builds itself — a dated stamp
-/// template filling with photos, die-cuts and hand lettering. Two-column
-/// grid, animates once top → bottom then **stays** on the finished
-/// composition — no loop.
+/// template filling with photos, stamps, die-cuts and hand lettering.
+/// Animates once top → bottom then **stays** on the finished composition.
 ///
-///   Left col (top → bottom): couple1 photo | lily sticker | ransom "love"
-///   Right col (top → bottom): couple2 sticker | puppy sticker
+///   Left col (top → bottom): couple1 polaroid | lily stamp | ransom "love"
+///   Right col (top → bottom): couple2 die-cut | puppy die-cut
 ///   Full-width bottom: die-cut "forever & always"
+///
+/// Every element is the app's own component — `CanvasBackgroundView`,
+/// `PolaroidView`, `StampView`, `RansomText`, `DieCutText` — so the pitch
+/// cannot drift from the product. Nothing here is a mock-up of a stamp.
 struct OnboardingCanvasPage: View {
     let demo: OnboardingDemo
     let haptics: Haptics
@@ -18,7 +21,6 @@ struct OnboardingCanvasPage: View {
 
     @State private var canvasScale: Double = 0.88
     @State private var canvasOpacity: Double = 0
-    @State private var dateEl: Double = 0      // top corners
     @State private var photoEl: Double = 0     // couple1 photo — upper-left
     @State private var stickerEl: Double = 0   // couple2 die-cut — upper-right
     @State private var lilyEl: Double = 0      // lily die-cut — lower-left
@@ -64,38 +66,23 @@ struct OnboardingCanvasPage: View {
 
     // MARK: Canvas card
 
+    /// The real template the canvas editor puts under a memory:
+    /// `StampTemplateBackground` — perforated stock, keylines, denomination
+    /// furniture and the dated header, all of it the genuine `StampView`
+    /// dressing. This used to be a powder-blue hex with a hand-drawn dot
+    /// grid, a dashed `PerforatedRect` and two hand-placed date labels: a
+    /// drawing of the product rather than the product.
+    private static let template = CanvasDocument.Background.paper(.ink)
+    // (If anything here ever needs the sheet's type colour, it is
+    // `StampVariant.canvasInk` — do not re-type the hex.)
+
     private var canvasCard: some View {
         ZStack(alignment: .topLeading) {
-            // Powder-blue paper stock
-            Color(hex: 0xD6E7F2)
-                .overlay {
-                    Canvas { ctx, size in
-                        let step: CGFloat = 18
-                        var x = step
-                        while x < size.width {
-                            var y = step
-                            while y < size.height {
-                                ctx.fill(
-                                    Path(ellipseIn: CGRect(x: x - 0.7, y: y - 0.7,
-                                                           width: 1.4, height: 1.4)),
-                                    with: .color(Color(hex: 0x6A9EC0).opacity(0.20)))
-                                y += step
-                            }
-                            x += step
-                        }
-                    }
-                }
-
+            CanvasBackgroundView(background: Self.template, date: .now)
             canvasElements
         }
         .frame(width: cardWidth, height: cardHeight)
-        .clipShape(PerforatedRect())
-        .overlay {
-            PerforatedRect()
-                .stroke(Color(hex: 0x7AADC8).opacity(0.65),
-                        style: StrokeStyle(lineWidth: 1.4, dash: [3.5, 4.0]))
-        }
-        .shadow(color: Color(hex: 0x2A5070).opacity(0.22), radius: 22, y: 11)
+        .shadow(color: Theme.shadow.opacity(0.30), radius: 22, y: 11)
     }
 
     // MARK: Canvas elements — two-column, no overlaps
@@ -105,27 +92,15 @@ struct OnboardingCanvasPage: View {
         let w = cardWidth
         let h = cardHeight
 
-        // ── Date labels ─────────────────────────────────────────────────────
-        Text(Self.shortDate)
-            .font(.system(size: w * 0.044, weight: .semibold, design: .serif))
-            .foregroundStyle(Color(hex: 0x24445E).opacity(0.78))
-            .opacity(dateEl)
-            .scaleEffect(dateEl == 0 ? 0.5 : 1, anchor: .leading)
-            .animation(.spring(response: 0.32, dampingFraction: 0.72), value: dateEl)
-            .offset(x: w * 0.056, y: h * 0.028)
-
-        Text(Self.dayName)
-            .font(.system(size: w * 0.044, weight: .semibold, design: .serif))
-            .foregroundStyle(Color(hex: 0x24445E).opacity(0.78))
-            .opacity(dateEl)
-            .scaleEffect(dateEl == 0 ? 0.5 : 1, anchor: .trailing)
-            .animation(.spring(response: 0.32, dampingFraction: 0.72), value: dateEl)
-            .offset(x: w * 0.63, y: h * 0.028)
-
-        // ── Upper-left: couple1 raw photo ───────────────────────────────────
-        // Occupies x[3%,45%]  y[8%,46%]
+        // ── Upper-left: couple1 in POLAROID mode ────────────────────────────
+        // `PolaroidLayer` — what the canvas actually renders for a photo
+        // layer set to `ImageTreatment.polaroid`. Not `PolaroidView` (that
+        // is the standalone kept artifact, with its own caption and develop
+        // animation) and not the `.polaroid` BACKGROUND (that is the page
+        // stock you place things on). This is the layer mode, carrying its
+        // own instant-photo stock, recess and shadow.
         if let photo = demo.canvasPhoto {
-            rawPhoto(photo, width: w * 0.42)
+            PolaroidLayer(image: photo, width: w * 0.42)
                 .rotationEffect(.degrees(-7))
                 .scaleEffect(photoEl == 0 ? 0.25 : 1)
                 .opacity(photoEl)
@@ -135,7 +110,7 @@ struct OnboardingCanvasPage: View {
 
         // ── Upper-right: couple2 die-cut ────────────────────────────────────
         // Occupies x[52%,95%]  y[7%,46%]
-        if let couple = stickerAt(1) {
+        if let couple = demo.sticker("couple2") {
             Image(uiImage: couple)
                 .resizable().scaledToFit()
                 .frame(width: w * 0.43)
@@ -143,89 +118,74 @@ struct OnboardingCanvasPage: View {
                 .scaleEffect(stickerEl == 0 ? 0.25 : 1)
                 .opacity(stickerEl)
                 .animation(.spring(response: 0.42, dampingFraction: 0.56), value: stickerEl)
-                .shadow(color: Color(hex: 0x2A5070).opacity(0.22), radius: 7, y: 4)
+                .shadow(color: .black.opacity(0.36), radius: 7, y: 4)
                 .offset(x: w * 0.52, y: h * 0.07)
         }
 
-        // ── Lower-left: lily die-cut ────────────────────────────────────────
-        // Occupies x[3%,31%]  y[49%,75%]
-        if let lily = stickerAt(2) {
-            Image(uiImage: lily)
-                .resizable().scaledToFit()
-                .frame(width: w * 0.28)
-                .rotationEffect(.degrees(-10))
+        // ── Lower-RIGHT: lily as a STAMP ────────────────────────────────────
+        // A stamp prints the PHOTO in its picture area — `.classic`, which
+        // the app defines as "the full crop fills the stamp frame". The die
+        // cut belongs to a sticker, so no mask, box or anchor goes in here.
+        // Occupies x[55%,85%]  y[45%,75%]
+        if let lily = demo.subject("lily") {
+            StampView(image: lily.photo,
+                      style: .classic,
+                      tint: lily.tint.color,
+                      title: lily.title,
+                      number: 1,
+                      variant: .tinted)
+                .frame(width: w * 0.30)
+                .rotationEffect(.degrees(7))
                 .scaleEffect(lilyEl == 0 ? 0.25 : 1)
                 .opacity(lilyEl)
                 .animation(.spring(response: 0.42, dampingFraction: 0.56), value: lilyEl)
-                .shadow(color: Color(hex: 0x2A5070).opacity(0.20), radius: 5, y: 3)
-                .offset(x: w * 0.03, y: h * 0.49)
+                .shadow(color: .black.opacity(0.34), radius: 5, y: 3)
+                .offset(x: w * 0.55, y: h * 0.45)
         }
 
-        // ── Lower-right: puppy die-cut ──────────────────────────────────────
-        // Occupies x[52%,82%]  y[49%,81%]
-        if let puppy = stickerAt(3) {
+        // ── Lower-LEFT: puppy die-cut ───────────────────────────────────────
+        // Occupies x[3%,31%]  y[49%,75%]
+        if let puppy = demo.sticker("puppy") {
             Image(uiImage: puppy)
                 .resizable().scaledToFit()
-                .frame(width: w * 0.30)
-                .rotationEffect(.degrees(7))
+                .frame(width: w * 0.28)
+                .rotationEffect(.degrees(-10))
                 .scaleEffect(puppyEl == 0 ? 0.25 : 1)
                 .opacity(puppyEl)
                 .animation(.spring(response: 0.44, dampingFraction: 0.54), value: puppyEl)
-                .shadow(color: Color(hex: 0x2A5070).opacity(0.20), radius: 5, y: 3)
-                .offset(x: w * 0.52, y: h * 0.49)
+                .shadow(color: .black.opacity(0.34), radius: 5, y: 3)
+                .offset(x: w * 0.03, y: h * 0.49)
         }
 
-        // ── Below lily: ransom "love" ────────────────────────────────────────
-        // Occupies x[3%,37%]  y[76%,84%]
-        RansomLettering(text: "love", fontSize: w * 0.062)
+        // ── Below puppy: the puppy's NAME in ransom ─────────────────────────
+        // It sits under the puppy, so it reads as a caption for it. Taken
+        // from the sticker's own title rather than typed twice.
+        // Occupies x[3%,31%]  y[76%,84%]
+        RansomLettering(text: demo.subject("puppy")?.title ?? "Buddy",
+                        fontSize: w * 0.062)
             .rotationEffect(.degrees(-4))
             .scaleEffect(ransomEl == 0 ? 0.40 : 1, anchor: .leading)
             .opacity(ransomEl)
             .animation(.spring(response: 0.40, dampingFraction: 0.62), value: ransomEl)
             .offset(x: w * 0.03, y: h * 0.76)
 
-        // ── Bottom: die-cut "forever & always" ──────────────────────────────
-        // The real die-cut text — same heavy-rounded voice and dilated
-        // contour the canvas editor cuts, so the pitch shows the product.
-        DieCutText(text: "forever & always", fontSize: w * 0.076,
+        // ── Caption band, right of the date: die-cut "forever & always" ─────
+        // `.ink` prints its header LEFT-aligned at y = 1.20w, ending around
+        // x = 0.34w. This sits on that same line, starting clear of it, so
+        // the band reads as one row: date · day · the cut phrase.
+        //
+        // y is the TOP edge (the stack is .topLeading), so it is the header
+        // centre less half the text's height: 1.20w − 0.04w = 1.16w = 0.884h.
+        DieCutText(text: "forever & always", fontSize: w * 0.058,
                    ink: Color(hex: 0x1C3050))
             .scaleEffect(diecutEl == 0 ? 0.60 : 1)
             .opacity(diecutEl)
             .animation(.spring(response: 0.44, dampingFraction: 0.64), value: diecutEl)
-            .offset(x: w * 0.08, y: h * 0.87)
+            .offset(x: w * 0.42, y: h * 0.884)
     }
 
     // MARK: Helpers
 
-    private func stickerAt(_ index: Int) -> UIImage? {
-        guard demo.subjects.count > index else { return nil }
-        return demo.subjects[index].sticker
-    }
-
-    private func rawPhoto(_ image: UIImage, width: CGFloat) -> some View {
-        Image(uiImage: image)
-            .resizable()
-            .scaledToFill()
-            .frame(width: width, height: width * 1.18)
-            .clipShape(RoundedRectangle(cornerRadius: width * 0.04))
-            .overlay(RoundedRectangle(cornerRadius: width * 0.04)
-                .strokeBorder(.white.opacity(0.88), lineWidth: 2.5))
-            .shadow(color: Color(hex: 0x2A5070).opacity(0.24), radius: 8, y: 5)
-    }
-
-    private static let shortDate: String = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "MMM d"
-        return f.string(from: .now).uppercased()
-    }()
-
-    private static let dayName: String = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "EEEE"
-        return f.string(from: .now).uppercased()
-    }()
 
     // MARK: Animation — runs once, settles on final state (no loop)
 
@@ -249,13 +209,13 @@ struct OnboardingCanvasPage: View {
 
     private func resetPose() {
         canvasScale = 0.88; canvasOpacity = 0
-        dateEl = 0; photoEl = 0; stickerEl = 0
+        photoEl = 0; stickerEl = 0
         lilyEl = 0; puppyEl = 0; ransomEl = 0; diecutEl = 0
     }
 
     private func showAll() {
         canvasScale = 1; canvasOpacity = 1
-        dateEl = 1; photoEl = 1; stickerEl = 1
+        photoEl = 1; stickerEl = 1
         lilyEl = 1; puppyEl = 1; ransomEl = 1; diecutEl = 1
     }
 
@@ -279,7 +239,6 @@ struct OnboardingCanvasPage: View {
 
         // Date labels
         haptics.tick()
-        withAnimation { dateEl = 1 }
         try? await Task.sleep(for: .seconds(0.30))
         guard gen == g else { return }
 
