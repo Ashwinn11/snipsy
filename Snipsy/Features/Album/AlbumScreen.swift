@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The collector's shelf: one folder per month, stacked down the page.
 /// Tapping a folder opens its cover and slides the stamps out; tapping
-/// twice goes inside.
+/// twice goes inside — as does tapping any stamp once it is out.
 struct AlbumScreen: View {
     let model: AppModel
     let safeArea: EdgeInsets
@@ -34,6 +34,8 @@ struct AlbumScreen: View {
 
             ZStack {
                 PaperBackdrop(showsGrid: true)
+                    .contentShape(Rectangle())
+                    .onTapGesture { closePreview() }
 
                 VStack(spacing: 0) {
                     header(topInset: safeArea.top)
@@ -143,6 +145,12 @@ struct AlbumScreen: View {
             // top row's cover the moment it opens.
             .padding(.top, overhang + 8)
             .padding(.bottom, bottomInset + overhang + 44)
+            // Anything landing between or below the rows is empty space.
+            .background {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { closePreview() }
+            }
         }
     }
 
@@ -157,24 +165,45 @@ struct AlbumScreen: View {
                 open: isOpen ? 1 : 0,
                 width: folderWidth
             )
+            // ONE gesture pair, on the folder, resolved by where you tapped.
+            //
+            // Exclusively, not two stacked .onTapGesture — that fires the
+            // single tap immediately and the preview flickers under the push.
+            // Spatial, because the single tap has to tell the cover apart
+            // from the stamps beside it, and a gesture hung on each slip
+            // loses the race against this pair.
+            .gesture(
+                SpatialTapGesture(count: 2)
+                    .onEnded { _ in drill(folder) }
+                    .exclusively(before: SpatialTapGesture(count: 1).onEnded { tap in
+                        let coverEdge = folderWidth * FolderGeometry.openCoverExtent
+                        if isOpen, tap.location.x > coverEdge {
+                            // Past the open cover: the stamps. Go inside.
+                            drill(folder)
+                        } else {
+                            preview(folder)
+                        }
+                    })
+            )
+
             Spacer(minLength: 0)
         }
-        // The row keeps the folder's height; the fan overflows to the right
-        // into the empty half, which is deliberately never clipped.
         .frame(height: folderWidth * FolderGeometry.aspect)
-        .contentShape(Rectangle())
         // An open fan must draw over the rows below it.
         .zIndex(isOpen ? 1 : 0)
-        // Exclusively, not two stacked .onTapGesture — that fires the
-        // single tap immediately and the preview flickers under the push.
-        .gesture(
-            TapGesture(count: 2)
-                .onEnded { drill(folder) }
-                .exclusively(
-                    before: TapGesture(count: 1).onEnded { preview(folder) }
-                )
-        )
+        // The rest of the row dismisses. The folder's own gestures are on a
+        // child, so they take precedence over this.
+        .contentShape(Rectangle())
+        .onTapGesture { closePreview() }
         .modifier(StaggeredAppear(index: index))
+    }
+
+    /// Empty space dismisses. Silent when nothing is open, so a stray tap
+    /// on the page does not fire a haptic for no visible reason.
+    private func closePreview() {
+        guard openMonth != nil else { return }
+        model.haptics.tick()
+        withAnimation(FolderGeometry.curve) { openMonth = nil }
     }
 
     private func preview(_ folder: MonthFolder) {

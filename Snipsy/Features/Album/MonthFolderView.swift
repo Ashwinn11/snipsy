@@ -117,6 +117,27 @@ enum FolderGeometry {
     static func fanExtent(width: CGFloat) -> CGFloat {
         width * (fanOut.map(\.width).max()! + stampWidth / 2)
     }
+
+    /// Total width the object occupies once fanned. The view must CLAIM
+    /// this, not just draw into it: SwiftUI happily renders a child offset
+    /// beyond its parent's frame, but will not hit-test it there — which
+    /// left the fanned stamps visible and untappable, so taps on them fell
+    /// through to the row and shut the folder instead of opening it.
+    static func rowWidth(_ width: CGFloat) -> CGFloat {
+        width * 0.5 + fanExtent(width: width)
+    }
+
+    /// Where the open cover's far edge falls, as a fraction of the folder's
+    /// width — measured off the rendered transform (0.655 W at -60° with
+    /// perspective 0.34). Left of this you are touching the cover; right of
+    /// it you are touching what came out of the pocket.
+    ///
+    /// The shelf decides between "close" and "go inside" from the tap's x
+    /// against this, rather than from a gesture attached to each slip. The
+    /// slips are offset outside the folder's own frame, and hanging a
+    /// competing gesture off a descendant of an already-nested tap pair is
+    /// how the stamp tap ended up shutting the folder instead.
+    static let openCoverExtent: CGFloat = 0.655
 }
 
 // MARK: - Stock
@@ -206,8 +227,12 @@ struct MonthFolderView: View {
             frontCover.zIndex(3)
         }
         .frame(width: width, height: height)
-        // The fan spills to the right of the folder's own frame on purpose.
-        // The shelf row leaves that space empty — never clip here.
+        // Claim the fan's full span, anchored so the folder itself does not
+        // move. Without this the slips render outside the frame and are not
+        // tappable. Never clip.
+        .frame(width: FolderGeometry.rowWidth(width), height: height,
+               alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     // MARK: Pocket board

@@ -132,8 +132,7 @@ struct CameraScreen: View {
             .position(x: screenSize.width - 46, y: safeArea.top + 24)
         }
 
-        // Bottom bar
-        let barY = screenSize.height - max(safeArea.bottom, 16) - 54
+        // Bottom bar — `barY` is already bound at the top of this function.
 
         if let onClose {
             Button {
