@@ -18,6 +18,9 @@ struct CanvasLayerView: View {
     @State private var rotateDelta: Angle = .zero
     /// One undo push per manipulation, on the first change tick.
     @State private var manipulating = false
+    /// The drag angle (from the layer's center) where a rotate-handle drag
+    /// began — everything after is measured relative to it.
+    @State private var handleStartAngle: CGFloat? = nil
 
     @FocusState private var textFocused: Bool
 
@@ -32,6 +35,7 @@ struct CanvasLayerView: View {
             .overlay { if selected { selectionBox } }
             .overlay(alignment: .topLeading) { if selected { deleteBadge } }
             .overlay(alignment: .topTrailing) { if selected { duplicateBadge } }
+            .overlay(alignment: .top) { if selected { rotateHandle } }
             .rotationEffect(.radians(t.rotation) + rotateDelta)
             .position(x: t.x * canvasSize.width + dragDelta.width,
                       y: t.y * canvasSize.height + dragDelta.height)
@@ -203,6 +207,58 @@ struct CanvasLayerView: View {
             badgeIcon("plus.square.on.square")
         }
         .offset(x: 16, y: -16)
+    }
+
+    /// One-finger 360° rotate: a knob above the layer, on a purely visual
+    /// stem. Dragging the knob anywhere around the layer's center rotates
+    /// freely — the alternative to the two-finger rotate gesture, which
+    /// needs a second finger free.
+    ///
+    /// Only the knob itself is hit-testable. The stem below it is a dead
+    /// zone (`allowsHitTesting(false)`) — a real gap between "drag the
+    /// layer" and "rotate it", so grabbing near the layer's top edge (the
+    /// natural place to grab it) never gets mistaken for the handle.
+    private var rotateHandle: some View {
+        VStack(spacing: 0) {
+            badgeIcon("arrow.triangle.2.circlepath")
+                .frame(width: 40, height: 40)
+                .contentShape(Rectangle())
+                // A plain .gesture() here would have to out-race the
+                // layer's own manipulationGesture (also a DragGesture) for
+                // the same touch — highPriorityGesture makes this one win
+                // outright whenever the touch starts on the knob itself.
+                .highPriorityGesture(rotateHandleGesture)
+            Rectangle()
+                .fill(Theme.shadow.opacity(0.35))
+                .frame(width: 1.5, height: 22)
+                .allowsHitTesting(false)
+        }
+        .offset(y: -62)
+    }
+
+    /// The layer's live center, in the stage's named coordinate space —
+    /// matches the `.position(...)` this view places itself at.
+    private var centerInStage: CGPoint {
+        CGPoint(x: layer.transform.x * canvasSize.width + dragDelta.width,
+                y: layer.transform.y * canvasSize.height + dragDelta.height)
+    }
+
+    private var rotateHandleGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("canvasStage"))
+            .onChanged { value in
+                beginIfNeeded()
+                let center = centerInStage
+                let angle = atan2(value.location.y - center.y, value.location.x - center.x)
+                if handleStartAngle == nil { handleStartAngle = angle }
+                rotateDelta = Angle(radians: angle - (handleStartAngle ?? angle))
+            }
+            .onEnded { _ in
+                var t = currentTransform()
+                t.rotation += rotateDelta.radians
+                rotateDelta = .zero
+                handleStartAngle = nil
+                commit(t)
+            }
     }
 
     private func badgeIcon(_ name: String) -> some View {

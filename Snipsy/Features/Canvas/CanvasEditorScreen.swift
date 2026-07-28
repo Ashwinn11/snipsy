@@ -174,6 +174,7 @@ struct CanvasEditorScreen: View {
                     .zIndex(Double(index))
             }
         }
+        .coordinateSpace(name: "canvasStage")
         .frame(width: size.width, height: size.height)
         // Layers may be dragged past the stock's edge; they clip only in
         // the flatten (the artifact's silhouette is the paper).
