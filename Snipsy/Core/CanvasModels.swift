@@ -21,7 +21,8 @@ struct TextStyleValue: Codable, Equatable {
     static let placeholder = "Your words"
 
     enum DesignValue: String, Codable, CaseIterable {
-        case rounded, serif, monospaced, condensed, handwritten, script, ransom
+        case rounded, serif, monospaced, condensed, typewriter, engraved,
+             marker, handwritten, script, ransom
     }
     var design: DesignValue = .rounded
     /// UIFont.Weight bucket 1...9 (ultraLight...black). Heavy (8) is the
@@ -59,6 +60,9 @@ struct TextStyleValue: Codable, Equatable {
         case .serif: .system(size: size, weight: w, design: .serif)
         case .monospaced: .system(size: size, weight: w, design: .monospaced)
         case .condensed: .system(size: size, weight: w).width(.condensed)
+        case .typewriter: Theme.typewriter(size)
+        case .engraved: Theme.engraved(size)
+        case .marker: Theme.marker(size)
         case .handwritten: Theme.handwritten(size)
         case .script: Theme.script(size)
         // Ransom is a per-glyph treatment (RansomText), not a Font. Nothing

@@ -12,6 +12,7 @@ enum DoodleCatalog {
         "tag.scallop", "frame.dash",
         "emoji.❤️", "emoji.✨", "emoji.⭐️", "emoji.🌸",
         "emoji.💌", "emoji.☁️", "emoji.🎞️", "emoji.🫶",
+        "emoji.🎀", "emoji.🦋", "emoji.🌷", "emoji.💝",
     ]
 
     /// Rendered height / width for a given doodle.

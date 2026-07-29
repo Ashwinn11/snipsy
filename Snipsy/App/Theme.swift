@@ -71,6 +71,29 @@ enum Theme {
         }
         return .custom("SavoyeLetPlain", size: size)
     }
+    /// Vintage typewriter voice for canvas text — more on-brand for the
+    /// postal theme than the plain monospaced design.
+    static func typewriter(_ size: CGFloat) -> Font {
+        if UIFont(name: "AmericanTypewriter-Bold", size: size) != nil {
+            return .custom("AmericanTypewriter-Bold", size: size)
+        }
+        return .system(size: size, weight: .bold, design: .monospaced)
+    }
+    /// A genuinely engraved-stamp voice for canvas text. Academy Engraved
+    /// LET ships with iOS.
+    static func engraved(_ size: CGFloat) -> Font {
+        if UIFont(name: "AcademyEngravedLetPlain", size: size) != nil {
+            return .custom("AcademyEngravedLetPlain", size: size)
+        }
+        return .system(size: size, weight: .semibold, design: .serif)
+    }
+    /// A playful marker voice for canvas text. Marker Felt ships with iOS.
+    static func marker(_ size: CGFloat) -> Font {
+        if UIFont(name: "MarkerFelt-Wide", size: size) != nil {
+            return .custom("MarkerFelt-Wide", size: size)
+        }
+        return .system(size: size, weight: .bold, design: .rounded)
+    }
 }
 
 extension Color {
