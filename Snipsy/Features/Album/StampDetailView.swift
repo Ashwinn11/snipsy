@@ -271,6 +271,8 @@ struct StampDetailView: View {
             model.canvasSession = CanvasSession(
                 seed: doc, seedTitle: current.title, seedArtifact: current)
         }
+        model.canvasEditing = true
+        model.selectedTab = .canvas
         onClose()
     }
 

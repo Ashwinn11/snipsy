@@ -3,6 +3,7 @@ import SwiftUI
 /// Album → gear. About, legal documents, and the one destructive action.
 struct SettingsSheet: View {
     let model: AppModel
+    var safeArea: EdgeInsets = EdgeInsets()
     var onDeleteAll: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -21,7 +22,8 @@ struct SettingsSheet: View {
 
             VStack(spacing: 0) {
                 // Header
-                VStack(spacing: 6) {
+                VStack(spacing: 10) {
+                    AppIconView(size: 64)
                     Text("SNIPSY")
                         .font(Theme.display(17))
                         .tracking(2)
@@ -30,7 +32,7 @@ struct SettingsSheet: View {
                         .font(.system(size: 13, design: .rounded))
                         .foregroundStyle(Theme.inkSoft)
                 }
-                .padding(.top, 34)
+                .padding(.top, max(safeArea.top, 18) + 34)
                 .padding(.bottom, 26)
 
                 Line()
@@ -40,6 +42,12 @@ struct SettingsSheet: View {
                     .padding(.horizontal, 26)
 
                 VStack(spacing: 0) {
+                    row("Manage Subscription") {
+                        model.haptics.tick()
+                        if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                            UIApplication.shared.open(url)
+                        }
+                    }
                     // System prompt while the yearly budget lasts; after
                     // that, straight to the store's write-review page.
                     row("Rate Snipsy") {

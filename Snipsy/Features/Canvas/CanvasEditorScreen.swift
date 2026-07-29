@@ -1,21 +1,139 @@
 import SwiftUI
 import PhotosUI
 
-/// The memories canvas: a free-form layer editor over a paper stock.
-/// Entered from the album (blank) or a saved artifact (decorate/re-edit);
-/// Done flattens the stage and keeps it as a `.canvas` creation.
+/// The canvas tab's content: the empty state until the user starts a
+/// memory, then the live editor — never both, and the tab bar only shows
+/// for the former.
+struct CanvasTabScreen: View {
+    let model: AppModel
+    let screenSize: CGSize
+    let safeArea: EdgeInsets
+    @State private var showTemplates = false
+
+    var body: some View {
+        if model.canvasEditing {
+            CanvasEditorScreen(model: model, session: model.canvasSession,
+                               screenSize: screenSize, safeArea: safeArea)
+        } else {
+            CanvasEmptyStateView(screenSize: screenSize, safeArea: safeArea) {
+                model.haptics.tick()
+                showTemplates = true
+            }
+            .sheet(isPresented: $showTemplates) {
+                CanvasTemplateChooserSheet { background in
+                    var doc = CanvasDocument()
+                    doc.background = background
+                    doc.aspect = CanvasDocument.aspect(for: background)
+                    model.canvasSession = CanvasSession(seed: doc)
+                    model.canvasEditing = true
+                }
+            }
+        }
+    }
+}
+
+/// The entry-point template picker — the same stocks the in-editor
+/// background switcher offers (`CanvasBackgroundSheet`), chosen once before
+/// the editor opens rather than mutating a live document.
+struct CanvasTemplateChooserSheet: View {
+    let onChoose: (CanvasDocument.Background) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private var choices: [CanvasDocument.Background] {
+        [.polaroid, .card] + StampVariant.allCases.map { .paper($0) }
+    }
+
+    /// A fixed date so the thumbnails read as dated stamps without churning.
+    private static let sampleDate = Date(timeIntervalSince1970: 1_752_460_800)
+
+    var body: some View {
+        ZStack {
+            Theme.paper.ignoresSafeArea()
+            VStack(spacing: 0) {
+                Text("Choose a template")
+                    .font(Theme.display(17))
+                    .foregroundStyle(Theme.ink)
+                    .padding(.top, 18)
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 16)],
+                              spacing: 18) {
+                        ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
+                            Button {
+                                onChoose(choice)
+                                dismiss()
+                            } label: {
+                                CanvasBackgroundView(background: choice, date: Self.sampleDate)
+                                    .frame(width: 78)
+                            }
+                            .buttonStyle(PressableButtonStyle())
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+/// The canvas tab at rest — no template, nothing loaded. Tapping starts a
+/// fresh memory; the tab bar hides once the editor takes over.
+struct CanvasEmptyStateView: View {
+    let screenSize: CGSize
+    let safeArea: EdgeInsets
+    let onStart: () -> Void
+
+    var body: some View {
+        ZStack {
+            PaperBackdrop(showsGrid: true)
+
+            VStack(spacing: 0) {
+                Text("Canvas")
+                    .font(Theme.display(26))
+                    .foregroundStyle(Theme.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 26)
+                    .padding(.top, max(safeArea.top, 18) + 14)
+
+                Spacer(minLength: 0)
+
+                Button(action: onStart) {
+                    VStack(spacing: 18) {
+                        PerforatedRect()
+                            .stroke(Theme.inkSoft.opacity(0.55),
+                                    style: StrokeStyle(lineWidth: 1.4, dash: [4, 5]))
+                            .frame(width: 132, height: 173)
+                            .overlay {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 26, weight: .medium))
+                                    .foregroundStyle(Theme.inkSoft.opacity(0.8))
+                            }
+                        Text("Start a memory")
+                            .font(Theme.display(21))
+                            .foregroundStyle(Theme.ink)
+                    }
+                }
+                .buttonStyle(PressableButtonStyle())
+
+                Spacer(minLength: 0)
+                Spacer(minLength: 0)
+            }
+        }
+        .frame(width: screenSize.width, height: screenSize.height)
+    }
+}
+
+/// The memories canvas: a free-form layer editor over a paper stock. The
+/// canvas tab's live editing surface — fresh by default, or loaded with an
+/// existing artifact's content (`StampDetailView.openInCanvas`). Keep saves
+/// and returns to the canvas tab's empty state; the back button discards
+/// and does the same.
 struct CanvasEditorScreen: View {
     let model: AppModel
     let session: CanvasSession
     let screenSize: CGSize
     let safeArea: EdgeInsets
-    /// `.session` = a modal editor opened from the album (X cancels, Keep
-    /// returns to the collection). `.home` = the always-present memory
-    /// maker (leading Collection button, Keep saves and resets to a fresh
-    /// template so the next memory starts clean).
-    var mode: Mode = .session
-
-    enum Mode { case session, home }
 
     @State private var editor: CanvasEditorModel? = nil
 
@@ -49,6 +167,7 @@ struct CanvasEditorScreen: View {
             }
         }
         .frame(width: screenSize.width, height: screenSize.height)
+        .toolbar(.hidden, for: .tabBar)
         .onAppear {
             if editor == nil {
                 editor = CanvasEditorModel(session: session, store: model.store)
@@ -242,41 +361,21 @@ struct CanvasEditorScreen: View {
         .frame(width: screenSize.width)
     }
 
-    /// Left of the top bar: dismiss (session) or open the collection (home).
-    @ViewBuilder
+    /// Left of the top bar: back to the canvas tab's empty state, discarding
+    /// this session — this screen only ever mounts while there's something
+    /// to leave, so the button always shows.
     private func leadingButton(_ editor: CanvasEditorModel) -> some View {
-        switch mode {
-        case .session:
-            Button {
-                model.haptics.tick()
-                editor.cancel()
-                model.canvasSession = nil
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 44, height: 44)
-            }
-            .glassEffect(.regular.interactive(), in: .circle)
-        case .home:
-            Button {
-                model.haptics.tick()
-                withAnimation(Theme.spring) { model.showAlbum = true }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "rectangle.stack.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text("\(model.store.stamps.count)")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                }
+        Button {
+            model.haptics.tick()
+            editor.cancel()
+            model.canvasEditing = false
+        } label: {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-                .padding(.horizontal, 14)
-                .frame(height: 44)
-            }
-            .glassEffect(.regular.interactive(), in: .capsule)
+                .frame(width: 44, height: 44)
         }
+        .glassEffect(.regular.interactive(), in: .circle)
     }
 
     // MARK: Ingest
@@ -333,17 +432,12 @@ struct CanvasEditorScreen: View {
             model.haptics.success()
             model.pillBump += 1
             model.reviews.stampKept(count: model.store.stamps.count)
-            switch mode {
-            case .session:
-                model.canvasSession = nil
-                model.showAlbum = true
-            case .home:
-                // Stay on the home; wipe to a fresh template for the next
-                // memory and confirm the keep.
-                editor.resetForNewMemory()
-                editor.flashToast("Kept ✓")
-                saving = false
-            }
+            // Hold on the confirmation for a beat, then back to the canvas
+            // tab's empty state — this editor instance is done.
+            editor.flashToast("Kept ✓")
+            try? await Task.sleep(for: .seconds(0.6))
+            model.canvasEditing = false
+            saving = false
         }
     }
 }

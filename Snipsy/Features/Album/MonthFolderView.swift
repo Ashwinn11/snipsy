@@ -293,8 +293,8 @@ struct MonthFolderView: View {
         board
             // The reference sits at .75, but its stamps are saturated blue
             // and cream against a dark folder. Ours are photographs on a
-            // light stock, so the pane opens up slightly to let them read.
-            .fill(stock.base.opacity(0.68))
+            // light stock, so the pane opens up further to let them read.
+            .fill(stock.base.opacity(0.5))
             .background { board.fill(.ultraThinMaterial) }
             .overlay { board.fill(sheen) }
             .overlay { board.fill(turnShade) }

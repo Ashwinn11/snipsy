@@ -107,7 +107,7 @@ struct MonthScreen: View {
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
 
             Text(folder.name)
-                .font(Theme.display(30))
+                .font(Theme.display(24))
                 .foregroundStyle(Theme.ink)
 
             Text("\(folder.year)  ·  \(folder.memoriesLine)")

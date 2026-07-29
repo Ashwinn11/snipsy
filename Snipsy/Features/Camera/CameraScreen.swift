@@ -3,19 +3,19 @@ import AVFoundation
 import PhotosUI
 
 /// Root camera experience: full-bleed feed, stamp-shaped viewfinder, glass
-/// chrome. Always mounted; overlays (develop/reveal/album) sit above it.
+/// chrome. The camera tab's persistent content — mounted/torn down (and the
+/// capture session started/stopped) by tab selection, not a modal.
 struct CameraScreen: View {
     let model: AppModel
     let screenSize: CGSize
     let safeArea: EdgeInsets
-    /// Set when hosted in the modal stamp-capture flow: the bottom-left slot
-    /// becomes a close button (back to the memory canvas) instead of the
-    /// collection pill, which belongs to the home now.
-    var onClose: (() -> Void)? = nil
 
     @State private var focusPoint: CGPoint? = nil
     @State private var focusPulse = false
     @State private var pickedItem: PhotosPickerItem? = nil
+    /// Shutter-tap punch: a quick press-down-and-spring-back on the whole
+    /// viewfinder, so the tap itself reads as stamping down onto paper.
+    @State private var capturePunch = false
 
     /// The stamp-to-be. 4:5, full-bleed width, slightly above middle —
     /// the frame is the whole stage, not a window. Shared by the capture
@@ -33,7 +33,7 @@ struct CameraScreen: View {
         ZStack {
             feed
 
-            HoleDim(hole: vf, corner: 12)
+            HoleDim(hole: vf)
                 .fill(Color.black.opacity(0.32), style: FillStyle(eoFill: true))
                 .allowsHitTesting(false)
 
@@ -47,8 +47,20 @@ struct CameraScreen: View {
                     .id("\(p.x)-\(p.y)")
             }
         }
+        .scaleEffect(capturePunch ? 0.97 : 1)
         .frame(width: screenSize.width, height: screenSize.height)
         .background(Color.black)
+    }
+
+    /// The shutter tap's press-then-lift: down quickly, spring back past
+    /// rest, settle — timed inside the pre-blackout beat so it reads as one
+    /// continuous stamp-and-flash with the existing shutter haptic.
+    private func firePunch() {
+        withAnimation(Theme.springTight) { capturePunch = true }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.12))
+            withAnimation(Theme.springBouncy) { capturePunch = false }
+        }
     }
 
     // MARK: Feed
@@ -89,7 +101,7 @@ struct CameraScreen: View {
         // Fixed scrim, not glass: liquid glass refracts the live feed, so
         // the chrome would flicker with every exposure change.
         .background(.black.opacity(0.32), in: Circle())
-        .position(x: onClose != nil ? 66 : 46, y: onClose != nil ? barY : topLeftY)
+        .position(x: 46, y: topLeftY)
         .onChange(of: pickedItem) { _, item in
             guard let item else { return }
             Task { @MainActor in
@@ -133,26 +145,10 @@ struct CameraScreen: View {
         }
 
         // Bottom bar — `barY` is already bound at the top of this function.
-
-        if let onClose {
-            Button {
-                model.haptics.tick()
-                onClose()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
-                    .frame(width: 48, height: 48)
-            }
-            .background(.black.opacity(0.32), in: Circle())
-            .position(x: 46, y: topLeftY)
-        } else {
-            CollectionPill(model: model)
-                .position(x: 66, y: barY)
-        }
+        // The collection is its own tab now — nothing redundant sits here.
 
         ShutterButton {
+            firePunch()
             let size = screenSize
             let rect = Self.viewfinderRect(in: size)
             Task { await model.capture(viewfinderRect: rect, viewSize: size) }
@@ -176,15 +172,15 @@ struct CameraScreen: View {
     }
 }
 
-/// Full-screen dim with a rounded-rect hole (even-odd fill).
+/// Full-screen dim with a perforated stamp-shaped hole (even-odd fill) —
+/// the live feed shows through the same silhouette the finished stamp wears.
 struct HoleDim: Shape {
     let hole: CGRect
-    let corner: CGFloat
 
     func path(in rect: CGRect) -> Path {
         var p = Path()
         p.addRect(rect)
-        p.addRoundedRect(in: hole, cornerSize: CGSize(width: corner, height: corner))
+        p.addPath(PerforatedRect().path(in: hole))
         return p
     }
 }

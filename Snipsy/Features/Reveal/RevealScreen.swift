@@ -376,15 +376,14 @@ struct RevealScreen: View {
                 options = true
             }
 
-            // The die cut is the default outcome — it plays itself, so the
-            // reveal lands on a finished sticker instead of a raw photo
-            // waiting on a tap. Only when there IS a cut to make; a classic
-            // capture (no mask) still asks. A tap inside this beat wins.
-            if pending.style == .cutout, pending.sticker != nil {
-                try? await Task.sleep(for: .seconds(0.3))
-                guard case .reveal = model.phase else { return }
-                if selection == nil { select(.sticker, auto: true) }
-            }
+            // The dressed stamp is the default outcome — the live viewfinder
+            // already framed this as a whole stamp, so the reveal lands on
+            // paper instead of a raw photo waiting on a tap. Die-cut is a
+            // secondary, manual choice in the row below. A tap inside this
+            // beat wins.
+            try? await Task.sleep(for: .seconds(0.3))
+            guard case .reveal = model.phase else { return }
+            if selection == nil { select(.paper(.tinted), auto: true) }
 
             // The first-ever output screen is the wow moment — worth one
             // of the year's three rating prompts. Held until after the cut

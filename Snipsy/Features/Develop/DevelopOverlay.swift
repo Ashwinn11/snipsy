@@ -69,7 +69,7 @@ struct DevelopOverlay: View {
                 // Carry the camera's outside-viewfinder dim into the first
                 // dissolve frames so the handoff is seamless, then let the
                 // grains take it away.
-                HoleDim(hole: vf, corner: 12)
+                HoleDim(hole: vf)
                     .fill(Color.black.opacity(0.32 * (1 - min(1, progress * 2.2))),
                           style: FillStyle(eoFill: true))
                     .allowsHitTesting(false)

@@ -349,24 +349,8 @@ final class CanvasEditorModel {
         }
     }
 
-    /// Public toast — the home surface flashes "Kept ✓" after a save.
+    /// Public toast — flashes "Kept ✓" after a save.
     func flashToast(_ text: String) { showToast(text) }
-
-    /// Home mode: after Keep, wipe the stage back to a fresh stamp template
-    /// so the next memory starts clean. The just-saved files now belong to
-    /// the kept stamp, so `sessionFiles` is cleared (they are no longer
-    /// this session's orphans to collect).
-    func resetForNewMemory(variant: StampVariant = .tinted) {
-        doc = CanvasDocument.newMemory(variant: variant)
-        title = ""
-        selectedLayerID = nil
-        editingTextID = nil
-        cutoutBusy.removeAll()
-        undoStack.removeAll()
-        redoStack.removeAll()
-        sessionFiles.removeAll()
-        scaleRun = nil
-    }
 
     // MARK: Session end
 

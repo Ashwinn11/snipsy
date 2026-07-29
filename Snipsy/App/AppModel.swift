@@ -36,14 +36,19 @@ final class AppModel {
     }
 
     var phase: Phase = .camera
-    var showAlbum = false
-    /// Canvas editor session — the album overlay pattern with a payload.
-    /// Independent of Phase: the editor has no continuity contract with
-    /// the camera feed and returns to the album intact.
-    var canvasSession: CanvasSession? = nil
-    /// The stamp/sticker ceremony (camera → develop → reveal), now a modal
-    /// secondary flow presented over the memory-maker home.
-    var showStampCapture = false
+
+    /// The four persistent tabs — Camera, Collection, Canvas, Settings.
+    enum RootTab: Hashable { case camera, collection, canvas, settings }
+    var selectedTab: RootTab = .camera
+
+    /// The canvas tab's live session — always has a document, fresh or
+    /// loaded. Decorating an existing stamp (`StampDetailView.openInCanvas`)
+    /// replaces this and switches to the canvas tab; Keep resets it back to
+    /// a fresh template in place.
+    var canvasSession = CanvasSession(seed: CanvasDocument.newMemory())
+    /// True while the canvas tab has unsaved content — hides the tab bar and
+    /// swaps its leading button to a back button (`CanvasEditorScreen`).
+    var canvasEditing = false
 
     /// Collection pill frame in full-screen coordinates (fly-to-album target).
     var pillFrame: CGRect = .zero
@@ -205,7 +210,7 @@ final class AppModel {
     /// onboarding, exactly like a fresh install.
     func deleteAllData() {
         store.deleteAll()
-        showAlbum = false
+        selectedTab = .camera
         phase = .camera
         hasOnboarded = false
         UserDefaults.standard.set(false, forKey: "snipsy.hasOnboarded")

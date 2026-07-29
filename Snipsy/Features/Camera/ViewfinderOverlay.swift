@@ -1,32 +1,22 @@
 import SwiftUI
 
-/// Corner brackets + a faint perforation-dot outline: the stamp metaphor,
-/// foreshadowed. Breathes almost imperceptibly.
+/// The real perforated stamp edge, live on the feed — you frame your shot
+/// inside the actual finished shape, not a generic rectangle. Breathes
+/// almost imperceptibly.
 struct ViewfinderOverlay: View {
     let rect: CGRect
     @State private var breathing = false
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(
-                    .white.opacity(0.30),
-                    style: StrokeStyle(lineWidth: 1.4, lineCap: .round, dash: [0.1, 7.5])
-                )
-                .frame(width: rect.width, height: rect.height)
-                .position(x: rect.midX, y: rect.midY)
-
-            CornerBrackets(cornerRadius: 12, arm: 22)
-                .stroke(.white.opacity(0.95),
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                .frame(width: rect.width, height: rect.height)
-                .position(x: rect.midX, y: rect.midY)
-        }
-        .scaleEffect(breathing ? 1.005 : 0.997)
-        .animation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true),
-                   value: breathing)
-        .allowsHitTesting(false)
-        .onAppear { breathing = true }
+        PerforatedRect()
+            .stroke(.white.opacity(0.95), lineWidth: 2.4)
+            .frame(width: rect.width, height: rect.height)
+            .position(x: rect.midX, y: rect.midY)
+            .scaleEffect(breathing ? 1.005 : 0.997)
+            .animation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true),
+                       value: breathing)
+            .allowsHitTesting(false)
+            .onAppear { breathing = true }
     }
 }
 

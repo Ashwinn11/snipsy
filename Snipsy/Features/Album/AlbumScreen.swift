@@ -7,7 +7,6 @@ struct AlbumScreen: View {
     let model: AppModel
     let safeArea: EdgeInsets
 
-    @State private var showSettings = false
     /// The folder currently showing its contents — one at a time.
     @State private var openMonth: Date? = nil
     /// The month drilled into. Held as a date, not a snapshot, so the page
@@ -68,16 +67,9 @@ struct AlbumScreen: View {
             }
         }
         .ignoresSafeArea()
-        .sheet(isPresented: $showSettings) {
-            SettingsSheet(model: model) {
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(0.35))
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        model.deleteAllData()
-                    }
-                }
-            }
-        }
+        // Drilled into a month (or a stamp's detail beyond it): that view's
+        // own back button handles the way out, so the tab bar steps aside.
+        .toolbar(pushed == nil ? .visible : .hidden, for: .tabBar)
     }
 
     // MARK: Header
@@ -85,44 +77,10 @@ struct AlbumScreen: View {
     private func header(topInset: CGFloat) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text("Collection")
-                .font(Theme.display(34))
+                .font(Theme.display(26))
                 .foregroundStyle(Theme.ink)
 
             Spacer()
-
-            Button {
-                model.haptics.tick()
-                model.camera.start()
-                model.showStampCapture = true
-            } label: {
-                Image(systemName: "camera")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 42, height: 42)
-            }
-            .glassEffect(.regular.interactive(), in: .circle)
-
-            Button {
-                model.haptics.tick()
-                showSettings = true
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 42, height: 42)
-            }
-            .glassEffect(.regular.interactive(), in: .circle)
-
-            Button {
-                model.haptics.tick()
-                withAnimation(Theme.spring) { model.showAlbum = false }
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 42, height: 42)
-            }
-            .glassEffect(.regular.interactive(), in: .circle)
         }
         .padding(.horizontal, 26)
         .padding(.top, max(topInset, 18) + 14)

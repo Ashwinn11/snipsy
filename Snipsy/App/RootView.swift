@@ -2,64 +2,52 @@ import SwiftUI
 
 struct RootView: View {
     @State private var model = AppModel()
-    /// The home surface's blank memory — a fresh stamp template. Held in
-    /// State so the base editor keeps its in-progress work for the session.
-    @State private var homeSession = CanvasSession(seed: CanvasDocument.newMemory())
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        // Read the real device insets from a safe-area-respecting reader, then
-        // let the content expand edge-to-edge. (A reader that itself ignores
-        // the safe area reports zero insets.)
-        GeometryReader { geo in
-            let insets = geo.safeAreaInsets
-            let fullSize = CGSize(
-                width: geo.size.width + insets.leading + insets.trailing,
-                height: geo.size.height + insets.top + insets.bottom
-            )
+        ZStack {
+            TabView(selection: $model.selectedTab) {
+                GeometryHost { size, insets in
+                    StampCaptureFlow(model: model, screenSize: size, safeArea: insets)
+                }
+                .tabItem { Label("Camera", systemImage: "camera") }
+                .tag(AppModel.RootTab.camera)
 
-            ZStack {
-                // The memory maker is the app's home — always mounted.
-                CanvasEditorScreen(model: model, session: homeSession,
-                                   screenSize: fullSize, safeArea: insets,
-                                   mode: .home)
-
-                if model.showAlbum {
+                GeometryHost { _, insets in
                     AlbumScreen(model: model, safeArea: insets)
-                        .transition(.move(edge: .bottom))
-                        .zIndex(10)
                 }
+                .tabItem { Label("Collection", systemImage: "rectangle.stack") }
+                .tag(AppModel.RootTab.collection)
 
-                if let session = model.canvasSession {
-                    CanvasEditorScreen(model: model, session: session,
-                                       screenSize: fullSize, safeArea: insets)
-                        .transition(.move(edge: .bottom))
-                        .zIndex(20)
+                GeometryHost { size, insets in
+                    CanvasTabScreen(model: model, screenSize: size, safeArea: insets)
                 }
+                .tabItem { Label("Canvas", systemImage: "paintbrush.pointed") }
+                .tag(AppModel.RootTab.canvas)
 
-                if !model.hasOnboarded {
-                    OnboardingScreen(model: model, screenSize: fullSize,
-                                     safeArea: insets)
-                        .transition(.opacity)
-                        .zIndex(30)
+                GeometryHost { _, insets in
+                    SettingsSheet(model: model, safeArea: insets) {
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .seconds(0.35))
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                model.deleteAllData()
+                            }
+                        }
+                    }
                 }
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(AppModel.RootTab.settings)
             }
-            .frame(width: fullSize.width, height: fullSize.height)
-            .ignoresSafeArea()
-            // The stamp/sticker ceremony — the original camera flow, now a
-            // secondary modal launched from the collection.
-            .fullScreenCover(isPresented: Binding(
-                get: { model.showStampCapture },
-                set: { model.showStampCapture = $0 }
-            )) {
-                StampCaptureFlow(model: model, screenSize: fullSize,
-                                 safeArea: insets) {
-                    model.showStampCapture = false
+            .tint(Theme.postalRed)
+
+            if !model.hasOnboarded {
+                GeometryHost { size, insets in
+                    OnboardingScreen(model: model, screenSize: size, safeArea: insets)
                 }
+                .transition(.opacity)
             }
         }
         .statusBarHidden()
-        .persistentSystemOverlays(.hidden)
         .onChange(of: scenePhase) { _, phase in
             // Stamps kept via the share extension land while we're away —
             // and shares whose sticker couldn't be cut in the extension
@@ -101,20 +89,18 @@ struct RootView: View {
     }
 }
 
-/// The stamp/sticker ceremony as a self-contained modal: the live camera,
-/// the grain-dissolve develop, and the reveal — the app's original flow,
-/// now a secondary path reached from the collection. The camera runs only
-/// while this cover is up.
+/// The stamp/sticker ceremony as a self-contained surface: the live camera,
+/// the grain-dissolve develop, and the reveal — the camera tab's content.
+/// The camera runs only while this tab is selected.
 struct StampCaptureFlow: View {
     let model: AppModel
     let screenSize: CGSize
     let safeArea: EdgeInsets
-    var onClose: () -> Void
 
     var body: some View {
         ZStack {
             CameraScreen(model: model, screenSize: screenSize,
-                         safeArea: safeArea, onClose: onClose)
+                         safeArea: safeArea)
 
             // Crossfaded so camera chrome never pops out under an overlay.
             // The frozen frame matches the live feed pixel-for-pixel, so
@@ -144,6 +130,7 @@ struct StampCaptureFlow: View {
         }
         .frame(width: screenSize.width, height: screenSize.height)
         .ignoresSafeArea()
+        .toolbar(model.inCameraPhase ? .visible : .hidden, for: .tabBar)
         .onAppear { model.camera.start() }
         .onDisappear {
             // Leaving the ceremony: release the camera and reset to idle so
@@ -151,6 +138,27 @@ struct StampCaptureFlow: View {
             model.camera.stop()
             model.phase = .camera
             model.blackout = false
+        }
+    }
+}
+
+/// Measures the real device safe area for content that expands edge-to-edge,
+/// re-measured fresh per tab so it correctly reflects that tab's own
+/// tab-bar visibility (`.toolbar(_:for:.tabBar)` can hide/show independently
+/// per tab — this is what lets bottom-anchored chrome never collide with it).
+private struct GeometryHost<Content: View>: View {
+    @ViewBuilder let content: (CGSize, EdgeInsets) -> Content
+
+    var body: some View {
+        GeometryReader { geo in
+            let insets = geo.safeAreaInsets
+            let fullSize = CGSize(
+                width: geo.size.width + insets.leading + insets.trailing,
+                height: geo.size.height + insets.top + insets.bottom
+            )
+            content(fullSize, insets)
+                .frame(width: fullSize.width, height: fullSize.height)
+                .ignoresSafeArea()
         }
     }
 }
