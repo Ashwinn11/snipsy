@@ -1,0 +1,10 @@
+{
+  "images" : [
+    {
+      "filename" : "teacup_heart_sage.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

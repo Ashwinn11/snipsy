@@ -202,6 +202,43 @@ struct CanvasLayer: Identifiable, Codable, Equatable {
     }
 }
 
+/// A plain page stock — no collectible chrome, just a surface to decorate
+/// freely with stickers and tape. Named and drawn for Snipsy's own
+/// correspondence/keepsake voice, not a generic craft-paper aisle.
+enum CanvasTexture: String, Codable, CaseIterable, Identifiable {
+    /// Warm ivory, soft grain — the blank writing page.
+    case parchment
+    /// Soft diffused blush/lavender watercolor wash.
+    case watercolorBloom
+    /// Sun-washed dusty blue-sand gradient.
+    case coastalWash
+    /// Parcel brown, a whisper of crosshatched string.
+    case twine
+    /// Cream scattered with faint cancellation-mark rings.
+    case postmark
+    /// Charcoal-blue — a page for after dark.
+    case slate
+    /// Dusty rose gingham check.
+    case sweetheartCheck
+    /// Sage wash, scattered pressed petals and leaves.
+    case fadedBloom
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .parchment: "Parchment"
+        case .watercolorBloom: "Watercolor Bloom"
+        case .coastalWash: "Coastal Wash"
+        case .twine: "Twine"
+        case .postmark: "Postmark"
+        case .slate: "Slate"
+        case .sweetheartCheck: "Sweetheart Check"
+        case .fadedBloom: "Faded Bloom"
+        }
+    }
+}
+
 /// A layered composition — the canvas editor's document, embedded in the
 /// stamp index (layer payloads are bytes; pixels live in files).
 struct CanvasDocument: Codable, Equatable {
@@ -209,6 +246,8 @@ struct CanvasDocument: Codable, Equatable {
         case paper(StampVariant)
         case polaroid
         case card
+        /// A plain page stock — no collectible chrome, no printed date.
+        case texture(CanvasTexture)
     }
     var background: Background = .card
     /// Canvas height / width. Stamp paper 1.3125, polaroid ≈1.22, card 1.30.
@@ -237,7 +276,7 @@ struct CanvasDocument: Codable, Equatable {
         switch background {
         case .paper: 1.3125
         case .polaroid: 1.22
-        case .card: 1.30
+        case .card, .texture: 1.30
         }
     }
 

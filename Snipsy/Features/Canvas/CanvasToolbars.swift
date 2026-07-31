@@ -286,14 +286,20 @@ struct CanvasBackgroundSheet: View {
     let editor: CanvasEditorModel
     @Environment(\.dismiss) private var dismiss
 
-    private var choices: [CanvasDocument.Background] {
-        // The same twelve stocks the reveal chooser offers: the instant
-        // photo, the scrapbook card, then one per stamp edition. Every one
-        // of them prints the date.
-        [.polaroid, .card] + StampVariant.allCases.map { .paper($0) }
+    /// Stamp editions dropped from the chooser — kept in `StampVariant` (and
+    /// still renderable) so existing saved stamps in those editions keep
+    /// decoding fine; just no longer offered for new picks.
+    private static let droppedVariants: Set<StampVariant> = [.commemorative, .foil, .botanical]
+
+    private var choices: [(background: CanvasDocument.Background, label: String)] {
+        CanvasTexture.allCases.map { (.texture($0), $0.label) }
+        + [(.polaroid, "Polaroid")]
+        + StampVariant.allCases
+            .filter { !Self.droppedVariants.contains($0) }
+            .map { (.paper($0), $0.rawValue.capitalized) }
     }
 
-    /// A fixed date so the thumbnails read as dated stamps without churning.
+    /// A fixed date so the stamp/polaroid thumbnails read as dated without churning.
     private static let sampleDate = Date(timeIntervalSince1970: 1_752_460_800)
 
     var body: some View {
@@ -302,18 +308,23 @@ struct CanvasBackgroundSheet: View {
                       spacing: 18) {
                 ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
                     Button {
-                        editor.setBackground(choice)
+                        editor.setBackground(choice.background)
                         dismiss()
                     } label: {
-                        CanvasBackgroundView(background: choice, date: Self.sampleDate)
-                            .frame(width: 78)
-                            .overlay {
-                                if editor.doc.background == choice {
-                                    RoundedRectangle(cornerRadius: 5)
-                                        .strokeBorder(Theme.postalRed, lineWidth: 1.6)
-                                        .padding(-4)
+                        VStack(spacing: 6) {
+                            CanvasBackgroundView(background: choice.background, date: Self.sampleDate)
+                                .frame(width: 78)
+                                .overlay {
+                                    if editor.doc.background == choice.background {
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .strokeBorder(Theme.postalRed, lineWidth: 1.6)
+                                            .padding(-4)
+                                    }
                                 }
-                            }
+                            Text(choice.label)
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundStyle(Theme.inkSoft)
+                        }
                     }
                     .buttonStyle(PressableButtonStyle())
                 }

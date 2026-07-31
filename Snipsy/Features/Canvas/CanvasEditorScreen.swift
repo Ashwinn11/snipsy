@@ -39,11 +39,19 @@ struct CanvasTemplateChooserSheet: View {
     let onChoose: (CanvasDocument.Background) -> Void
     @Environment(\.dismiss) private var dismiss
 
-    private var choices: [CanvasDocument.Background] {
-        [.polaroid, .card] + StampVariant.allCases.map { .paper($0) }
+    /// Same drops as `CanvasBackgroundSheet` — kept in `StampVariant` for
+    /// existing saved stamps, just not offered here.
+    private static let droppedVariants: Set<StampVariant> = [.commemorative, .foil, .botanical]
+
+    private var choices: [(background: CanvasDocument.Background, label: String)] {
+        CanvasTexture.allCases.map { (.texture($0), $0.label) }
+        + [(.polaroid, "Polaroid")]
+        + StampVariant.allCases
+            .filter { !Self.droppedVariants.contains($0) }
+            .map { (.paper($0), $0.rawValue.capitalized) }
     }
 
-    /// A fixed date so the thumbnails read as dated stamps without churning.
+    /// A fixed date so the stamp/polaroid thumbnails read as dated without churning.
     private static let sampleDate = Date(timeIntervalSince1970: 1_752_460_800)
 
     var body: some View {
@@ -59,11 +67,16 @@ struct CanvasTemplateChooserSheet: View {
                               spacing: 18) {
                         ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
                             Button {
-                                onChoose(choice)
+                                onChoose(choice.background)
                                 dismiss()
                             } label: {
-                                CanvasBackgroundView(background: choice, date: Self.sampleDate)
-                                    .frame(width: 78)
+                                VStack(spacing: 6) {
+                                    CanvasBackgroundView(background: choice.background, date: Self.sampleDate)
+                                        .frame(width: 78)
+                                    Text(choice.label)
+                                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                                        .foregroundStyle(Theme.inkSoft)
+                                }
                             }
                             .buttonStyle(PressableButtonStyle())
                         }
@@ -98,23 +111,32 @@ struct CanvasEmptyStateView: View {
 
                 Spacer(minLength: 0)
 
-                Button(action: onStart) {
-                    VStack(spacing: 18) {
-                        PerforatedRect()
-                            .stroke(Theme.inkSoft.opacity(0.55),
-                                    style: StrokeStyle(lineWidth: 1.4, dash: [4, 5]))
-                            .frame(width: 132, height: 173)
-                            .overlay {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 26, weight: .medium))
-                                    .foregroundStyle(Theme.inkSoft.opacity(0.8))
-                            }
-                        Text("Start a memory")
-                            .font(Theme.display(21))
-                            .foregroundStyle(Theme.ink)
+                VStack(spacing: 22) {
+                    PerforatedRect()
+                        .stroke(Theme.inkSoft.opacity(0.55),
+                                style: StrokeStyle(lineWidth: 1.4, dash: [4, 5]))
+                        .frame(width: 132, height: 173)
+                        .overlay {
+                            Image(systemName: "plus")
+                                .font(.system(size: 26, weight: .medium))
+                                .foregroundStyle(Theme.inkSoft.opacity(0.8))
+                        }
+                        .allowsHitTesting(false)
+
+                    Button(action: onStart) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Start a memory")
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 26)
+                        .frame(height: 50)
+                        .background(Theme.postalRed, in: Capsule())
                     }
+                    .buttonStyle(PressableButtonStyle())
                 }
-                .buttonStyle(PressableButtonStyle())
 
                 Spacer(minLength: 0)
                 Spacer(minLength: 0)

@@ -1,0 +1,10 @@
+{
+  "images" : [
+    {
+      "filename" : "cupid_bow_v1.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

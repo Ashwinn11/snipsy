@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Bundled decoration registry. Ids are namespaced so the persisted model
-/// never changes when art upgrades: `builtin.*` are code-drawn, `emoji.*`
-/// are glyphs, `asset.*` is reserved for future catalog art.
+/// never changes when art upgrades: `builtin.*` are code-drawn, `asset.*`
+/// is the illustrated sticker sheet.
 enum DoodleCatalog {
 
     static let all: [String] = [
@@ -10,14 +10,63 @@ enum DoodleCatalog {
         "doodle.loop", "doodle.squiggle", "doodle.burst",
         "washi.rose", "washi.sage", "washi.sun",
         "tag.scallop", "frame.dash",
-        "emoji.❤️", "emoji.✨", "emoji.⭐️", "emoji.🌸",
-        "emoji.💌", "emoji.☁️", "emoji.🎞️", "emoji.🫶",
-        "emoji.🎀", "emoji.🦋", "emoji.🌷", "emoji.💝",
+    ] + assetIDs
+
+    /// Illustrated sticker sheet — licensed art (Freepik Free License;
+    /// see Settings → About for the required credit line).
+    static let assetIDs: [String] = assetAspect.keys.sorted().map { "asset.\($0)" }
+
+    /// Each asset's true height/width, measured off the source art so
+    /// nothing renders squished.
+    private static let assetAspect: [String: CGFloat] = [
+        "broken_heart": 0.904, "camera_heart": 0.651, "champagne_glass": 1.330,
+        "chocolate_heart": 1.310, "cupid_bow_v1": 1.208, "cupid_bow_v2": 1.065,
+        "diamond_gem": 0.937, "double_hearts": 0.788, "envelope_heart": 0.893,
+        "gift_box": 1.408, "gift_heart": 0.986, "heart_arrow": 0.879,
+        "heart_jar": 1.566, "heart_lollipop": 1.385, "heart_love_ribbon": 0.814,
+        "heart_padlock": 1.239, "heart_ribbon_lilac": 0.844,
+        "hearts_holding_hands": 0.466, "i_love_you_tag": 0.313,
+        "ice_cream_hearts": 0.870, "kisses_tag": 0.441, "love_banner_heart": 0.683,
+        "love_birds": 0.763, "mailbox_love": 1.060, "marry_me_tag": 0.353,
+        "marry_me_toast": 1.199, "pink_bow": 1.224, "pink_flower": 0.995,
+        "rose_flower": 2.038, "rose_heart": 1.219, "teddy_bear_heart_v1": 1.464,
+        "teddy_bear_heart_v2": 1.254, "thought_bubble_heart": 0.726,
+        "winged_heart_single": 0.529, "winged_hearts": 0.572,
+        "butterfly_moth": 0.980, "candle_purple": 1.192, "cat_portrait": 1.038,
+        "cozy_scarf": 0.839, "cozy_socks": 1.026, "daisy_pink": 0.935,
+        "feel_cozy_text": 1.008, "floral_branch_line": 0.635,
+        "flourish_divider": 0.266, "flower_red": 1.000, "gold_leaf": 0.944,
+        "hanging_plant": 1.317, "heart_pink_wash": 1.306, "heather_branch": 2.002,
+        "hello_script": 0.358, "kiss_x_pink": 0.942, "little_garden_book": 1.310,
+        "monstera_pot": 1.173, "moon_gold": 1.020, "olive_branch": 1.108,
+        "paint_swatch_blue": 0.949, "pink_berries_branch": 1.578,
+        "rings_blue": 2.015, "rose_pink_watercolor": 0.960,
+        "squiggle_teal": 2.894, "sunflower": 0.996, "swallow_bird": 0.989,
+        "teacup_floral": 0.875, "teapot_polka": 0.789, "vintage_frame": 0.733,
+        "washi_gray_triangle": 0.196, "washi_green_dot": 0.212,
+        "washi_pink_heart": 0.318, "washi_red_dot": 0.565,
+        "washi_yellow_stripe": 0.300, "yarn_knitting": 0.797,
+        "apple_red": 1.184, "autumn_leaves_branch": 1.542, "bell_flower_pink": 0.754,
+        "bow_polka_pink_soft": 0.764, "clover_sage": 1.061,
+        "envelope_love_you_soft": 1.158, "flower_pink_small": 1.094,
+        "flower_pot_striped": 1.487, "gift_box_polka_sage": 0.957,
+        "gift_tag_heart_striped": 1.826, "heart_glasses": 0.479,
+        "heart_gray_confetti": 1.151, "heart_lollipop_striped": 1.951,
+        "heart_mint_solid": 0.899, "heart_padlock_sage": 1.048,
+        "heart_pink_solid_soft": 0.838, "ice_cream_sundae": 0.970,
+        "jam_jar": 1.162, "key_sage": 0.868, "leaf_petal_gold": 0.986,
+        "mushroom_red": 1.411, "mushroom_small_pink": 0.739, "pinecone": 1.054,
+        "sparkle_gold": 0.880, "strawberry_dipped": 1.133,
+        "sunflower_cottage": 1.638, "teacup_heart_sage": 0.686,
+        "teapot_floral": 1.165,
     ]
 
     /// Rendered height / width for a given doodle.
     static func aspect(id: String) -> CGFloat {
         if id.hasPrefix("washi.") { return 0.30 }
+        if id.hasPrefix("asset.") {
+            return assetAspect[String(id.dropFirst("asset.".count))] ?? 1
+        }
         if id == "tag.scallop" { return 0.52 }
         if id == "doodle.squiggle" { return 0.32 }
         if id == "doodle.arrow" { return 0.72 }
@@ -29,6 +78,12 @@ enum DoodleCatalog {
     @ViewBuilder
     static func view(id: String, width: CGFloat) -> some View {
         switch id {
+        case _ where id.hasPrefix("asset."):
+            let name = String(id.dropFirst("asset.".count))
+            Image("sticker_\(name)")
+                .resizable()
+                .scaledToFit()
+                .frame(width: width)
         case "doodle.heart":
             DoodleHeart().frame(width: width, height: width * 0.92)
         case "doodle.sparkle":
@@ -60,10 +115,7 @@ enum DoodleCatalog {
                                            dash: [width * 0.05, width * 0.035]))
                 .frame(width: width, height: width)
         default:
-            // emoji.<glyph>
-            Text(String(id.dropFirst("emoji.".count)))
-                .font(.system(size: width * 0.85))
-                .frame(width: width, height: width)
+            EmptyView()
         }
     }
 }

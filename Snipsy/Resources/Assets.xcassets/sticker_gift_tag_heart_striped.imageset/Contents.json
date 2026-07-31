@@ -1,0 +1,10 @@
+{
+  "images" : [
+    {
+      "filename" : "gift_tag_heart_striped.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

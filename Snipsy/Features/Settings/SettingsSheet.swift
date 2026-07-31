@@ -89,7 +89,6 @@ struct SettingsSheet: View {
                     .font(.system(size: 12.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft.opacity(0.85))
                     .padding(.top, 14)
-
                 Spacer(minLength: 0)
             }
         }

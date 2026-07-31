@@ -60,7 +60,241 @@ struct CanvasBackgroundView: View {
                         .allowsHitTesting(false)
                     }
                 }
+        case .texture(let kind):
+            // No date chrome — a plain stock is just a surface, not a
+            // dated collectible.
+            TextureBackground(kind: kind)
         }
+    }
+}
+
+/// A plain page stock — solid color or a light procedural pattern, no
+/// collectible furniture. Grain shaders reuse the same paper/fine grain
+/// the stamp and card stocks already wear, just tuned per texture.
+struct TextureBackground: View {
+    let kind: CanvasTexture
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            base
+                .shadow(color: Theme.shadow.opacity(0.22), radius: 0.03 * w, y: 0.015 * w)
+        }
+        .aspectRatio(1 / 1.30, contentMode: .fit)
+    }
+
+    @ViewBuilder
+    private var base: some View {
+        switch kind {
+        case .parchment:
+            Rectangle().fill(Color(hex: 0xF6EEDF))
+                .colorEffect(ShaderLibrary.paperGrain(.float(0.41), .float(0.32)))
+        case .watercolorBloom:
+            WatercolorBloomTexture()
+        case .coastalWash:
+            CoastalWashTexture()
+        case .twine:
+            TwineTexture()
+        case .postmark:
+            PostmarkTexture()
+        case .slate:
+            // Charcoal-blue, not near-black — the default dark-ink text
+            // layer stays legible without forcing a color switch.
+            Rectangle().fill(Color(hex: 0x3B4452))
+                .colorEffect(ShaderLibrary.fineGrain(.float(0.05)))
+        case .sweetheartCheck:
+            SweetheartCheckTexture()
+        case .fadedBloom:
+            FadedBloomTexture()
+        }
+    }
+}
+
+/// A tiny deterministic LCG — stable scatter jitter across renders (the
+/// same trick a page-theme "wallpaper" needs anywhere it's drawn).
+private struct SeededRandom {
+    private var state: UInt64
+    init(seed: UInt64) { state = seed &* 6364136223846793005 &+ 1442695040888963407 }
+    mutating func unit() -> CGFloat {
+        state = state &* 6364136223846793005 &+ 1442695040888963407
+        return CGFloat((state >> 33) & 0xFFFFFF) / CGFloat(0xFFFFFF)
+    }
+    mutating func jitter(_ magnitude: CGFloat) -> CGFloat { (unit() - 0.5) * 2 * magnitude }
+}
+
+/// Soft diffused blush/lavender watercolor wash — the single most-loved
+/// junk-journal background motif, and genuinely a decorating surface
+/// rather than a writing-lined one.
+private struct WatercolorBloomTexture: View {
+    var body: some View {
+        Rectangle().fill(Color(hex: 0xFBF6F1))
+            .overlay {
+                Canvas { ctx, size in
+                    let blooms: [(CGPoint, CGFloat, Color)] = [
+                        (CGPoint(x: 0.18, y: 0.22), 0.62, Color(hex: 0xE3AEC2)),
+                        (CGPoint(x: 0.82, y: 0.16), 0.5, Color(hex: 0xC9B7E0)),
+                        (CGPoint(x: 0.72, y: 0.78), 0.68, Color(hex: 0xEBC79A)),
+                        (CGPoint(x: 0.15, y: 0.82), 0.48, Color(hex: 0xB7CBE0)),
+                    ]
+                    for (unit, radiusFrac, color) in blooms {
+                        let center = CGPoint(x: unit.x * size.width, y: unit.y * size.height)
+                        let r = radiusFrac * size.width * 0.5
+                        ctx.fill(
+                            Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r,
+                                                   width: r * 2, height: r * 2)),
+                            with: .radialGradient(
+                                Gradient(colors: [color.opacity(0.32), color.opacity(0)]),
+                                center: center, startRadius: 0, endRadius: r))
+                    }
+                }
+                .blur(radius: 18)
+            }
+            .colorEffect(ShaderLibrary.paperGrain(.float(0.27), .float(0.16)))
+    }
+}
+
+/// Sun-washed dusty blue-to-sand gradient — the coastal stock.
+private struct CoastalWashTexture: View {
+    var body: some View {
+        LinearGradient(
+            colors: [Color(hex: 0xAFC4CE), Color(hex: 0xDCD3BE)],
+            startPoint: .top, endPoint: .bottom)
+            .colorEffect(ShaderLibrary.paperGrain(.float(0.5), .float(0.22)))
+    }
+}
+
+/// Parcel brown with a whisper of crosshatched string — the wrapped-parcel
+/// stock, not a generic craft kraft sheet.
+private struct TwineTexture: View {
+    var body: some View {
+        // Lighter, less saturated than a craft-store kraft sheet — dark
+        // ink text and colored decorations both keep good contrast on it.
+        Rectangle().fill(Color(hex: 0xDEC49B))
+            .colorEffect(ShaderLibrary.paperGrain(.float(0.18), .float(0.34)))
+            .overlay {
+                Canvas { ctx, size in
+                    let step = size.width * 0.1
+                    let tint = Color(hex: 0x8F6B3E).opacity(0.14)
+                    var path = Path()
+                    var x = -size.height
+                    while x < size.width {
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x + size.height, y: size.height))
+                        x += step
+                    }
+                    ctx.stroke(path, with: .color(tint), lineWidth: 1)
+                }
+            }
+    }
+}
+
+/// Cream scattered with faint cancellation-mark rings — Snipsy's own motif,
+/// echoing the perforated stamp shape used throughout the app.
+private struct PostmarkTexture: View {
+    var body: some View {
+        Rectangle().fill(Color(hex: 0xF5EEE3))
+            .overlay {
+                Canvas { ctx, size in
+                    var rng = SeededRandom(seed: 7)
+                    // Sparse — a few postmarks scattered, not a repeating
+                    // wallpaper competing with whatever gets decorated on top.
+                    let spacing = size.width * 0.42
+                    let cols = Int(size.width / spacing) + 2
+                    let rows = Int(size.height / spacing) + 2
+                    for row in 0..<rows {
+                        for col in 0..<cols {
+                            let stagger: CGFloat = row.isMultiple(of: 2) ? 0 : spacing / 2
+                            let cx = CGFloat(col) * spacing + stagger + rng.jitter(spacing * 0.3)
+                            let cy = CGFloat(row) * spacing + rng.jitter(spacing * 0.3)
+                            let r = spacing * 0.16
+                            let tint = Theme.ink.opacity(0.10)
+                            ctx.stroke(Path(ellipseIn: CGRect(x: cx - r, y: cy - r,
+                                                              width: r * 2, height: r * 2)),
+                                       with: .color(tint), lineWidth: 1)
+                            var wave = Path()
+                            wave.move(to: CGPoint(x: cx - r * 1.3, y: cy))
+                            wave.addCurve(to: CGPoint(x: cx + r * 1.3, y: cy),
+                                          control1: CGPoint(x: cx - r * 0.5, y: cy - r * 0.5),
+                                          control2: CGPoint(x: cx + r * 0.5, y: cy + r * 0.5))
+                            ctx.stroke(wave, with: .color(tint), lineWidth: 1)
+                        }
+                    }
+                }
+            }
+    }
+}
+
+/// A two-tone woven check — the coquette stock, matching the app's own
+/// "Sweetheart" edition family rather than a generic picnic-blanket name.
+private struct SweetheartCheckTexture: View {
+    var body: some View {
+        Rectangle().fill(Color(hex: 0xFBF3F5))
+            .overlay {
+                Canvas { ctx, size in
+                    let step = size.width * 0.052
+                    let tint = Color(hex: 0xE7A9BB)
+                    var x: CGFloat = 0
+                    var i = 0
+                    while x < size.width {
+                        if i % 2 == 0 {
+                            ctx.fill(Path(CGRect(x: x, y: 0, width: step, height: size.height)),
+                                     with: .color(tint.opacity(0.35)))
+                        }
+                        x += step
+                        i += 1
+                    }
+                    var y: CGFloat = 0
+                    i = 0
+                    while y < size.height {
+                        if i % 2 == 0 {
+                            ctx.fill(Path(CGRect(x: 0, y: y, width: size.width, height: step)),
+                                     with: .color(tint.opacity(0.35)))
+                        }
+                        y += step
+                        i += 1
+                    }
+                }
+            }
+    }
+}
+
+/// Sage wash scattered with pressed petals and leaves — a keepsake page,
+/// not a vague "vintage" label.
+private struct FadedBloomTexture: View {
+    var body: some View {
+        Rectangle().fill(Color(hex: 0xEDF0E4))
+            .colorEffect(ShaderLibrary.paperGrain(.float(0.55), .float(0.22)))
+            .overlay {
+                Canvas { ctx, size in
+                    var rng = SeededRandom(seed: 13)
+                    // Sparse scatter — pressed petals here and there, not a
+                    // repeating print that fights with whatever's decorated on top.
+                    let spacing = size.width * 0.36
+                    let cols = Int(size.width / spacing) + 2
+                    let rows = Int(size.height / spacing) + 2
+                    let petal = Color(hex: 0xC98FA0).opacity(0.3)
+                    let leaf = Color(hex: 0x7C9468).opacity(0.28)
+                    for row in 0..<rows {
+                        for col in 0..<cols {
+                            let stagger: CGFloat = row.isMultiple(of: 2) ? 0 : spacing / 2
+                            let cx = CGFloat(col) * spacing + stagger + rng.jitter(spacing * 0.35)
+                            let cy = CGFloat(row) * spacing + rng.jitter(spacing * 0.35)
+                            let side = spacing * (0.14 + rng.unit() * 0.1)
+                            let isLeaf = rng.unit() > 0.55
+                            let rotation = Angle.degrees(Double(rng.unit()) * 360)
+                            var resolved = ctx.resolve(
+                                Image(systemName: isLeaf ? "leaf.fill" : "circle.fill"))
+                            resolved.shading = .color(isLeaf ? leaf : petal)
+                            ctx.drawLayer { layer in
+                                layer.translateBy(x: cx, y: cy)
+                                layer.rotate(by: rotation)
+                                layer.draw(resolved, in: CGRect(x: -side/2, y: -side/2,
+                                                                width: side, height: side))
+                            }
+                        }
+                    }
+                }
+            }
     }
 }
 
@@ -362,6 +596,8 @@ extension CanvasDocument.Background {
         case .polaroid: CGRect(x: 0, y: 0.778, width: 1, height: 0.222)
         // Card: below the photo (1.11w) on a 1.30w card.
         case .card: CGRect(x: 0, y: 0.854, width: 1, height: 0.146)
+        // A plain stock prints no date — nothing to hang a tap target on.
+        case .texture: .zero
         }
     }
 }

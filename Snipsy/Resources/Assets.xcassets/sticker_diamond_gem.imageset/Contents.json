@@ -1,0 +1,10 @@
+{
+  "images" : [
+    {
+      "filename" : "diamond_gem.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}

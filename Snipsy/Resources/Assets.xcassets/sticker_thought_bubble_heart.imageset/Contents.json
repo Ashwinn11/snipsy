@@ -1,0 +1,10 @@
+{
+  "images" : [
+    {
+      "filename" : "thought_bubble_heart.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
