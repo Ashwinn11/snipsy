@@ -58,6 +58,34 @@ final class AppModel {
     var isCapturing = false
     /// First-run gate; deleting all data returns here.
     var hasOnboarded = UserDefaults.standard.bool(forKey: "snipsy.hasOnboarded")
+    /// What onboarding's occasion question answered, if it was answered at
+    /// all. Leads the template chooser with a matching paper and dresses the
+    /// first canvas — never hides or locks anything. `nil` = skipped, and
+    /// every surface stays at its default.
+    var occasion: MemoryOccasion? = UserDefaults.standard.string(forKey: "snipsy.occasion")
+        .flatMap(MemoryOccasion.init(rawValue:)) {
+        didSet {
+            UserDefaults.standard.set(occasion?.rawValue, forKey: "snipsy.occasion")
+        }
+    }
+    /// Onboarding's second answer — what has stopped them keeping things.
+    /// Empty means skipped, and the how-it-works screen keeps its neutral
+    /// line rather than mirroring anything back.
+    var blockers: Set<MemoryBlocker> = Set(
+        (UserDefaults.standard.array(forKey: "snipsy.blockers") as? [String] ?? [])
+            .compactMap(MemoryBlocker.init(rawValue:))
+    ) {
+        didSet {
+            UserDefaults.standard.set(blockers.map(\.rawValue),
+                                      forKey: "snipsy.blockers")
+        }
+    }
+
+    /// The one their answer gets mirrored with — first in declaration order
+    /// so the reply is stable across launches rather than set-order random.
+    var leadBlocker: MemoryBlocker? {
+        MemoryBlocker.allCases.first { blockers.contains($0) }
+    }
     /// Shutter blackout curtain, rendered above every phase in RootView. Held
     /// dark until DevelopOverlay's first frame has committed, so the heavy
     /// frozen-frame setup happens behind it and never as an on-screen snap.
@@ -214,6 +242,8 @@ final class AppModel {
         phase = .camera
         hasOnboarded = false
         UserDefaults.standard.set(false, forKey: "snipsy.hasOnboarded")
+        occasion = nil
+        blockers = []
         haptics.thunk()
     }
 

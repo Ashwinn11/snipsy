@@ -20,7 +20,7 @@ struct CanvasTabScreen: View {
                 showTemplates = true
             }
             .sheet(isPresented: $showTemplates) {
-                CanvasTemplateChooserSheet { background in
+                CanvasTemplateChooserSheet(occasion: model.occasion) { background in
                     var doc = CanvasDocument()
                     doc.background = background
                     doc.aspect = CanvasDocument.aspect(for: background)
@@ -36,19 +36,25 @@ struct CanvasTabScreen: View {
 /// background switcher offers (`CanvasBackgroundSheet`), chosen once before
 /// the editor opens rather than mutating a live document.
 struct CanvasTemplateChooserSheet: View {
+    /// What onboarding's question answered, if anything — that paper leads
+    /// the grid. Nothing is filtered out either way.
+    var occasion: MemoryOccasion? = nil
     let onChoose: (CanvasDocument.Background) -> Void
     @Environment(\.dismiss) private var dismiss
 
-    /// Same drops as `CanvasBackgroundSheet` — kept in `StampVariant` for
-    /// existing saved stamps, just not offered here.
-    private static let droppedVariants: Set<StampVariant> = [.commemorative, .foil, .botanical]
-
-    private var choices: [(background: CanvasDocument.Background, label: String)] {
-        CanvasTexture.allCases.map { (.texture($0), $0.label) }
-        + [(.polaroid, "Polaroid")]
-        + StampVariant.allCases
-            .filter { !Self.droppedVariants.contains($0) }
-            .map { (.paper($0), $0.rawValue.capitalized) }
+    /// The shared gallery (`CanvasDocument.Background.offered`), with the
+    /// occasion's paper pulled to the front. Every stock stays on offer and
+    /// in the same relative order behind it — this is a suggestion, not a
+    /// filter.
+    private var choices: [CanvasDocument.Background] {
+        let all = CanvasDocument.Background.offered
+        guard let pick = occasion?.background,
+              let i = all.firstIndex(of: pick)
+        else { return all }
+        var reordered = all
+        reordered.remove(at: i)
+        reordered.insert(pick, at: 0)
+        return reordered
     }
 
     /// A fixed date so the stamp/polaroid thumbnails read as dated without churning.
@@ -66,16 +72,27 @@ struct CanvasTemplateChooserSheet: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 16)],
                               spacing: 18) {
                         ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
+                            let suggested = choice == occasion?.background
                             Button {
-                                onChoose(choice.background)
+                                onChoose(choice)
                                 dismiss()
                             } label: {
                                 VStack(spacing: 6) {
-                                    CanvasBackgroundView(background: choice.background, date: Self.sampleDate)
+                                    CanvasBackgroundView(background: choice, date: Self.sampleDate)
                                         .frame(width: 78)
-                                    Text(choice.label)
+                                        .overlay(alignment: .topTrailing) {
+                                            if suggested {
+                                                Image(systemName: "star.fill")
+                                                    .font(.system(size: 9, weight: .bold))
+                                                    .foregroundStyle(.white)
+                                                    .padding(4)
+                                                    .background(Theme.postalRed, in: Circle())
+                                                    .offset(x: 5, y: -5)
+                                            }
+                                        }
+                                    Text(suggested ? "For you" : choice.label)
                                         .font(.system(size: 11, weight: .medium, design: .rounded))
-                                        .foregroundStyle(Theme.inkSoft)
+                                        .foregroundStyle(suggested ? Theme.postalRed : Theme.inkSoft)
                                 }
                             }
                             .buttonStyle(PressableButtonStyle())

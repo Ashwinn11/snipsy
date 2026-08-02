@@ -286,18 +286,9 @@ struct CanvasBackgroundSheet: View {
     let editor: CanvasEditorModel
     @Environment(\.dismiss) private var dismiss
 
-    /// Stamp editions dropped from the chooser — kept in `StampVariant` (and
-    /// still renderable) so existing saved stamps in those editions keep
-    /// decoding fine; just no longer offered for new picks.
-    private static let droppedVariants: Set<StampVariant> = [.commemorative, .foil, .botanical]
-
-    private var choices: [(background: CanvasDocument.Background, label: String)] {
-        CanvasTexture.allCases.map { (.texture($0), $0.label) }
-        + [(.polaroid, "Polaroid")]
-        + StampVariant.allCases
-            .filter { !Self.droppedVariants.contains($0) }
-            .map { (.paper($0), $0.rawValue.capitalized) }
-    }
+    /// The shared gallery — same stocks, same order as the entry-point
+    /// chooser (`CanvasDocument.Background.offered`).
+    private var choices: [CanvasDocument.Background] { CanvasDocument.Background.offered }
 
     /// A fixed date so the stamp/polaroid thumbnails read as dated without churning.
     private static let sampleDate = Date(timeIntervalSince1970: 1_752_460_800)
@@ -308,14 +299,14 @@ struct CanvasBackgroundSheet: View {
                       spacing: 18) {
                 ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
                     Button {
-                        editor.setBackground(choice.background)
+                        editor.setBackground(choice)
                         dismiss()
                     } label: {
                         VStack(spacing: 6) {
-                            CanvasBackgroundView(background: choice.background, date: Self.sampleDate)
+                            CanvasBackgroundView(background: choice, date: Self.sampleDate)
                                 .frame(width: 78)
                                 .overlay {
-                                    if editor.doc.background == choice.background {
+                                    if editor.doc.background == choice {
                                         RoundedRectangle(cornerRadius: 5)
                                             .strokeBorder(Theme.postalRed, lineWidth: 1.6)
                                             .padding(-4)

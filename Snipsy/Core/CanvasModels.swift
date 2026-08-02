@@ -239,6 +239,114 @@ enum CanvasTexture: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// What the user said they're mostly keeping, asked once during onboarding.
+/// Used to lead the template chooser with a paper that already fits and to
+/// dress the onboarding's own build page. Purely a starting point: nothing
+/// is ever hidden or locked behind it, and skipping the question leaves
+/// every surface exactly at its default.
+enum MemoryOccasion: String, Codable, CaseIterable, Identifiable {
+    /// The two of you.
+    case us
+    /// Coffees, walks, small ordinary days.
+    case everyday
+    /// Trips, and the stretches spent apart.
+    case away
+    /// A page kept for its own sake.
+    case mine
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .us: "Us"
+        case .everyday: "Everyday things"
+        case .away: "Trips & time apart"
+        case .mine: "Just for me"
+        }
+    }
+
+    var blurb: String {
+        switch self {
+        case .us: "Dates, anniversaries, the good ones"
+        case .everyday: "Coffees, walks, ordinary days"
+        case .away: "Postcards to send or keep"
+        case .mine: "Flowers, pets, quiet things"
+        }
+    }
+
+    /// Second person, on the capture screen — the answer given two screens
+    /// earlier, pointed at the shutter.
+    var captureCue: String {
+        switch self {
+        case .us: "Point it at the two of you."
+        case .everyday: "Point it at something ordinary."
+        case .away: "Point it at where you are."
+        case .mine: "Point it at something you love."
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .us: "heart"
+        case .everyday: "cup.and.saucer"
+        case .away: "airplane"
+        case .mine: "leaf"
+        }
+    }
+
+    /// The paper this occasion opens on — each one already designed for it:
+    /// `sweetheart` is the rose keepsake, `airmail` is literally par avion,
+    /// `postmark` is everyday correspondence, `fadedBloom` is pressed petals.
+    var background: CanvasDocument.Background {
+        switch self {
+        case .us: .paper(.sweetheart)
+        case .everyday: .texture(.postmark)
+        case .away: .paper(.airmail)
+        case .mine: .texture(.fadedBloom)
+        }
+    }
+}
+
+/// Why it hasn't been happening — onboarding's second question, asked right
+/// after `MemoryOccasion`. Multi-select, and every option is phrased the way
+/// someone would actually say it out loud.
+///
+/// The pair exists so the flow can stop being a feature tour: the goal
+/// question gives it a subject, and this gives it a problem to answer. The
+/// screen that follows both mirrors the answer back with `answer` rather
+/// than reciting features.
+enum MemoryBlocker: String, Codable, CaseIterable, Identifiable {
+    case forgotten
+    case buried
+    case unprinted
+    case undated
+    case effort
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .forgotten: "I take them and never look again"
+        case .buried: "They're buried under thousands of others"
+        case .unprinted: "I always mean to print them, and don't"
+        case .undated: "I can't remember which day was which"
+        case .effort: "Making something nice takes too long"
+        }
+    }
+
+    /// What the how-it-works screen answers this with. Each line is
+    /// literally true of the product — no stat is invented.
+    var answer: String {
+        switch self {
+        case .forgotten: "It lives on your shelf,\nnot in your camera roll."
+        case .buried: "One a day —\nnot one of ten thousand."
+        case .unprinted: "A real object,\nwithout the printer."
+        case .undated: "Dated the moment\nyou take it."
+        case .effort: "Ten seconds,\nstart to finish."
+        }
+    }
+}
+
 /// A layered composition — the canvas editor's document, embedded in the
 /// stamp index (layer payloads are bytes; pixels live in files).
 struct CanvasDocument: Codable, Equatable {
@@ -284,6 +392,8 @@ struct CanvasDocument: Codable, Equatable {
         case background, aspect, layers, date
     }
 
+    // (Background's shared gallery lives in the extension below.)
+
     /// Backward-compatible decode: canvases saved before the template
     /// header existed have no `date` — default it instead of failing (and
     /// losing the creation).
@@ -293,5 +403,33 @@ struct CanvasDocument: Codable, Equatable {
         aspect = try c.decode(CGFloat.self, forKey: .aspect)
         layers = try c.decodeIfPresent([CanvasLayer].self, forKey: .layers) ?? []
         date = try c.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+    }
+}
+
+extension CanvasDocument.Background {
+    /// Stamp variants that stay decodable, so already-saved stamps keep
+    /// rendering, but are no longer offered as canvas paper — they read as
+    /// finished collectibles rather than a page you'd decorate.
+    static let retiredVariants: Set<StampVariant> = [.commemorative, .foil, .botanical]
+
+    /// Every page stock offered when starting or re-papering a composition,
+    /// in gallery order. One list so the template chooser, the in-editor
+    /// background sheet and the paywall's advertised count cannot drift
+    /// apart — they used to each carry their own copy.
+    static let offered: [CanvasDocument.Background] =
+        CanvasTexture.allCases.map { .texture($0) }
+        + [.polaroid]
+        + StampVariant.allCases
+            .filter { !retiredVariants.contains($0) }
+            .map { .paper($0) }
+
+    /// Display name in any gallery.
+    var label: String {
+        switch self {
+        case .texture(let kind): kind.label
+        case .polaroid: "Polaroid"
+        case .card: "Card"
+        case .paper(let variant): variant.rawValue.capitalized
+        }
     }
 }

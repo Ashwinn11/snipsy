@@ -1,26 +1,37 @@
 import SwiftUI
 
-/// Page 5: the gate. The app icon breathes over the closing pitch and the
-/// CTA hands off to the paywall (or straight to the canvas, once unlocked).
+/// Page 7: the close.
+///
+/// Shows the one stamp they actually made, and nothing else. An earlier
+/// version drew a twelve-slot shelf filling up to sell "a year of this" —
+/// but eleven of those twelve were fabricated, the same blank paper
+/// repeated. A collection they don't have is a lie to look at and dull to
+/// look at. The future belongs in the copy; the screen shows only what's
+/// real.
 struct OnboardingFinalPage: View {
+    let model: AppModel
     let safeArea: EdgeInsets
     var onStart: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var shown = false
     @State private var breathe = false
+
+    /// Their own first artifact, if the capture screen produced one.
+    private var mine: Stamp? { model.store.stamps.last }
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            AppIconView(size: 108)
-                .shadow(color: Theme.shadow.opacity(0.22), radius: 16, y: 8)
-                .scaleEffect(breathe ? 1.03 : 0.99)
-                .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true),
-                           value: breathe)
+            hero
 
             VStack(spacing: 10) {
-                RansomText(text: "MAKE THE FIRST ONE", fontSize: 14, ink: Theme.ink)
-                Text("One page after every date.\nThey'll start waiting for it.")
+                OnboardingTitle(mine == nil ? "MAKE THE FIRST ONE" : "THAT'S NUMBER ONE")
+                Text(mine == nil
+                     ? "One after every day worth it.\nBy next year, a shelf of them."
+                     : "One after every day worth it.\nBy next year, a shelf of them.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -33,10 +44,10 @@ struct OnboardingFinalPage: View {
             Button {
                 onStart()
             } label: {
-                Text("Make a Memory")
+                Text(mine == nil ? "Make a Memory" : "Start my collection")
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 42)
+                    .padding(.horizontal, 38)
                     .frame(height: 54)
                     .background(Theme.postalRed, in: Capsule())
             }
@@ -44,6 +55,37 @@ struct OnboardingFinalPage: View {
             .padding(.bottom, max(safeArea.bottom, 16) + 54)
         }
         .padding(.top, 30)
-        .onAppear { breathe = true }
+        .onAppear {
+            breathe = true
+            if reduceMotion {
+                shown = true
+            } else {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                    shown = true
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var hero: some View {
+        if let mine {
+            // The app's one renderer for a collected artifact — the stamp
+            // is composed from the stored fields, not read off disk (the
+            // file is just the source photo).
+            ArtifactView(stamp: mine, image: model.store.image(for: mine))
+                .frame(width: 170)
+                .rotationEffect(.degrees(-2))
+                .shadow(color: Theme.shadow.opacity(0.28), radius: 18, y: 9)
+                .scaleEffect(shown ? 1 : 0.85)
+                .opacity(shown ? 1 : 0)
+        } else {
+            // They skipped the capture — nothing of theirs to show.
+            AppIconView(size: 108)
+                .shadow(color: Theme.shadow.opacity(0.22), radius: 16, y: 8)
+                .scaleEffect(breathe ? 1.03 : 0.99)
+                .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true),
+                           value: breathe)
+        }
     }
 }

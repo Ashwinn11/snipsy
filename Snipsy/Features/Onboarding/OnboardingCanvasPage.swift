@@ -35,8 +35,11 @@ struct OnboardingCanvasPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "SNIPSY", fontSize: 24, ink: Theme.ink)
-                Text("Turn a day together into something\nthey'll actually keep.")
+                Text("SNIPSY")
+                    .font(Theme.display(27))
+                    .tracking(3)
+                    .foregroundStyle(Theme.ink)
+                Text("Photos pile up.\nNone of them get kept.")
                     .font(.system(size: 15, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -104,7 +107,7 @@ struct OnboardingCanvasPage: View {
                 .rotationEffect(.degrees(-7))
                 .scaleEffect(photoEl == 0 ? 0.25 : 1)
                 .opacity(photoEl)
-                .animation(.spring(response: 0.42, dampingFraction: 0.60), value: photoEl)
+                .animation(.spring(response: 0.30, dampingFraction: 0.60), value: photoEl)
                 .offset(x: w * 0.03, y: h * 0.085)
         }
 
@@ -117,7 +120,7 @@ struct OnboardingCanvasPage: View {
                 .rotationEffect(.degrees(6))
                 .scaleEffect(stickerEl == 0 ? 0.25 : 1)
                 .opacity(stickerEl)
-                .animation(.spring(response: 0.42, dampingFraction: 0.56), value: stickerEl)
+                .animation(.spring(response: 0.30, dampingFraction: 0.56), value: stickerEl)
                 .shadow(color: .black.opacity(0.36), radius: 7, y: 4)
                 .offset(x: w * 0.52, y: h * 0.07)
         }
@@ -138,7 +141,7 @@ struct OnboardingCanvasPage: View {
                 .rotationEffect(.degrees(7))
                 .scaleEffect(lilyEl == 0 ? 0.25 : 1)
                 .opacity(lilyEl)
-                .animation(.spring(response: 0.42, dampingFraction: 0.56), value: lilyEl)
+                .animation(.spring(response: 0.30, dampingFraction: 0.56), value: lilyEl)
                 .shadow(color: .black.opacity(0.34), radius: 5, y: 3)
                 .offset(x: w * 0.55, y: h * 0.45)
         }
@@ -152,7 +155,7 @@ struct OnboardingCanvasPage: View {
                 .rotationEffect(.degrees(-10))
                 .scaleEffect(puppyEl == 0 ? 0.25 : 1)
                 .opacity(puppyEl)
-                .animation(.spring(response: 0.44, dampingFraction: 0.54), value: puppyEl)
+                .animation(.spring(response: 0.30, dampingFraction: 0.54), value: puppyEl)
                 .shadow(color: .black.opacity(0.34), radius: 5, y: 3)
                 .offset(x: w * 0.03, y: h * 0.49)
         }
@@ -166,7 +169,7 @@ struct OnboardingCanvasPage: View {
             .rotationEffect(.degrees(-4))
             .scaleEffect(ransomEl == 0 ? 0.40 : 1, anchor: .leading)
             .opacity(ransomEl)
-            .animation(.spring(response: 0.40, dampingFraction: 0.62), value: ransomEl)
+            .animation(.spring(response: 0.30, dampingFraction: 0.62), value: ransomEl)
             .offset(x: w * 0.03, y: h * 0.76)
 
         // ── Caption band, right of the date: die-cut "forever & always" ─────
@@ -180,7 +183,7 @@ struct OnboardingCanvasPage: View {
                    ink: Color(hex: 0x1C3050))
             .scaleEffect(diecutEl == 0 ? 0.60 : 1)
             .opacity(diecutEl)
-            .animation(.spring(response: 0.44, dampingFraction: 0.64), value: diecutEl)
+            .animation(.spring(response: 0.30, dampingFraction: 0.64), value: diecutEl)
             .offset(x: w * 0.42, y: h * 0.884)
     }
 
@@ -221,54 +224,66 @@ struct OnboardingCanvasPage: View {
 
     /// Wait for Vision to finish processing all subjects (up to ~6 s),
     /// then build up the canvas top → bottom.
-    private func animate(_ g: Int) async {
-        // Give the Vision pipeline time to finish — puppy/lily/couple2 run live.
+    /// Resolve the moment this one subject exists, rather than when the
+    /// whole batch does. Capped so a failed lift can't stall the page.
+    private func waitFor(_ key: String, _ g: Int) async {
         var waited = 0
-        while demo.subjects.count < 4 && waited < 30 {
-            try? await Task.sleep(for: .milliseconds(200))
+        while demo.subject(key) == nil && waited < 40 {
+            try? await Task.sleep(for: .milliseconds(50))
             waited += 1
             guard gen == g else { return }
         }
+    }
 
-        // Canvas entrance
-        withAnimation(.spring(response: 0.50, dampingFraction: 0.80)) {
+    /// Build the page top → bottom.
+    ///
+    /// Nothing global is awaited up front. This used to open by polling
+    /// `demo.subjects.count < 4` every 200 ms for up to six seconds — so the
+    /// very first screen of the app sat empty until the *slowest* Vision
+    /// lift finished, on the one launch where Vision is coldest. Now the
+    /// paper and the polaroid (bundle-loaded, no Vision) land immediately
+    /// and each die-cut arrives as its own subject is ready.
+    private func animate(_ g: Int) async {
+        withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
             canvasScale = 1; canvasOpacity = 1
         }
-        try? await Task.sleep(for: .seconds(0.34))
+        try? await Task.sleep(for: .seconds(0.16))
         guard gen == g else { return }
 
-        // Date labels
-        haptics.tick()
-        try? await Task.sleep(for: .seconds(0.30))
-        guard gen == g else { return }
-
-        // Upper row: photo (left) then sticker (right) — quick stagger
+        // Upper-left polaroid — straight from the bundle, never blocked.
         haptics.tick()
         withAnimation { photoEl = 1 }
-        try? await Task.sleep(for: .seconds(0.20))
+        try? await Task.sleep(for: .seconds(0.10))
+        guard gen == g else { return }
+
+        await waitFor("couple2", g)
         guard gen == g else { return }
         haptics.thunk()
         withAnimation { stickerEl = 1 }
-        try? await Task.sleep(for: .seconds(0.32))
+        try? await Task.sleep(for: .seconds(0.10))
         guard gen == g else { return }
 
-        // Lower row: lily (left) then puppy (right) — quick stagger
+        await waitFor("lily", g)
+        guard gen == g else { return }
         haptics.tick()
         withAnimation { lilyEl = 1 }
-        try? await Task.sleep(for: .seconds(0.20))
+        try? await Task.sleep(for: .seconds(0.10))
+        guard gen == g else { return }
+
+        await waitFor("puppy", g)
         guard gen == g else { return }
         haptics.thunk()
         withAnimation { puppyEl = 1 }
-        try? await Task.sleep(for: .seconds(0.30))
+        try? await Task.sleep(for: .seconds(0.10))
         guard gen == g else { return }
 
-        // Ransom "love"
+        // The puppy's name, captioning it.
         haptics.tick()
         withAnimation { ransomEl = 1 }
-        try? await Task.sleep(for: .seconds(0.28))
+        try? await Task.sleep(for: .seconds(0.12))
         guard gen == g else { return }
 
-        // Die-cut text — finale, stays forever
+        // Die-cut text — finale, stays forever.
         haptics.thunk()
         withAnimation { diecutEl = 1 }
         // Done — composition holds. No fade, no reset.

@@ -38,7 +38,7 @@ struct OnboardingSharePage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "NOTHING GETS LOST", fontSize: 16, ink: Theme.ink)
+                OnboardingTitle("YOUR OLD PHOTOS COUNT")
                 Text("Any photo you already have\ncan become the next one.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
@@ -386,30 +386,22 @@ struct OnboardingSharePage: View {
 
         beat = .photo
         stickerSelected = true
+        // Runs the journey once and holds on the composer — the beat that
+        // shows the finished piece. Looping wound it back to an empty Photos
+        // screen every few seconds, so the payoff was on screen less than
+        // the setup was.
         Task { @MainActor in
-            while gen == g {
-                let current = beat
-                if current == .composer {
-                    // Mid-beat: flip the composer's selection once.
-                    try? await Task.sleep(for: .seconds(0.6))
-                    guard gen == g else { return }
-                    withAnimation(Theme.springTight) { stickerSelected = false }
-                    try? await Task.sleep(for: .seconds(current.hold - 0.6))
-                } else {
-                    try? await Task.sleep(for: .seconds(current.hold))
-                }
+            for next in [Beat.sheet, .composer] {
+                try? await Task.sleep(for: .seconds(beat.hold))
                 guard gen == g else { return }
                 haptics.tick()
-                withAnimation(Theme.springTight) {
-                    switch beat {
-                    case .photo: beat = .sheet
-                    case .sheet: beat = .composer
-                    case .composer:
-                        beat = .photo
-                        stickerSelected = true
-                    }
-                }
+                withAnimation(Theme.springTight) { beat = next }
             }
+            // Mid-composer: flip the selection from sticker to stamp once,
+            // so both options are seen before it settles.
+            try? await Task.sleep(for: .seconds(0.6))
+            guard gen == g else { return }
+            withAnimation(Theme.springTight) { stickerSelected = false }
         }
     }
 }

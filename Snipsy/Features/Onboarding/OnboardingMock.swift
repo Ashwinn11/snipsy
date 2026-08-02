@@ -5,6 +5,33 @@ import SwiftUI
 /// stand-ins for other apps (nothing third-party is imitated — only
 /// Snipsy is named).
 
+/// Every page's headline. Plus Jakarta Sans ExtraBold — the app's own title
+/// voice, the same one Settings and the permission screens use.
+///
+/// These were set in `RansomText` (per-glyph tiles, each in a different face,
+/// colour and rotation). That treatment is right on the canvas, where it's a
+/// craft object the user places deliberately, but as onboarding chrome it
+/// cost more legibility than it bought character — a headline has one job.
+/// `RansomText` is untouched and still available as a text style in the
+/// editor.
+struct OnboardingTitle: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(Theme.display(19))
+            .tracking(1.4)
+            .foregroundStyle(Theme.ink)
+            .multilineTextAlignment(.center)
+            .lineLimit(1)
+            // The longest line ("IT LANDS IN THEIR CHAT") still fits the
+            // narrowest supported width; this only guards the edges.
+            .minimumScaleFactor(0.75)
+    }
+}
+
 /// The mini phone the journeys play inside — the card shell both showcase
 /// pages already shared, with a fixed height so beats never resize it.
 struct MockPhoneCard<Content: View>: View {

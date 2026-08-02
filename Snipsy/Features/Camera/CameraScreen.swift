@@ -31,17 +31,25 @@ struct CameraScreen: View {
         let vf = Self.viewfinderRect(in: screenSize)
 
         ZStack {
-            feed
+            // Without permission there is no feed to frame, so the stamp
+            // cut-out and its surrounding dim would just be masking a
+            // permission screen into a stamp silhouette. Show that screen
+            // whole instead.
+            if isLive {
+                feed
 
-            HoleDim(hole: vf)
-                .fill(Color.black.opacity(0.32), style: FillStyle(eoFill: true))
-                .allowsHitTesting(false)
+                HoleDim(hole: vf)
+                    .fill(Color.black.opacity(0.32), style: FillStyle(eoFill: true))
+                    .allowsHitTesting(false)
 
-            ViewfinderOverlay(rect: vf)
+                ViewfinderOverlay(rect: vf)
+            } else {
+                permissionGate
+            }
 
             chrome(viewfinder: vf)
 
-            if let p = focusPoint {
+            if let p = focusPoint, isLive {
                 FocusIndicator()
                     .position(p)
                     .id("\(p.x)-\(p.y)")
@@ -65,22 +73,33 @@ struct CameraScreen: View {
 
     // MARK: Feed
 
+    /// A real feed to frame — everything camera-shaped hangs off this.
+    private var isLive: Bool { model.camera.authorization == .authorized }
+
     @ViewBuilder
-    private var feed: some View {
+    private var permissionGate: some View {
         if model.camera.authorization == .denied {
+            // Hard denial: the system prompt is spent, so Settings is the
+            // only way back.
             PermissionDeniedView()
         } else {
-            CameraPreviewView(session: model.camera.session) { viewPoint, devicePoint in
-                model.camera.focus(atDevicePoint: devicePoint)
-                model.haptics.tick()
-                focusPoint = viewPoint
-                Task {
-                    try? await Task.sleep(for: .seconds(0.9))
-                    if focusPoint == viewPoint { focusPoint = nil }
-                }
-            }
-            .frame(width: screenSize.width, height: screenSize.height)
+            // Never asked, or deferred during onboarding — the prompt is
+            // still unspent, so it's worth offering again.
+            CameraPermissionPrimerView(model: model)
         }
+    }
+
+    private var feed: some View {
+        CameraPreviewView(session: model.camera.session) { viewPoint, devicePoint in
+            model.camera.focus(atDevicePoint: devicePoint)
+            model.haptics.tick()
+            focusPoint = viewPoint
+            Task {
+                try? await Task.sleep(for: .seconds(0.9))
+                if focusPoint == viewPoint { focusPoint = nil }
+            }
+        }
+        .frame(width: screenSize.width, height: screenSize.height)
     }
 
     // MARK: Chrome
@@ -117,17 +136,20 @@ struct CameraScreen: View {
             }
         }
 
-        // Wordmark
-        Text("SNIPSY")
-            .font(Theme.display(15))
-            .tracking(2)
-            .rotationEffect(.degrees(-2))
-            .foregroundStyle(.white.opacity(0.9))
-            .shadow(color: .black.opacity(0.45), radius: 7, y: 1)
-            .position(x: screenSize.width / 2, y: safeArea.top + 24)
+        // Wordmark — white-on-feed, so it only belongs over a live feed.
+        // The permission screens carry their own headline.
+        if isLive {
+            Text("SNIPSY")
+                .font(Theme.display(15))
+                .tracking(2)
+                .rotationEffect(.degrees(-2))
+                .foregroundStyle(.white.opacity(0.9))
+                .shadow(color: .black.opacity(0.45), radius: 7, y: 1)
+                .position(x: screenSize.width / 2, y: safeArea.top + 24)
+        }
 
         // Flash (back camera only)
-        if !model.camera.frontCamera {
+        if isLive && !model.camera.frontCamera {
             Button {
                 model.camera.flashOn.toggle()
                 model.haptics.tick()
@@ -147,28 +169,33 @@ struct CameraScreen: View {
         // Bottom bar — `barY` is already bound at the top of this function.
         // The collection is its own tab now — nothing redundant sits here.
 
-        ShutterButton {
-            firePunch()
-            let size = screenSize
-            let rect = Self.viewfinderRect(in: size)
-            Task { await model.capture(viewfinderRect: rect, viewSize: size) }
-        }
-        .position(x: screenSize.width / 2, y: barY)
+        // Shutter and flip need a feed to act on. The library button above
+        // stays put in every state — importing an old photo is a complete
+        // path through the app that never needs the camera at all.
+        if isLive {
+            ShutterButton {
+                firePunch()
+                let size = screenSize
+                let rect = Self.viewfinderRect(in: size)
+                Task { await model.capture(viewfinderRect: rect, viewSize: size) }
+            }
+            .position(x: screenSize.width / 2, y: barY)
 
-        Button {
-            model.camera.flip()
-            model.haptics.tick()
-        } label: {
-            Image(systemName: "arrow.triangle.2.circlepath.camera")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
-                .frame(width: 48, height: 48)
+            Button {
+                model.camera.flip()
+                model.haptics.tick()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath.camera")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.55), radius: 4, y: 1)
+                    .frame(width: 48, height: 48)
+            }
+            // Fixed scrim, not glass: liquid glass refracts the live feed, so
+            // the chrome would flicker with every exposure change.
+            .background(.black.opacity(0.32), in: Circle())
+            .position(x: screenSize.width - 66, y: barY)
         }
-        // Fixed scrim, not glass: liquid glass refracts the live feed, so
-        // the chrome would flicker with every exposure change.
-        .background(.black.opacity(0.32), in: Circle())
-        .position(x: screenSize.width - 66, y: barY)
     }
 }
 

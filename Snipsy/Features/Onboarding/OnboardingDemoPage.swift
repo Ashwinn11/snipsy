@@ -10,6 +10,9 @@ struct OnboardingDemoPage: View {
     let haptics: Haptics
     let isActive: Bool
     let screenSize: CGSize
+    /// What they said stops them, from the screen before. This page is the
+    /// reply to it — without one it falls back to describing the mechanic.
+    var blocker: MemoryBlocker? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -29,15 +32,21 @@ struct OnboardingDemoPage: View {
     /// Bumped on every restart/stop; a loop that awakes into a different
     /// generation must exit silently.
     @State private var gen = 0
-    @State private var phaseLine = "Your subject is lifted and die-cut…"
+    @State private var phaseLine = "Anything in the photo gets lifted out…"
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "THE TWO OF YOU, KEPT", fontSize: 16, ink: Theme.ink)
-                Text("Cut them out of the crowd\nand onto the page.")
+                // The demo plays the fork, not just the cut: it settles as a
+                // sticker, then dresses as a stamp. The headline names both,
+                // and plants "sticker" for the Messages screen later.
+                OnboardingTitle("A STICKER, OR A STAMP")
+                // Answers the pain they just picked, so this reads as a
+                // reply rather than the next item in a feature tour.
+                Text(blocker?.answer
+                     ?? "Same photo, cut out on your phone —\nthen dressed either way.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -171,10 +180,12 @@ struct OnboardingDemoPage: View {
             return
         }
 
+        // Plays once and holds on the finished, dated stamp — the same rule
+        // the canvas page follows. Looping tore the payoff down and rebuilt
+        // it every few seconds, which undercut the one thing this screen is
+        // meant to leave you looking at. Tapping the stamp replays it.
         Task { @MainActor in
-            while gen == g {
-                await runCycle(g)
-            }
+            await runCycle(g)
         }
     }
 
@@ -241,19 +252,9 @@ struct OnboardingDemoPage: View {
         // The struck date already sits in the caption line — land the beat.
         haptics.thunk()
         phaseLine = "Dated and kept forever."
-        try? await Task.sleep(for: .seconds(1.6))
-        guard gen == g else { return }
-
-        // Loop seam: fade, reset off-screen, fade back.
-        withAnimation(.easeIn(duration: 0.3)) { stampOpacity = 0 }
-        try? await Task.sleep(for: .seconds(0.35))
-        guard gen == g else { return }
+        // Holds here. The wave driver is the only thing still running, and
+        // it has already finished its travel — stop it so the display link
+        // isn't ticking behind a static screen for the rest of onboarding.
         waveDriver.stop()
-        resetPose()
-        stampOpacity = 0
-        await afterNextCommit()
-        guard gen == g else { return }
-        withAnimation(.easeOut(duration: 0.3)) { stampOpacity = 1 }
-        try? await Task.sleep(for: .seconds(0.5))
     }
 }

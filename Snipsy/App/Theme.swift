@@ -110,8 +110,18 @@ extension Color {
 /// A codable sRGB triple used to persist stamp tints.
 struct RGBValue: Codable, Equatable {
     var r: Double, g: Double, b: Double
-    var color: Color { Color(.sRGB, red: r, green: g, blue: b) }
-    var uiColor: UIColor { UIColor(red: r, green: g, blue: b, alpha: 1) }
+    var color: Color { Color(.sRGB, red: safe(r), green: safe(g), blue: safe(b)) }
+    var uiColor: UIColor {
+        UIColor(red: safe(r), green: safe(g), blue: safe(b), alpha: 1)
+    }
+
+    /// Components come out of Vision's frame sampling and are then written
+    /// into the stamp index, so a single bad value would be baked into a
+    /// saved stamp permanently and UIColor would log about it on every
+    /// render. Clamp where the value leaves the model, not where it's made.
+    private func safe(_ v: Double) -> Double {
+        v.isFinite ? min(max(v, 0), 1) : 0
+    }
 
     static let paper = RGBValue(r: 0.957, g: 0.937, b: 0.902)
 

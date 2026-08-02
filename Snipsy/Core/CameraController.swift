@@ -42,20 +42,30 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
         }
     }
 
+    /// Bring the session up if we're already allowed. Deliberately does NOT
+    /// ask when the status is undetermined: iOS grants exactly one system
+    /// prompt, and this runs on plain tab entry, which is the worst possible
+    /// moment to spend it — no context, nothing explained. Undetermined is
+    /// left as-is so the UI can show `CameraPermissionPrimerView` and let
+    /// the user opt in through `requestPermission()`.
     func start() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             authorization = .authorized
             configureAndRun()
         case .notDetermined:
-            Task {
-                let granted = await AVCaptureDevice.requestAccess(for: .video)
-                self.authorization = granted ? .authorized : .denied
-                if granted { self.configureAndRun() }
-            }
+            authorization = .undetermined
         default:
             authorization = .denied
         }
+    }
+
+    /// Open the real system dialog. Only ever called from the primer, i.e.
+    /// after the user has already said yes to our own screen.
+    func requestPermission() async {
+        let granted = await AVCaptureDevice.requestAccess(for: .video)
+        authorization = granted ? .authorized : .denied
+        if granted { configureAndRun() }
     }
 
     private func configureAndRun() {

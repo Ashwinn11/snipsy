@@ -8,7 +8,20 @@ struct RootView: View {
         ZStack {
             TabView(selection: $model.selectedTab) {
                 GeometryHost { size, insets in
-                    StampCaptureFlow(model: model, screenSize: size, safeArea: insets)
+                    // Onboarding sits on top of this TabView, not instead of
+                    // it, so the camera tab would otherwise mount and call
+                    // `camera.start()` while the user is still on slide one:
+                    // a live session running invisibly under the overlay,
+                    // and — once onboarding opens its own capture surface —
+                    // a second preview layer on the same AVCaptureSession,
+                    // both instances sharing one `phase` and stopping each
+                    // other. One capture surface at a time.
+                    if model.hasOnboarded {
+                        StampCaptureFlow(model: model, screenSize: size,
+                                         safeArea: insets)
+                    } else {
+                        Color.black
+                    }
                 }
                 .tabItem { Label("Camera", systemImage: "camera") }
                 .tag(AppModel.RootTab.camera)

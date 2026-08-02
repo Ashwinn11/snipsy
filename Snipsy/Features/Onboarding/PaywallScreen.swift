@@ -6,6 +6,9 @@ import RevenueCat
 struct PaywallScreen: View {
     let purchases: PurchaseController
     let demo: OnboardingDemo
+    /// What onboarding's question answered, if anything — the headline
+    /// echoes it back. `nil` falls back to the general line.
+    var occasion: MemoryOccasion? = nil
     let screenSize: CGSize
     let safeArea: EdgeInsets
     var onUnlocked: () -> Void
@@ -36,17 +39,23 @@ struct PaywallScreen: View {
                     VStack(spacing: 12) {
                         stickerFan
                             .padding(.bottom, 10)
-                        RansomText(text: "KEEP EVERY DATE", fontSize: 16, ink: Theme.ink)
+                        OnboardingTitle(headline)
                     }
                     .padding(.bottom, 18)
                     .entrance(shown: stage >= 1)
 
-                    VStack(alignment: .leading, spacing: 14) {
-                        outcome("calendar", "Build a dated memory page in minutes")
-                        outcome("square.stack", "12 stamp templates to lay it out on")
-                        outcome("scissors", "Die-cut, polaroid, or outlined photos")
+                    // Leads with the decoration library, not the stamp:
+                    // turning a photo into a stamp is something several free
+                    // apps already do, so it can't be what's being sold.
+                    // Counts are real — keep them in step with
+                    // `CanvasTexture`/`StampVariant` and `DoodleCatalog`.
+                    VStack(alignment: .leading, spacing: 13) {
+                        outcome("heart.text.square", "\(decorationCount) stickers, washi and lettering")
+                        outcome("square.grid.2x2", "\(templateCount) papers to lay them out on")
+                        outcome("scissors", "Cut anyone out of any photo, on device")
+                        outcome("message", "Send them as stickers in Messages")
                     }
-                    .padding(.horizontal, 58)
+                    .padding(.horizontal, 50)
                     .entrance(shown: stage >= 2)
 
                     Spacer(minLength: 0)
@@ -176,6 +185,23 @@ struct PaywallScreen: View {
             }
         }
     }
+
+    /// Echoes back what they said they were keeping. Not decoration: it's
+    /// the one place the answer is repeated at the moment of the ask.
+    private var headline: String {
+        switch occasion {
+        case .us: "KEEP EVERY DATE"
+        case .everyday: "KEEP THE ORDINARY DAYS"
+        case .away: "KEEP EVERY TRIP"
+        case .mine: "KEEP WHAT YOU LOVE"
+        case nil: "KEEP THE GOOD DAYS"
+        }
+    }
+
+    /// Counted off the real catalogues, never typed in — the old copy
+    /// advertised "12 stamp templates" long after the number had moved.
+    private var templateCount: Int { CanvasDocument.Background.offered.count }
+    private var decorationCount: Int { DoodleCatalog.all.count }
 
     /// The collection as one tossed pile: three fanned behind the hero.
     /// The thing being sold: a dated memory page, with the die-cuts that

@@ -41,8 +41,8 @@ struct OnboardingMessagesPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                RansomText(text: "IT LANDS IN THEIR CHAT", fontSize: 14, ink: Theme.ink)
-                Text("Send it the second it's done —\nright where you already talk.")
+                OnboardingTitle("IT BECOMES A STICKER")
+                Text("In any chat, your Snipsy drawer\nis right there.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -295,28 +295,21 @@ struct OnboardingMessagesPage: View {
 
         beat = .thread
         sway = false
+        // Runs the journey once and holds on the landed sticker. Looping
+        // deleted the sticker it had just sent and started over, which threw
+        // away the only frame the screen exists to show.
         Task { @MainActor in
-            while gen == g {
+            for next in [Beat.menu, .drawer, .landed] {
                 try? await Task.sleep(for: .seconds(beat.hold))
                 guard gen == g else { return }
                 haptics.tick()
-                withAnimation(Theme.springTight) {
-                    switch beat {
-                    case .thread: beat = .menu
-                    case .menu: beat = .drawer
-                    case .drawer: beat = .landed
-                    case .landed: beat = .thread
-                    }
-                }
-                if beat == .landed {
-                    // Start the idle sway once the landing spring settles.
-                    try? await Task.sleep(for: .seconds(0.35))
-                    guard gen == g else { return }
-                    sway = true
-                } else if beat == .thread {
-                    sway = false
-                }
+                withAnimation(Theme.springTight) { beat = next }
             }
+            // The idle sway keeps the held frame alive once the landing
+            // spring settles — it's the only motion left on the page.
+            try? await Task.sleep(for: .seconds(0.35))
+            guard gen == g else { return }
+            sway = true
         }
     }
 }
