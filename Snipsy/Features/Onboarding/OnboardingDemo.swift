@@ -69,10 +69,10 @@ final class OnboardingDemo {
             // about when you reach it.
             let specs: [(file: String, title: String)] = [
                 ("couple2", "Us"),      // page 2 hero
-                ("couple1", "Together"),// page 3 share sheet
-                ("coffee",  "Coffee"),  // page 4 Messages
-                ("lily",    "Lily"),    // page 5 paywall
-                ("puppy",   "Buddy"),   // drawer + canvas
+                ("couple1", L("Together")),// page 3 share sheet
+                ("coffee",  L("Coffee")),  // page 4 Messages
+                ("lily",    L("Lily")),    // page 5 paywall
+                ("puppy",   L("Buddy")),   // drawer + canvas
             ]
             var loaded: [Subject] = []
             for spec in specs {

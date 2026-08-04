@@ -17,7 +17,7 @@ struct MonthScreen: View {
     @State private var dragX: CGFloat = 0
 
     private static let dayFormatter: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "EEEE d"; return f
+        return .app(template: "EEEEd")
     }()
 
     @State private var dayGroups: [(day: Date, title: String, stamps: [Stamp])] = []
@@ -176,7 +176,7 @@ struct MonthScreen: View {
                 selected = stamp
             }
         } label: {
-            ArtifactView(stamp: stamp, image: model.store.image(for: stamp))
+            ArtifactView(stamp: stamp, image: model.store.thumbnail(for: stamp))
                 .rotationEffect(.degrees(index.isMultiple(of: 2) ? -2.2 : 2.4))
         }
         .buttonStyle(PressableButtonStyle())

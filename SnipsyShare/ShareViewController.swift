@@ -219,11 +219,11 @@ struct ShareComposerView: View {
                             .font(.system(size: 40))
                             .foregroundStyle(Theme.postalRed)
                         
-                        Text("Snipsy Premium Required")
+                        Text(L("Snipsy Premium Required"))
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(Theme.ink)
                         
-                        Text("Please open the Snipsy app to unlock premium access and share custom stamps.")
+                        Text(L("Please open the Snipsy app to unlock premium access and share custom stamps."))
                             .font(.system(size: 14.5, design: .rounded))
                             .foregroundStyle(Theme.inkSoft)
                             .multilineTextAlignment(.center)
@@ -234,7 +234,7 @@ struct ShareComposerView: View {
                     Spacer(minLength: 0)
 
                     if state.failed {
-                        Text("Couldn't read that image.")
+                        Text(L("Couldn't read that image."))
                             .font(.system(size: 15, design: .rounded))
                             .foregroundStyle(Theme.inkSoft)
                     } else if state.analyzing {
@@ -335,7 +335,7 @@ struct ShareComposerView: View {
                         }
 
                         if state.stickerDeferred, state.choice == .sticker {
-                            Text("The sticker finishes in Snipsy — open the app to find it.")
+                            Text(L("The sticker finishes in Snipsy — open the app to find it."))
                                 .font(.system(size: 12, design: .rounded))
                                 .foregroundStyle(Theme.inkSoft)
                         }

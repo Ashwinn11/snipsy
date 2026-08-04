@@ -363,6 +363,11 @@ struct StampTemplateHeader: View {
     private var slot: some View {
         switch variant {
 
+        // Bleed prints nothing on its plate — retired from canvas paper, so
+        // this only exists to keep the switch total.
+        case .bleed:
+            EmptyView()
+
         // Classic postal line: № side gets the date, the far side the day.
         case .tinted:
             HStack(spacing: 0) {
@@ -607,7 +612,7 @@ extension StampVariant {
     /// captured photo to tint from, so it falls back to warm kraft.
     var canvasPaper: Color {
         switch self {
-        case .tinted: Color(hex: 0xC9B689)
+        case .tinted, .bleed: Color(hex: 0xC9B689)
         case .ivory: Color(hex: 0xB7A6D6)
         case .ink: Color(hex: 0x2A2621)
         case .airmail: Color(hex: 0xFCFBF6)

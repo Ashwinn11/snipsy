@@ -258,7 +258,7 @@ struct MonthFolderView: View {
         let shadowAlpha = 0.08 + 0.02 * Double(t)
         let shadowOffset: CGFloat = 4 + 11 * t
 
-        ArtifactView(stamp: stamp, image: store.image(for: stamp))
+        ArtifactView(stamp: stamp, image: store.thumbnail(for: stamp))
             .frame(width: slipWidth)
             .rotationEffect(.degrees(angle))
             .shadow(color: Theme.shadow.opacity(shadowAlpha),

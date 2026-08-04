@@ -67,6 +67,7 @@ struct AlbumScreen: View {
             }
         }
         .ignoresSafeArea()
+        .onAppear { MemoryProbe.log("album open") }
         // Drilled into a month (or a stamp's detail beyond it): that view's
         // own back button handles the way out, so the tab bar steps aside.
         .toolbar(pushed == nil ? .visible : .hidden, for: .tabBar)

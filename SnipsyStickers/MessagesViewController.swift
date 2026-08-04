@@ -34,7 +34,7 @@ final class StickerBrowserViewController: MSStickerBrowserViewController {
         stickerBrowserView.backgroundColor = UIColor(
             red: 0.973, green: 0.949, blue: 0.890, alpha: 1)
 
-        emptyLabel.text = "Keep a stamp in Snipsy\nand its sticker appears here."
+        emptyLabel.text = L("Keep a stamp in Snipsy\nand its sticker appears here.")
         emptyLabel.numberOfLines = 0
         emptyLabel.textAlignment = .center
         emptyLabel.font = UIFont(descriptor: UIFont.systemFont(

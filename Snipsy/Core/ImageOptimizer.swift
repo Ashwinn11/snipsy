@@ -31,13 +31,6 @@ enum ImageOptimizer {
             cg = flattened
         }
 
-        #if DEBUG
-        // Temporary: three attempts at the AlphaPremulLast warning have
-        // missed, so stop inferring which writer runs and print it.
-        print("[opt] \(cg.width)x\(cg.height) alpha=\(cg.alphaInfo.rawValue) "
-              + "channel=\(carriesAlphaChannel(cg)) transparent=\(hasTransparency(cg))")
-        #endif
-
         let out = NSMutableData()
         if let dest = CGImageDestinationCreateWithData(
             out, UTType.heic.identifier as CFString, 1, nil

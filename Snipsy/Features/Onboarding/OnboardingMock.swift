@@ -15,9 +15,12 @@ import SwiftUI
 /// `RansomText` is untouched and still available as a text style in the
 /// editor.
 struct OnboardingTitle: View {
-    let text: String
+    // LocalizedStringKey, not String: `Text(String)` is the *verbatim*
+    // initializer and never localizes, which silently made every headline
+    // passed through here untranslatable.
+    let text: LocalizedStringKey
 
-    init(_ text: String) { self.text = text }
+    init(_ text: LocalizedStringKey) { self.text = text }
 
     var body: some View {
         Text(text)
@@ -25,10 +28,13 @@ struct OnboardingTitle: View {
             .tracking(1.4)
             .foregroundStyle(Theme.ink)
             .multilineTextAlignment(.center)
-            .lineLimit(1)
-            // The longest line ("IT LANDS IN THEIR CHAT") still fits the
-            // narrowest supported width; this only guards the edges.
-            .minimumScaleFactor(0.75)
+            // Two lines, not one: this was sized against the longest English
+            // headline, and translations run far longer — German turns
+            // "KEEP THE ORDINARY DAYS" into "HALTE DIE GEWÖHNLICHEN TAGE
+            // FEST". Padding keeps it off the bezel at any length.
+            .lineLimit(2)
+            .minimumScaleFactor(0.6)
+            .padding(.horizontal, 24)
     }
 }
 

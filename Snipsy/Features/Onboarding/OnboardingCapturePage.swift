@@ -55,7 +55,7 @@ struct OnboardingCapturePage: View {
         }
     }
 
-    private var subhead: String {
+    private var subhead: LocalizedStringKey {
         if madeOne { return "It's in your collection —\nand it's a sticker too." }
         switch auth {
         case .denied:
@@ -150,7 +150,7 @@ struct OnboardingCapturePage: View {
         }
     }
 
-    private func primary(icon: String, title: String,
+    private func primary(icon: String, title: LocalizedStringKey,
                          action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {

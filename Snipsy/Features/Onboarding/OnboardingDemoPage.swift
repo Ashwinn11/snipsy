@@ -32,7 +32,7 @@ struct OnboardingDemoPage: View {
     /// Bumped on every restart/stop; a loop that awakes into a different
     /// generation must exit silently.
     @State private var gen = 0
-    @State private var phaseLine = "Anything in the photo gets lifted out…"
+    @State private var phaseLine = L("Anything in the photo gets lifted out…")
 
     var body: some View {
         VStack(spacing: 0) {
@@ -176,7 +176,7 @@ struct OnboardingDemoPage: View {
             paper = 1
             caption = 1
             settle = 1
-            phaseLine = "Cut, dressed, and dated — on device."
+            phaseLine = L("Cut, dressed, and dated — on device.")
             return
         }
 
@@ -200,7 +200,7 @@ struct OnboardingDemoPage: View {
     /// One full cycle: raw photo → punch → shatter → sticker → stamp →
     /// hold → fade out and reset. ~8s.
     private func runCycle(_ g: Int) async {
-        phaseLine = "Your subject is lifted and die-cut…"
+        phaseLine = L("Your subject is lifted and die-cut…")
         await afterNextCommit()
         try? await Task.sleep(for: .seconds(0.8))
         guard gen == g else { return }
@@ -225,7 +225,7 @@ struct OnboardingDemoPage: View {
             settle = 1
             flight = 1
         }
-        phaseLine = "A sticker, cut on device…"
+        phaseLine = L("A sticker, cut on device…")
         try? await Task.sleep(for: .seconds(1.4))
         guard gen == g else { return }
 
@@ -237,7 +237,7 @@ struct OnboardingDemoPage: View {
             paper = 1
             settle = 1
         }
-        phaseLine = "…or a stamp on the paper you choose."
+        phaseLine = L("…or a stamp on the paper you choose.")
         try? await Task.sleep(for: .seconds(0.2))
         guard gen == g else { return }
         withAnimation(.linear(duration: 0.5)) { caption = 1 }
@@ -251,7 +251,7 @@ struct OnboardingDemoPage: View {
 
         // The struck date already sits in the caption line — land the beat.
         haptics.thunk()
-        phaseLine = "Dated and kept forever."
+        phaseLine = L("Dated and kept forever.")
         // Holds here. The wave driver is the only thing still running, and
         // it has already finished its travel — stop it so the display link
         // isn't ticking behind a static screen for the rest of onboarding.

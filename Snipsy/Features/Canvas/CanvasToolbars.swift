@@ -126,7 +126,7 @@ struct CanvasSelectionBar: View {
     }
 
     private func treatmentButton(_ treatment: ImageTreatment, _ icon: String,
-                                 _ label: String, layer: CanvasLayer,
+                                 _ label: LocalizedStringKey, layer: CanvasLayer,
                                  current: ImageTreatment) -> some View {
         Button {
             editor.setTreatment(treatment, for: layer.id)
@@ -214,20 +214,24 @@ struct CanvasSelectionBar: View {
     }
 }
 
-/// Sticker drawer sheet: the user's saved die-cuts, tap to place a copy.
+/// Collection drawer: anything already collected — die-cuts, stamps,
+/// polaroids, cards, saved pages — tap to place a copy. Newest first, the
+/// same order the album files them in.
 struct CanvasStickerSheet: View {
     let editor: CanvasEditorModel
     let store: StampStore
     @Environment(\.dismiss) private var dismiss
 
-    private var stickers: [Stamp] {
-        store.stamps.filter { $0.kind == .sticker }
+    /// Everything except the page being edited — offering a canvas inside
+    /// itself would place its own stale flatten.
+    private var artifacts: [Stamp] {
+        store.stamps.filter { $0.id != editor.stampID }
     }
 
     var body: some View {
-        sheetShell(title: "Your Stickers") {
-            if stickers.isEmpty {
-                Text("Snip a sticker with the camera first — they'll all be here.")
+        sheetShell(title: "From Your Collection") {
+            if artifacts.isEmpty {
+                Text("Nothing collected yet — take a photo and it'll show up here.")
                     .font(.system(size: 14, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -235,17 +239,21 @@ struct CanvasStickerSheet: View {
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 14)],
                           spacing: 14) {
-                    ForEach(stickers) { stamp in
+                    ForEach(artifacts) { stamp in
                         Button {
                             editor.addStickerLayer(from: stamp)
                             dismiss()
                         } label: {
-                            if let image = store.image(for: stamp) {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(height: 84)
-                            }
+                            // The stored file is the raw photo for a stamp and
+                            // the die cut for a sticker — ArtifactView is what
+                            // makes a mixed grid legible, dressing each kind
+                            // the way the album already does.
+                            // Width-driven, like the album cells — the kinds
+                            // have different aspects, so pinning height would
+                            // let a page sprawl wider than its grid column.
+                            ArtifactView(stamp: stamp,
+                                         image: store.thumbnail(for: stamp))
+                                .frame(width: 84)
                         }
                         .buttonStyle(PressableButtonStyle())
                     }
@@ -326,9 +334,11 @@ struct CanvasBackgroundSheet: View {
 }
 
 /// Shared sheet chrome: paper backdrop, a title, scrolling content.
+/// Internal rather than file-private — the language picker wears it too, so
+/// every sheet in the app keeps the same paper.
 @ViewBuilder
-private func sheetShell<Content: View>(
-    title: String, @ViewBuilder content: () -> Content
+func sheetShell<Content: View>(
+    title: LocalizedStringKey, @ViewBuilder content: () -> Content
 ) -> some View {
     ZStack {
         Theme.paper.ignoresSafeArea()

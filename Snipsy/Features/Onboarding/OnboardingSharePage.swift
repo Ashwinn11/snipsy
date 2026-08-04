@@ -25,7 +25,7 @@ struct OnboardingSharePage: View {
     @State private var stickerSelected = true
     @State private var gen = 0
 
-    private var caption: String {
+    private var caption: LocalizedStringKey {
         switch beat {
         case .photo: "Open any photo, tap Share…"
         case .sheet: "…choose Snipsy…"

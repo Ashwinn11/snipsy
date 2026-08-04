@@ -13,21 +13,54 @@ struct CameraScreen: View {
     @State private var focusPoint: CGPoint? = nil
     @State private var focusPulse = false
     @State private var pickedItem: PhotosPickerItem? = nil
+    /// A picked photo waiting to be framed against the aperture.
+    @State private var framingImage: PickedPhoto? = nil
     /// Shutter-tap punch: a quick press-down-and-spring-back on the whole
     /// viewfinder, so the tap itself reads as stamping down onto paper.
     @State private var capturePunch = false
 
-    /// The stamp-to-be. 4:5, full-bleed width, slightly above middle —
-    /// the frame is the whole stage, not a window. Shared by the capture
-    /// path and the reveal handoff — single source of truth.
-    static func viewfinderRect(in size: CGSize) -> CGRect {
-        let w = size.width
-        let h = w * 1.25
-        return CGRect(x: 0, y: size.height * 0.44 - h / 2,
+    // MARK: Frame geometry
+    //
+    // The viewfinder is a physical object now — a slide mount you look
+    // through — rather than a full-bleed crop. Both numbers below are
+    // measured off `viewfinder_frame`, so nothing here is eyeballed: change
+    // the art and re-measure, don't nudge these by hand.
+
+    /// The mount's own proportions (639 × 953 as cut).
+    private static let frameAspect: CGFloat = 953.0 / 639.0
+
+    /// Where the punched window sits inside it, as fractions of the art.
+    /// This is what makes the aperture and the capture crop agree.
+    ///
+    /// The moulded opening is taller than 4:5, so the hole is cut
+    /// width-matched and centred inside it; the bands left above and below
+    /// keep the recess gradient and read as part of the moulding.
+    private static let apertureInFrame = CGRect(x: 0.1549, y: 0.2046,
+                                                width: 0.6635, height: 0.5561)
+
+    /// The mount on screen — inset from the edges, so the live feed reads as
+    /// the world you're holding it up against.
+    static func frameRect(in size: CGSize) -> CGRect {
+        let w = min(size.width * 0.86, 430)
+        let h = w * frameAspect
+        return CGRect(x: (size.width - w) / 2,
+                      y: size.height * 0.44 - h / 2,
                       width: w, height: h)
     }
 
+    /// The stamp-to-be: the frame's window, 4:5. Shared by the capture path
+    /// and the reveal handoff — single source of truth, so what you see
+    /// through the mount is exactly what gets cut.
+    static func viewfinderRect(in size: CGSize) -> CGRect {
+        let f = frameRect(in: size)
+        return CGRect(x: f.minX + apertureInFrame.minX * f.width,
+                      y: f.minY + apertureInFrame.minY * f.height,
+                      width: apertureInFrame.width * f.width,
+                      height: apertureInFrame.height * f.height)
+    }
+
     var body: some View {
+        let frame = Self.frameRect(in: screenSize)
         let vf = Self.viewfinderRect(in: screenSize)
 
         ZStack {
@@ -38,11 +71,18 @@ struct CameraScreen: View {
             if isLive {
                 feed
 
-                HoleDim(hole: vf)
-                    .fill(Color.black.opacity(0.32), style: FillStyle(eoFill: true))
+                // Darken the world the mount isn't framing, so the eye goes
+                // to the window. The mount's own body does the occluding
+                // inside its bounds.
+                HoleDim(hole: vf, corner: vf.width * 0.026)
+                    .fill(Color.black.opacity(0.38), style: FillStyle(eoFill: true))
                     .allowsHitTesting(false)
 
-                ViewfinderOverlay(rect: vf)
+                Image("viewfinder_frame")
+                    .resizable()
+                    .frame(width: frame.width, height: frame.height)
+                    .position(x: frame.midX, y: frame.midY)
+                    .allowsHitTesting(false)
             } else {
                 permissionGate
             }
@@ -58,6 +98,22 @@ struct CameraScreen: View {
         .scaleEffect(capturePunch ? 0.97 : 1)
         .frame(width: screenSize.width, height: screenSize.height)
         .background(Color.black)
+        .fullScreenCover(item: $framingImage) { picked in
+            PhotoFramingScreen(
+                image: picked.image,
+                screenSize: screenSize,
+                safeArea: safeArea,
+                onCancel: { framingImage = nil },
+                onUse: { crop, screen in
+                    framingImage = nil
+                    Task {
+                        await model.importFramed(
+                            crop, screen: screen,
+                            aperture: Self.viewfinderRect(in: screenSize))
+                    }
+                }
+            )
+        }
     }
 
     /// The shutter tap's press-then-lift: down quickly, spring back past
@@ -126,13 +182,12 @@ struct CameraScreen: View {
             Task { @MainActor in
                 defer { pickedItem = nil }
                 guard let data = try? await item.loadTransferable(type: Data.self),
-                      let image = UIImage(data: data) else { return }
-                let size = screenSize
-                await model.importPhoto(
-                    image,
-                    viewfinderRect: Self.viewfinderRect(in: size),
-                    viewSize: size
-                )
+                      let raw = ImageOptimizer.downsampled(data: data, maxPixel: 3072)
+                else { return }
+                // Frame it first. The old path cropped on the spot using the
+                // live viewfinder rect, which had nothing to do with where
+                // the subject actually was.
+                framingImage = PickedPhoto(image: ImageOptimizer.normalizedOrientation(raw))
             }
         }
 
@@ -199,15 +254,21 @@ struct CameraScreen: View {
     }
 }
 
-/// Full-screen dim with a perforated stamp-shaped hole (even-odd fill) —
-/// the live feed shows through the same silhouette the finished stamp wears.
+/// Full-screen dim with a rectangular hole (even-odd fill).
+///
+/// The hole used to be a `PerforatedRect`, back when the dim itself drew the
+/// stamp silhouette. The mount art now owns that job — its window is a plain
+/// rounded opening — so a perforated hole would show notches that don't line
+/// up with the object sitting on top of it.
 struct HoleDim: Shape {
     let hole: CGRect
+    var corner: CGFloat = 0
 
     func path(in rect: CGRect) -> Path {
         var p = Path()
         p.addRect(rect)
-        p.addPath(PerforatedRect().path(in: hole))
+        p.addRoundedRect(in: hole,
+                         cornerSize: CGSize(width: corner, height: corner))
         return p
     }
 }
@@ -266,4 +327,11 @@ struct PermissionDeniedView: View {
             }
         }
     }
+}
+
+/// A picked library photo on its way to the framing step. `UIImage` is not
+/// `Identifiable`, and identity here is per-pick, not per-pixel.
+struct PickedPhoto: Identifiable {
+    let id = UUID()
+    let image: UIImage
 }

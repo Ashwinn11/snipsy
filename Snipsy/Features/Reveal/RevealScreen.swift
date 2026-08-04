@@ -378,12 +378,13 @@ struct RevealScreen: View {
 
             // The dressed stamp is the default outcome — the live viewfinder
             // already framed this as a whole stamp, so the reveal lands on
-            // paper instead of a raw photo waiting on a tap. Die-cut is a
-            // secondary, manual choice in the row below. A tap inside this
-            // beat wins.
+            // paper instead of a raw photo waiting on a tap. Bleed is the
+            // landing: the photo itself cut to the perforation, with nothing
+            // printed on it to read past. Die-cut sits beside it as a
+            // secondary, manual choice. A tap inside this beat wins.
             try? await Task.sleep(for: .seconds(0.3))
             guard case .reveal = model.phase else { return }
-            if selection == nil { select(.paper(.tinted), auto: true) }
+            if selection == nil { select(.paper(.bleed), auto: true) }
 
             // The first-ever output screen is the wow moment — worth one
             // of the year's three rating prompts. Held until after the cut
@@ -437,9 +438,18 @@ struct RevealScreen: View {
                     await afterNextCommit()
                     guard gen == switchGen else { break }
                     model.haptics.tick()
+                    // The sheet has to leave WITH the punch, not after the
+                    // wave. `assembly()` ties `photoFade` to `1 - stickerness`,
+                    // so once the reveal started defaulting to a dressed
+                    // stamp (`paper == 1`) rather than the bare crop, the
+                    // photo faded out while the paper was still up — a blank
+                    // stamp for the whole cut. The switch path below already
+                    // drops both together; this is the same move.
+                    withAnimation(.easeOut(duration: 0.10)) { caption = 0.001 }
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
                         stickerness = 1
                         press = 1
+                        paper = 0.001
                     }
                     try? await Task.sleep(for: .seconds(0.45))
                     guard gen == switchGen else { break }
@@ -683,6 +693,20 @@ struct RevealScreen: View {
                             .shadow(color: Theme.shadow.opacity(0.22), radius: 3, y: 2)
                     }
                 }
+                optionButton(.paper(.bleed), selected: selection == .paper(.bleed)) {
+                    StampView(
+                        image: pending.displayImage,
+                        style: pending.style,
+                        tint: pending.tint.color,
+                        title: "",
+                        number: stampNumber,
+                        variant: .bleed,
+                        stickerBox: pending.stickerBox,
+                        rawCrop: pending.capture.cropImage,
+                        assembly: thumbAssembly
+                    )
+                    .frame(width: 52)
+                }
                 optionButton(.polaroid, selected: selection == .polaroid) {
                     PolaroidView(image: pending.capture.cropImage,
                                  title: "", appear: 0)
@@ -693,7 +717,7 @@ struct RevealScreen: View {
                              title: "", appear: 0)
                         .frame(width: 52)
                 }
-                ForEach(StampVariant.allCases) { v in
+                ForEach(StampVariant.allCases.filter { $0 != .bleed }) { v in
                     optionButton(.paper(v), selected: selection == .paper(v)) {
                         StampView(
                             image: pending.displayImage,

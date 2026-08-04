@@ -155,10 +155,17 @@ final class CanvasEditorModel {
         editingTextID = layer.id
     }
 
-    /// Copy a saved die-cut into the composition — its own file, so the
-    /// source sticker can be deleted without breaking this creation.
+    /// Copy any collected artifact into the composition — its own file, so
+    /// the source can be deleted without breaking this creation.
+    ///
+    /// Stamps, polaroids and cards arrive WHOLE, exactly as they do on the
+    /// decorate entry path: the stored file is only their source photo, so
+    /// placing that directly would strip the perforations and caption that
+    /// make them the thing the user collected. `dressedRender` returns nil
+    /// for stickers and pages, whose stored pixels already are the artifact.
     func addStickerLayer(from stamp: Stamp) {
-        guard let image = store.image(for: stamp) else { return }
+        guard let source = store.image(for: stamp) else { return }
+        let image = Self.dressedRender(of: stamp, image: source) ?? source
         push()
         let file = store.saveLayerImage(image)
         sessionFiles.insert(file)

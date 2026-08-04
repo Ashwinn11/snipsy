@@ -24,8 +24,36 @@ enum StampVariant: String, Codable, CaseIterable, Identifiable {
     case night
     /// Keepsake: rose sheet, delicate engraved hairlines, italic caption.
     case sweetheart
+    /// Bleed: the picture runs to the perforation on all four sides. No
+    /// keyline, no caption strip, no denomination — the photo *is* the
+    /// stamp. The only edition with nothing printed over it.
+    case bleed
 
     var id: String { rawValue }
+
+    /// Editions whose picture runs to the perforation carry no caption
+    /// strip — there is no paper margin left to print it on.
+    var hidesCaption: Bool { self == .bleed }
+
+    /// Display name in any gallery. Spelled out rather than derived from
+    /// `rawValue.capitalized` — a raw value is an on-disk storage key and
+    /// can never be translated, so deriving the label from it would pin
+    /// every edition name to English forever.
+    var label: String {
+        switch self {
+        case .tinted: L("Tinted")
+        case .ivory: L("Ivory")
+        case .ink: L("Ink")
+        case .airmail: L("Airmail")
+        case .commemorative: L("Commemorative")
+        case .foil: L("Foil")
+        case .revenue: L("Revenue")
+        case .botanical: L("Botanical")
+        case .night: L("Night")
+        case .sweetheart: L("Sweetheart")
+        case .bleed: L("Bleed")
+        }
+    }
 }
 
 /// What the user chose to make from a capture. A sticker is a first-class
@@ -67,7 +95,7 @@ struct Stamp: Identifiable, Codable, Equatable {
     /// imageFile is the flattened preview and the creation is re-editable.
     var canvas: CanvasDocument? = nil
 
-    var displayTitle: String { title.isEmpty ? "Untitled" : title }
+    var displayTitle: String { title.isEmpty ? L("Untitled") : title }
 
     /// Every image file this stamp owns under images/ — the flattened
     /// preview plus any canvas layer pixels. Deletion must remove all.
@@ -150,17 +178,17 @@ struct MonthFolder: Identifiable, Equatable {
     var id: Date { month }
 
     var countLine: String {
-        stamps.count == 1 ? "1 stamp" : "\(stamps.count) stamps"
+        L("\(stamps.count) stamps")
     }
     var memoriesLine: String {
-        stamps.count == 1 ? "1 memory" : "\(stamps.count) memories"
+        L("\(stamps.count) memories")
     }
 
     private static let nameFormatter: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "MMMM"; return f
+        return .app(template: "MMMM")
     }()
     private static let yearFormatter: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "yyyy"; return f
+        return .app(template: "yyyy")
     }()
 
     /// Group a collection into month folders, newest month first.

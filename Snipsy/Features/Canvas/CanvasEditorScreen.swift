@@ -90,7 +90,7 @@ struct CanvasTemplateChooserSheet: View {
                                                     .offset(x: 5, y: -5)
                                             }
                                         }
-                                    Text(suggested ? "For you" : choice.label)
+                                    Text(suggested ? L("For you") : choice.label)
                                         .font(.system(size: 11, weight: .medium, design: .rounded))
                                         .foregroundStyle(suggested ? Theme.postalRed : Theme.inkSoft)
                                 }
@@ -468,12 +468,13 @@ struct CanvasEditorScreen: View {
                 return
             }
             editor.save(preview: preview)
+            MemoryProbe.log("canvas save")
             model.haptics.success()
             model.pillBump += 1
             model.reviews.stampKept(count: model.store.stamps.count)
             // Hold on the confirmation for a beat, then back to the canvas
             // tab's empty state — this editor instance is done.
-            editor.flashToast("Kept ✓")
+            editor.flashToast(L("Kept ✓"))
             try? await Task.sleep(for: .seconds(0.6))
             model.canvasEditing = false
             saving = false
@@ -665,7 +666,7 @@ struct ImageModeChooserSheet: View {
     }
 
     private func option<Art: View>(
-        _ treatment: ImageTreatment, title: String, caption: String,
+        _ treatment: ImageTreatment, title: LocalizedStringKey, caption: LocalizedStringKey,
         @ViewBuilder art: @escaping (CGFloat) -> Art
     ) -> some View {
         Button {

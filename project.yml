@@ -4,6 +4,23 @@ options:
   deploymentTarget:
     iOS: "26.0"
   createIntermediateGroups: true
+  developmentLanguage: en
+  # Every locale the String Catalog carries. Apple falls back to `en` for any
+  # storefront not listed, so adding one here is what makes it translatable —
+  # the catalog itself decides what actually ships.
+  knownRegions:
+    - en
+    - ko
+    - ja
+    - zh-Hans
+    - zh-Hant
+    - es-ES
+    - es-MX
+    - fr-FR
+    - de-DE
+    - pt-BR
+    - it
+    - ru
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -12,6 +29,8 @@ settings:
     CODE_SIGN_STYLE: "Automatic"
     CODE_SIGN_IDENTITY: "Apple Development"
     CODE_SIGNING_REQUIRED: "NO"
+    # Emit LocalizedStringKey literals into the String Catalog on build.
+    SWIFT_EMIT_LOC_STRINGS: "YES"
 packages:
   RevenueCat:
     url: https://github.com/RevenueCat/purchases-ios
@@ -39,8 +58,8 @@ targets:
       path: Snipsy/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.5"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "1.6"
+        CFBundleVersion: "5"
         NSCameraUsageDescription: "Snipsy uses the camera so you can turn your moments into collectible stamps and stickers."
         NSPhotoLibraryAddUsageDescription: "Snipsy saves the stamps and stickers you export to your photo library."
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
@@ -62,13 +81,15 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
         ENABLE_PREVIEWS: "YES"
-        CURRENT_PROJECT_VERSION: "4"
-        MARKETING_VERSION: "1.5"
+        CURRENT_PROJECT_VERSION: "5"
+        MARKETING_VERSION: "1.6"
   SnipsyStickers:
     type: app-extension.messages
     platform: iOS
     sources:
       - path: SnipsyStickers
+      - path: Snipsy/Core/LanguageController.swift
+      - path: Snipsy/Resources/Localizable.xcstrings
     entitlements:
       path: SnipsyStickers/SnipsyStickers.entitlements
       properties:
@@ -78,8 +99,8 @@ targets:
       path: SnipsyStickers/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.5"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "1.6"
+        CFBundleVersion: "5"
         UIUserInterfaceStyle: Light
         NSExtension:
           NSExtensionPointIdentifier: com.apple.message-payload-provider
@@ -89,8 +110,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark.stickers
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
-        CURRENT_PROJECT_VERSION: "4"
-        MARKETING_VERSION: "1.5"
+        CURRENT_PROJECT_VERSION: "5"
+        MARKETING_VERSION: "1.6"
         ASSETCATALOG_COMPILER_APPICON_NAME: iMessage App Icon
   SnipsyShare:
     type: app-extension
@@ -101,6 +122,9 @@ targets:
       - path: Snipsy/Core/Models.swift
       - path: Snipsy/Core/CanvasModels.swift
       - path: Snipsy/Core/StampStore.swift
+      - path: Snipsy/Core/MemoryProbe.swift
+      - path: Snipsy/Core/LanguageController.swift
+      - path: Snipsy/Resources/Localizable.xcstrings
       - path: Snipsy/Core/VisionService.swift
       - path: Snipsy/Core/StampRenderer.swift
       - path: Snipsy/Core/ImageOptimizer.swift
@@ -126,8 +150,8 @@ targets:
       path: SnipsyShare/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.5"
-        CFBundleVersion: "4"
+        CFBundleShortVersionString: "1.6"
+        CFBundleVersion: "5"
         UIUserInterfaceStyle: Light
         UIAppFonts:
           - PlusJakartaSans-Regular.ttf
@@ -146,5 +170,5 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark.share
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
-        CURRENT_PROJECT_VERSION: "4"
-        MARKETING_VERSION: "1.5"
+        CURRENT_PROJECT_VERSION: "5"
+        MARKETING_VERSION: "1.6"

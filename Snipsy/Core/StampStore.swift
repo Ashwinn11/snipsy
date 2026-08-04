@@ -69,6 +69,13 @@ final class StampStore {
 
     @ObservationIgnored private let cache = NSCache<NSString, UIImage>()
 
+    /// Layer bitmaps whose bytes have not reached disk yet. `cache` cannot
+    /// hold them on its own: NSCache purges under memory pressure by
+    /// design, and these are created during canvas editing — the app's
+    /// memory peak. A strong reference here keeps the pixels reachable
+    /// until the write confirms.
+    @ObservationIgnored private var pendingLayerWrites: [String: UIImage] = [:]
+
     nonisolated static let appGroup = "group.com.ashwinn.postmark"
 
     /// Shared with the Messages sticker extension. Falls back to Documents
@@ -89,10 +96,62 @@ final class StampStore {
     }
 
     init() {
+        // A budget the cache can plan against. Without one NSCache only ever
+        // evicts *reactively*, after iOS has already fired a memory warning —
+        // and that purge is what used to strand half-written layer bitmaps.
+        // An eighth of physical RAM sits inside the 10–20%-of-available
+        // guidance on every device this ships to; the clamp keeps a 3 GB
+        // iPhone from over-committing against its ~900 MB jetsam budget and a
+        // 16 GB iPad from hoarding.
+        cache.totalCostLimit = min(max(Int(ProcessInfo.processInfo.physicalMemory) / 8,
+                                       64 << 20), 256 << 20)
         try? FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(at: stickersDir, withIntermediateDirectories: true)
         load()
         if !Self.isExtension { backfillDrawer() }
+    }
+
+    // MARK: Cache
+
+    /// The single funnel for every cache insert. Costed by the real decoded
+    /// size — a bare `setObject` tells NSCache nothing about how much a
+    /// multi-megabyte bitmap actually weighs, so it evicts on guesswork.
+    private func cacheImage(_ image: UIImage, for key: String) {
+        let cost = (image.cgImage?.bytesPerRow ?? 0) * (image.cgImage?.height ?? 0)
+        cache.setObject(image, forKey: key as NSString, cost: cost)
+    }
+
+    /// Grid-cell resolution. Covers an 84 pt sheet cell and a ~110 pt album
+    /// cell at 3×; one fixed size means one thumb key per file, which is what
+    /// makes invalidation tractable (NSCache cannot enumerate its keys).
+    static let thumbnailPixels: CGFloat = 400
+
+    private func thumbKey(_ file: String) -> String { "t:" + file }
+
+    /// Drop both tiers for a file. Every site that deletes or replaces an
+    /// image must call this, or a stale thumbnail outlives its source.
+    private func evict(_ file: String) {
+        cache.removeObject(forKey: file as NSString)
+        cache.removeObject(forKey: thumbKey(file) as NSString)
+    }
+
+    /// Cell-sized copy for grids. Decodes straight to size via ImageIO, so
+    /// the full bitmap is never materialized just to be shrunk — roughly 840 KB
+    /// resident against the ~7.8 MB a full-size read costs.
+    func thumbnail(for stamp: Stamp) -> UIImage? {
+        let file = stamp.imageFile
+        let key = thumbKey(file)
+        if let cached = cache.object(forKey: key as NSString) { return cached }
+        let url = imagesDir.appendingPathComponent(file)
+        guard let small = ImageOptimizer.downsampled(url: url,
+                                                     maxPixel: Self.thumbnailPixels)
+        else {
+            // Freshly added stamps are served from the full-size cache until
+            // their detached write lands; there is no file to downsample yet.
+            return image(for: stamp)
+        }
+        cacheImage(small, for: key)
+        return small
     }
 
     /// Drawer copy for one item: sticker items ship the bare die-cut; stamp
@@ -132,7 +191,7 @@ final class StampStore {
         }
         guard let data else { return }
         Task.detached(priority: .utility) {
-            try? data.write(to: destination)
+            try? data.write(to: destination, options: .atomic)
         }
     }
 
@@ -187,7 +246,7 @@ final class StampStore {
         let destination = imagesDir.appendingPathComponent(file)
         Task.detached(priority: .utility) {
             if let data = ImageOptimizer.optimized(display) {
-                try? data.write(to: destination)
+                try? data.write(to: destination, options: .atomic)
             }
         }
         let stamp = Stamp(
@@ -202,7 +261,7 @@ final class StampStore {
             kind: kind,
             labelAnchor: kind == .sticker ? (pending.stickerLabelAnchor ?? 0.945) : nil
         )
-        cache.setObject(display, forKey: file as NSString)
+        cacheImage(display, for: file)
         stamps.insert(stamp, at: 0)
         save()
         writeDrawerCopy(for: stamp, display: display)
@@ -218,7 +277,7 @@ final class StampStore {
         let destination = imagesDir.appendingPathComponent(file)
         Task.detached(priority: .utility) {
             if let data = ImageOptimizer.optimized(preview) {
-                try? data.write(to: destination)
+                try? data.write(to: destination, options: .atomic)
             }
         }
         let stamp = Stamp(
@@ -238,7 +297,7 @@ final class StampStore {
             labelAnchor: nil,
             canvas: doc
         )
-        cache.setObject(preview, forKey: file as NSString)
+        cacheImage(preview, for: file)
         insertNewestFirst(stamp)
         save()
         writeDrawerCopy(for: stamp, display: preview)
@@ -263,15 +322,18 @@ final class StampStore {
         let kept = Set(stamps[i].allImageFiles)
         for file in oldFiles.subtracting(kept) {
             try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(file))
-            cache.removeObject(forKey: file as NSString)
+            evict(file)
         }
         let destination = imagesDir.appendingPathComponent(stamps[i].imageFile)
         Task.detached(priority: .utility) {
             if let data = ImageOptimizer.optimized(preview) {
-                try? data.write(to: destination)
+                try? data.write(to: destination, options: .atomic)
             }
         }
-        cache.setObject(preview, forKey: stamps[i].imageFile as NSString)
+        // Same file name, new pixels — the old thumbnail is now a lie, so
+        // drop it before seeding the full-size tier with the fresh preview.
+        evict(stamps[i].imageFile)
+        cacheImage(preview, for: stamps[i].imageFile)
         // Re-filing invalidates `i`, so take the value before sorting.
         let updated = stamps[i]
         stamps.sort { $0.date > $1.date }
@@ -280,31 +342,47 @@ final class StampStore {
     }
 
     /// Park a canvas layer bitmap under images/; returns its file name.
-    /// The cache serves reads until the write lands (same contract as add).
+    /// Pinned in `pendingLayerWrites` until the bytes land, so a cache
+    /// purge mid-edit can never leave the layer pointing at nothing.
     func saveLayerImage(_ image: UIImage) -> String {
         let file = "\(UUID().uuidString).heic"
         let destination = imagesDir.appendingPathComponent(file)
-        cache.setObject(image, forKey: file as NSString)
-        Task.detached(priority: .utility) {
-            if let data = ImageOptimizer.optimized(image) {
-                try? data.write(to: destination)
-            }
+        pendingLayerWrites[file] = image
+        cacheImage(image, for: file)
+        Task.detached(priority: .userInitiated) {
+            // PNG fallback: a bitmap HEIC can't encode still has to reach
+            // disk, or the document keeps a reference to pixels that no
+            // longer exist anywhere and the layer is gone for good.
+            guard let data = ImageOptimizer.optimized(image) ?? image.pngData()
+            else { return }
+            // Atomic: a reader arriving mid-write decodes a truncated file
+            // and gets nil — the same blank layer by a different route.
+            guard (try? data.write(to: destination, options: .atomic)) != nil
+            else { return }
+            await self.finishLayerWrite(file)
         }
         return file
     }
 
+    /// The bytes are on disk — reads can fall back to the file now.
+    private func finishLayerWrite(_ file: String) {
+        pendingLayerWrites[file] = nil
+    }
+
     /// Remove an orphaned layer file (editor cancel / undo GC).
     func deleteLayerImage(_ file: String) {
+        pendingLayerWrites[file] = nil
         try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(file))
-        cache.removeObject(forKey: file as NSString)
+        evict(file)
     }
 
     /// Any image under images/ by file name (canvas layers).
     func layerImage(named file: String) -> UIImage? {
+        if let pinned = pendingLayerWrites[file] { return pinned }
         if let cached = cache.object(forKey: file as NSString) { return cached }
         let url = imagesDir.appendingPathComponent(file)
         guard let image = UIImage(contentsOfFile: url.path) else { return nil }
-        cache.setObject(image, forKey: file as NSString)
+        cacheImage(image, for: file)
         return image
     }
 
@@ -312,7 +390,7 @@ final class StampStore {
         stamps.removeAll { $0.id == stamp.id }
         for file in stamp.allImageFiles {
             try? FileManager.default.removeItem(at: imagesDir.appendingPathComponent(file))
-            cache.removeObject(forKey: file as NSString)
+            evict(file)
         }
         try? FileManager.default.removeItem(
             at: stickersDir.appendingPathComponent("\(stamp.id.uuidString).png"))
@@ -355,7 +433,7 @@ final class StampStore {
         if let cached = cache.object(forKey: stamp.imageFile as NSString) { return cached }
         let url = imagesDir.appendingPathComponent(stamp.imageFile)
         guard let image = UIImage(contentsOfFile: url.path) else { return nil }
-        cache.setObject(image, forKey: stamp.imageFile as NSString)
+        cacheImage(image, for: stamp.imageFile)
         return image
     }
 
@@ -363,8 +441,7 @@ final class StampStore {
     var dayGroups: [(day: Date, title: String, stamps: [Stamp])] {
         let calendar = Calendar.current
         let groups = Dictionary(grouping: stamps) { calendar.startOfDay(for: $0.date) }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
+        let formatter = DateFormatter.app(template: "MMMd")
         return groups.keys.sorted(by: >).map { day in
             (day, formatter.string(from: day), groups[day]!.sorted { $0.date > $1.date })
         }
@@ -385,26 +462,40 @@ final class StampStore {
         decoder.dateDecodingStrategy = .iso8601
         stamps = (try? decoder.decode([Stamp].self, from: data)) ?? []
         prewarmCache()
+        MemoryProbe.log("launch (\(stamps.count) stamps)")
     }
 
-    /// Pre-decode stamp images in the background so opening the album serves 100% cache hits.
+    /// One screenful of album cells, decoded ahead of the first scroll.
+    ///
+    /// This used to walk the *entire* collection calling
+    /// `preparingForDisplay()` — the deliberately non-lazy path — which put
+    /// every stamp's full 1600 px bitmap resident at launch: ~390 MB at 50
+    /// stamps, ~780 MB at 100, against a jetsam budget near 900 MB on a 3 GB
+    /// device. It bought instant album scroll by spending memory the app
+    /// could not afford, and the resulting pressure is what made NSCache
+    /// purge mid-edit. A capped thumbnail warm keeps the scroll and costs a
+    /// flat ~10 MB no matter how large the collection grows.
+    ///
+    /// Serial by design: one task walking the list, not one task per stamp.
     private func prewarmCache() {
-        let items = stamps
+        let items = Array(stamps.prefix(Self.prewarmCount))
         let dir = imagesDir
+        let pixels = Self.thumbnailPixels
         Task.detached(priority: .utility) { [weak self] in
             for stamp in items {
                 let url = dir.appendingPathComponent(stamp.imageFile)
-                if let raw = UIImage(contentsOfFile: url.path),
-                   let prepped = raw.preparingForDisplay() ?? Optional(raw) {
-                    await self?.cacheImage(prepped, for: stamp.imageFile)
-                }
+                guard let small = ImageOptimizer.downsampled(url: url, maxPixel: pixels)
+                else { continue }
+                await self?.seedThumbnail(small, for: stamp.imageFile)
             }
         }
     }
 
-    private func cacheImage(_ image: UIImage, for key: String) {
-        if cache.object(forKey: key as NSString) == nil {
-            cache.setObject(image, forKey: key as NSString)
-        }
+    private static let prewarmCount = 12
+
+    private func seedThumbnail(_ image: UIImage, for file: String) {
+        let key = thumbKey(file)
+        guard cache.object(forKey: key as NSString) == nil else { return }
+        cacheImage(image, for: key)
     }
 }

@@ -9,6 +9,7 @@ struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var doc: LegalDoc? = nil
     @State private var confirmDelete = false
+    @State private var showLanguage = false
 
     private var version: String {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
@@ -54,6 +55,7 @@ struct SettingsSheet: View {
                         model.haptics.tick()
                         model.reviews.rateManually()
                     }
+                    row("Language") { showLanguage = true }
                     row("Terms of Service") { doc = .terms }
                     row("Privacy Policy") { doc = .privacy }
                 }
@@ -94,6 +96,9 @@ struct SettingsSheet: View {
         }
         .presentationDetents([.medium])
         .presentationCornerRadius(28)
+        .sheet(isPresented: $showLanguage) {
+            LanguagePicker().presentationDetents([.medium, .large])
+        }
         .sheet(item: $doc) { LegalDocView(doc: $0) }
         .confirmationDialog(
             "Delete every stamp and photo? This cannot be undone.",
@@ -108,7 +113,7 @@ struct SettingsSheet: View {
         }
     }
 
-    private func row(_ title: String, action: @escaping () -> Void) -> some View {
+    private func row(_ title: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
                 Text(title)

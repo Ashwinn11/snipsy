@@ -177,6 +177,36 @@ final class AppModel {
         }
     }
 
+    /// A photo the user framed themselves, already cut to the aperture.
+    ///
+    /// The library picker used to hand the whole image to `importPhoto`,
+    /// which mapped the *live* viewfinder rect over a screen-fitted layout —
+    /// a crop nobody chose, and one the die cut then had to work inside.
+    /// `PhotoFramingScreen` makes that choice explicit, so there is nothing
+    /// left to guess here: the crop IS the capture, exactly as the share
+    /// extension treats its own centred cut.
+    func importFramed(_ crop: UIImage, screen: UIImage, aperture: CGRect) async {
+        guard inCameraPhase, !isCapturing else { return }
+        isCapturing = true
+        defer { isCapturing = false }
+        haptics.tick()
+        blackout = true
+
+        let baked = await Task.detached(priority: .userInitiated) {
+            (crop: crop.preparingForDisplay() ?? crop,
+             screen: screen.preparingForDisplay() ?? screen)
+        }.value
+
+        pendingAnalysis = Task { await VisionService.analyze(baked.crop) }
+        try? await Task.sleep(for: .seconds(0.2))
+        // Same three inputs a shutter press produces, so the develop
+        // dissolve is the identical animation rather than a full-screen one.
+        phase = .developing(Capture(
+            screenImage: baked.screen,
+            cropImage: baked.crop,
+            viewfinderRect: aperture))
+    }
+
     /// Bring an existing photo through the exact capture pipeline: bake a
     /// screen-exact frame, crop the viewfinder, then dissolve → die-cut →
     /// papers, identical to a live shot.

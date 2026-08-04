@@ -110,6 +110,7 @@ struct StampView: View {
         case .botanical: Color(hex: 0x6FA84F)
         case .night: Color(hex: 0x1B2740)
         case .sweetheart: Color(hex: 0xE39AA6)
+        case .bleed: tint
         }
     }
 
@@ -136,6 +137,9 @@ struct StampView: View {
         case .botanical: Color(hex: 0x15331A)
         case .night: Color(hex: 0x8FEEFF)
         case .sweetheart: Color(hex: 0x7A3A3C)
+        case .bleed: tintLuminance < 0.62
+            ? Color(red: 0.97, green: 0.95, blue: 0.90)
+            : Theme.stampInk
         }
     }
 
@@ -167,7 +171,76 @@ struct StampView: View {
 
     @ViewBuilder
     private func stampBody(_ w: CGFloat) -> some View {
-        let content = contentRect(w)
+        // `.bleed` has no plate, so it draws on its own minimal path — but
+        // that path carries none of the die-cut composite (contentLayer,
+        // hoistedWaste, stickerOverlay all live in `platedBody`). Once the
+        // reveal started defaulting to `.bleed`, selecting the die cut left
+        // the stage with nothing to draw: haptics fired, the option lit up,
+        // and the stamp went blank. While a cut is in play, bleed borrows
+        // the plated pipeline — its plate is invisible at `paper == 0`, so
+        // only the photo, the waste and the sticker show.
+        if variant == .bleed && !cutInPlay {
+            bleedBody(w)
+        } else {
+            platedBody(w)
+        }
+    }
+
+    /// The die-cut composite is on screen and must be rendered.
+    private var cutInPlay: Bool {
+        style == .cutout && assembly.content == .raw && assembly.border > 0.001
+    }
+
+    /// The photo **is** the stamp.
+    ///
+    /// Every other edition prints a picture onto a paper plate. This one has
+    /// no plate at all: the photograph itself is cut to the perforated
+    /// silhouette. Routing it through the normal paper→picture→dressing
+    /// pipeline is what produced a stamp *template* with a photo sitting
+    /// inside it — the plate showed as a coloured rim wherever the picture's
+    /// edge fell short of the teeth. Nothing is printed over it and nothing
+    /// sits behind it.
+    @ViewBuilder
+    private func bleedBody(_ w: CGFloat) -> some View {
+        let h = 1.3125 * w
+        Group {
+            if let img = rawCrop ?? image {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: w, height: h)
+                    .clipped()
+            } else {
+                // Template with no capture yet — the bare plate is all there
+                // is to show.
+                Rectangle().fill(paperFill)
+            }
+        }
+        .frame(width: w, height: h)
+        .mask { PerforatedRect().frame(width: w, height: h) }
+        // The silhouette casts the shadow, so it follows the teeth rather
+        // than a rectangle.
+        .shadow(color: Theme.shadow.opacity(0.30), radius: 0.05 * w, y: 0.024 * w)
+        .shadow(color: Theme.shadow.opacity(0.16), radius: 0.009 * w, y: 0.005 * w)
+        .opacity(assembly.paper)
+        .scaleEffect(0.94 + 0.06 * assembly.paper)
+        .modifier(HoloModifier(enabled: holoEnabled && editableTitle == nil,
+                               strength: holoStrength,
+                               sweep: holoSweep, dir: holoDir))
+        .modifier(LiquidModifier(enabled: liquidEnabled && editableTitle == nil,
+                                 center: liquidCenter,
+                                 time: liquidTime))
+        .frame(width: w, height: h, alignment: .topLeading)
+    }
+
+    @ViewBuilder
+    private func platedBody(_ w: CGFloat) -> some View {
+        // Bleed's picture is the entire plate. Using the inset `contentRect`
+        // here would jump the photo's scale at the moment bleed hands over
+        // to this path for a cut.
+        let content = variant == .bleed
+            ? CGRect(x: 0, y: 0, width: w, height: 1.3125 * w)
+            : contentRect(w)
 
         ZStack(alignment: .topLeading) {
             ZStack(alignment: .topLeading) {
@@ -186,7 +259,7 @@ struct StampView: View {
                     .allowsHitTesting(false)
 
                 // ── Caption strip ────────────────────────────────────
-                if showCaption {
+                if showCaption && !variant.hidesCaption {
                     captionLayer(w)
                         .opacity(assembly.paper)
                         // Invisible in sticker form (paper 0.001) but still
@@ -317,6 +390,11 @@ struct StampView: View {
 
         ZStack(alignment: .topLeading) {
             switch variant {
+            case .bleed:
+                // Nothing. No keyline, no rings, no bar — the photo is the
+                // whole stamp, and any furniture would break the bleed.
+                EmptyView()
+
             case .tinted:
                 Rectangle()
                     .strokeBorder(Color(red: 0.97, green: 0.94, blue: 0.88).opacity(0.7),
@@ -663,6 +741,8 @@ struct StampView: View {
         case .airmail: CGRect(x: 0.10 * w, y: 0.115 * w, width: 0.80 * w, height: 1.00 * w)
         case .foil:    CGRect(x: 0.078 * w, y: 0.078 * w, width: 0.844 * w, height: 1.054 * w)
         case .ivory:   CGRect(x: 0.18 * w, y: 0.16 * w, width: 0.64 * w, height: 0.82 * w)
+        // The whole plate: the picture runs under the perforation itself.
+        case .bleed:   CGRect(x: 0, y: 0, width: w, height: 1.3125 * w)
         default:       contentRect(w)
         }
     }
@@ -709,9 +789,11 @@ struct StampView: View {
             .mask {
                 ZStack {
                     RoundedRectangle(cornerRadius: rect.width * 0.01)
-                        .opacity(variant == .ivory ? 0 : 1)
+                        .opacity(variant == .ivory || variant == .bleed ? 0 : 1)
                     Ellipse()
                         .opacity(variant == .ivory ? 1 : 0)
+                    PerforatedRect()
+                        .opacity(variant == .bleed ? 1 : 0)
                 }
             }
             .offset(x: rect.minX, y: rect.minY)
@@ -760,6 +842,7 @@ struct StampView: View {
         case .botanical: (0.78, 0.78, -0.012)
         case .night: (0.80, 0.80, -0.012)
         case .sweetheart: (0.80, 0.80, -0.012)
+        case .bleed: (0.94, 0.94, 0)
         }
         let avail = CGSize(width: content.width * fw, height: content.height * fh)
         let fit = min(avail.width / imageSize.width, avail.height / imageSize.height)

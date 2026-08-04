@@ -19,7 +19,6 @@ struct StampDetailView: View {
     @State private var localTitle = ""
     @FocusState private var titleFocused: Bool
     @State private var confirmDelete = false
-    @State private var shareImage: Image? = nil
     @State private var shareUIImage: UIImage? = nil
 
     // Liquid poke — same gesture language as the reveal.
@@ -193,13 +192,14 @@ struct StampDetailView: View {
     }
 
     private var metaLine: String {
-        "Collected \(Self.metaFormatter.string(from: current.date))"
+        L("Collected \(Self.metaFormatter.string(from: current.date))")
     }
 
+    /// Built from a template, not a fixed pattern. `"h:mm a"` hard-codes a
+    /// 12-hour clock and a US field order; the template lets each locale
+    /// reorder the fields and pick its own 12/24-hour convention.
     private static let metaFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.dateFormat = "MMMM d, yyyy · h:mm a"
-        return df
+        return .app(template: "MMMMdyyyy jmm")
     }()
 
     // MARK: Actions
@@ -214,6 +214,12 @@ struct StampDetailView: View {
                     actionIcon("square.and.arrow.up")
                 }
                 .glassEffect(.regular.interactive(), in: .circle)
+            } else {
+                // The render waits out the entrance animation — hold the
+                // slot so the row doesn't jump when it lands.
+                actionIcon("square.and.arrow.up")
+                    .opacity(0.3)
+                    .glassEffect(.regular, in: .circle)
             }
 
             if current.kind == .stamp || current.kind == .polaroid
@@ -321,12 +327,10 @@ struct StampDetailView: View {
                 renderer.isOpaque = false
                 if let ui = renderer.uiImage {
                     shareUIImage = ui
-                    shareImage = Image(uiImage: ui)
                     return
                 }
             }
             shareUIImage = base
-            shareImage = Image(uiImage: base)
             return
         }
 
@@ -344,13 +348,17 @@ struct StampDetailView: View {
         renderer.isOpaque = false
         if let ui = renderer.uiImage {
             shareUIImage = ui
-            shareImage = Image(uiImage: ui)
         }
     }
 }
 
-/// A shareable PNG file — the file representation keeps the alpha channel
-/// through every share-sheet activity, including Save Image.
+/// A shareable PNG — declared as raw data, not a file. `FileRepresentation`
+/// is the obvious choice here and it is the wrong one: since iOS 17 it fails
+/// for out-of-process consumers, so every third-party share extension
+/// (WhatsApp, Instagram, TikTok, ChatGPT) receives a zero-length item or an
+/// outright error while Apple's own targets keep working. Data plus a
+/// suggested name is the path those extensions actually read. The content
+/// type stays `.png`, so the alpha channel survives as before.
 struct PNGArtifact: Transferable {
     let title: String
     let uiImage: UIImage
@@ -358,12 +366,22 @@ struct PNGArtifact: Transferable {
     var preview: Image { Image(uiImage: uiImage) }
 
     static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .png) { artifact in
-            let name = artifact.title.isEmpty ? "Snipsy" : artifact.title
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("\(name).png")
-            try artifact.uiImage.pngData()?.write(to: url)
-            return SentTransferredFile(url)
+        DataRepresentation(exportedContentType: .png) { artifact in
+            guard let data = artifact.uiImage.pngData() else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            return data
         }
+        .suggestedFileName { $0.fileName }
+    }
+
+    /// Titles are free text, and this name reaches a filesystem on the far
+    /// side — a slash would land the save in a directory that isn't there.
+    private var fileName: String {
+        let cleaned = title
+            .components(separatedBy: CharacterSet(charactersIn: "/\\:"))
+            .joined(separator: " ")
+            .trimmingCharacters(in: CharacterSet(charactersIn: " ."))
+        return (cleaned.isEmpty ? "Snipsy" : cleaned) + ".png"
     }
 }

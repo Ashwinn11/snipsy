@@ -3,8 +3,19 @@ import SwiftUI
 struct RootView: View {
     @State private var model = AppModel()
     @Environment(\.scenePhase) private var scenePhase
+    private let language = LanguageController.shared
 
     var body: some View {
+        content
+            // SwiftUI resolves every `Text("…")` against this. The bundle
+            // swap in LanguageController covers `L()`; the
+            // `id` forces a rebuild so a change lands instantly instead of
+            // on next launch.
+            .environment(\.locale, language.locale)
+            .id(language.code)
+    }
+
+    private var content: some View {
         ZStack {
             TabView(selection: $model.selectedTab) {
                 GeometryHost { size, insets in

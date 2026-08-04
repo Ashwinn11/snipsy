@@ -18,7 +18,7 @@ struct TextStyleValue: Codable, Equatable {
     /// anything is typed. Treated as a placeholder, not as content: the
     /// editor clears it on entry and puts it back if you leave without
     /// typing. Nothing should ever compare against the bare literal.
-    static let placeholder = "Your words"
+    static let placeholder = L("Your words")
 
     enum DesignValue: String, Codable, CaseIterable {
         case rounded, serif, monospaced, condensed, typewriter, engraved,
@@ -227,14 +227,14 @@ enum CanvasTexture: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .parchment: "Parchment"
-        case .watercolorBloom: "Watercolor Bloom"
-        case .coastalWash: "Coastal Wash"
-        case .twine: "Twine"
-        case .postmark: "Postmark"
-        case .slate: "Slate"
-        case .sweetheartCheck: "Sweetheart Check"
-        case .fadedBloom: "Faded Bloom"
+        case .parchment: L("Parchment")
+        case .watercolorBloom: L("Watercolor Bloom")
+        case .coastalWash: L("Coastal Wash")
+        case .twine: L("Twine")
+        case .postmark: L("Postmark")
+        case .slate: L("Slate")
+        case .sweetheartCheck: L("Sweetheart Check")
+        case .fadedBloom: L("Faded Bloom")
         }
     }
 }
@@ -258,19 +258,19 @@ enum MemoryOccasion: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .us: "Us"
-        case .everyday: "Everyday things"
-        case .away: "Trips & time apart"
-        case .mine: "Just for me"
+        case .us: L("Us")
+        case .everyday: L("Everyday things")
+        case .away: L("Trips & time apart")
+        case .mine: L("Just for me")
         }
     }
 
     var blurb: String {
         switch self {
-        case .us: "Dates, anniversaries, the good ones"
-        case .everyday: "Coffees, walks, ordinary days"
-        case .away: "Postcards to send or keep"
-        case .mine: "Flowers, pets, quiet things"
+        case .us: L("Dates, anniversaries, the good ones")
+        case .everyday: L("Coffees, walks, ordinary days")
+        case .away: L("Postcards to send or keep")
+        case .mine: L("Flowers, pets, quiet things")
         }
     }
 
@@ -278,10 +278,10 @@ enum MemoryOccasion: String, Codable, CaseIterable, Identifiable {
     /// earlier, pointed at the shutter.
     var captureCue: String {
         switch self {
-        case .us: "Point it at the two of you."
-        case .everyday: "Point it at something ordinary."
-        case .away: "Point it at where you are."
-        case .mine: "Point it at something you love."
+        case .us: L("Point it at the two of you.")
+        case .everyday: L("Point it at something ordinary.")
+        case .away: L("Point it at where you are.")
+        case .mine: L("Point it at something you love.")
         }
     }
 
@@ -326,11 +326,11 @@ enum MemoryBlocker: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .forgotten: "I take them and never look again"
-        case .buried: "They're buried under thousands of others"
-        case .unprinted: "I always mean to print them, and don't"
-        case .undated: "I can't remember which day was which"
-        case .effort: "Making something nice takes too long"
+        case .forgotten: L("I take them and never look again")
+        case .buried: L("They're buried under thousands of others")
+        case .unprinted: L("I always mean to print them, and don't")
+        case .undated: L("I can't remember which day was which")
+        case .effort: L("Making something nice takes too long")
         }
     }
 
@@ -338,11 +338,11 @@ enum MemoryBlocker: String, Codable, CaseIterable, Identifiable {
     /// literally true of the product — no stat is invented.
     var answer: String {
         switch self {
-        case .forgotten: "It lives on your shelf,\nnot in your camera roll."
-        case .buried: "One a day —\nnot one of ten thousand."
-        case .unprinted: "A real object,\nwithout the printer."
-        case .undated: "Dated the moment\nyou take it."
-        case .effort: "Ten seconds,\nstart to finish."
+        case .forgotten: L("It lives on your shelf,\nnot in your camera roll.")
+        case .buried: L("One a day —\nnot one of ten thousand.")
+        case .unprinted: L("A real object,\nwithout the printer.")
+        case .undated: L("Dated the moment\nyou take it.")
+        case .effort: L("Ten seconds,\nstart to finish.")
         }
     }
 }
@@ -410,7 +410,7 @@ extension CanvasDocument.Background {
     /// Stamp variants that stay decodable, so already-saved stamps keep
     /// rendering, but are no longer offered as canvas paper — they read as
     /// finished collectibles rather than a page you'd decorate.
-    static let retiredVariants: Set<StampVariant> = [.commemorative, .foil, .botanical]
+    static let retiredVariants: Set<StampVariant> = [.commemorative, .foil, .botanical, .bleed]
 
     /// Every page stock offered when starting or re-papering a composition,
     /// in gallery order. One list so the template chooser, the in-editor
@@ -427,9 +427,9 @@ extension CanvasDocument.Background {
     var label: String {
         switch self {
         case .texture(let kind): kind.label
-        case .polaroid: "Polaroid"
-        case .card: "Card"
-        case .paper(let variant): variant.rawValue.capitalized
+        case .polaroid: L("Polaroid")
+        case .card: L("Card")
+        case .paper(let variant): variant.label
         }
     }
 }

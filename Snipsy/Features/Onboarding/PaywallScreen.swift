@@ -50,12 +50,12 @@ struct PaywallScreen: View {
                     // Counts are real — keep them in step with
                     // `CanvasTexture`/`StampVariant` and `DoodleCatalog`.
                     VStack(alignment: .leading, spacing: 13) {
-                        outcome("heart.text.square", "\(decorationCount) stickers, washi and lettering")
-                        outcome("square.grid.2x2", "\(templateCount) papers to lay them out on")
-                        outcome("scissors", "Cut anyone out of any photo, on device")
-                        outcome("message", "Send them as stickers in Messages")
+                        outcome("heart.text.square", L("\(decorationCount) stickers, washi and lettering"))
+                        outcome("square.grid.2x2", L("\(templateCount) papers to lay them out on"))
+                        outcome("scissors", L("Cut anyone out of any photo, on device"))
+                        outcome("message", L("Send them as stickers in Messages"))
                     }
-                    .padding(.horizontal, 50)
+                    .padding(.horizontal, 34)
                     .entrance(shown: stage >= 2)
 
                     Spacer(minLength: 0)
@@ -158,7 +158,7 @@ struct PaywallScreen: View {
         .alert("Nothing to restore", isPresented: $noRestoreFound) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("No previous purchase was found on this Apple Account. "
+            Text(L("No previous purchase was found on this Apple Account. ")
                  + "If you bought Snipsy with a different account, sign in "
                  + "with that one and try again.")
         }
@@ -188,7 +188,7 @@ struct PaywallScreen: View {
 
     /// Echoes back what they said they were keeping. Not decoration: it's
     /// the one place the answer is repeated at the moment of the ask.
-    private var headline: String {
+    private var headline: LocalizedStringKey {
         switch occasion {
         case .us: "KEEP EVERY DATE"
         case .everyday: "KEEP THE ORDINARY DAYS"
@@ -285,7 +285,7 @@ struct PaywallScreen: View {
                 planCardView(
                     plan: .lifetime,
                     title: "Lifetime",
-                    subtitle: "Pay once. Yours forever.",
+                    subtitle: L("Pay once. Yours forever."),
                     package: lifetime,
                     period: ""
                 )
@@ -298,7 +298,7 @@ struct PaywallScreen: View {
                     title: "Yearly",
                     subtitle: yearlyWeeklyEquivalentSubtitle(yearly),
                     package: yearly,
-                    period: "year"
+                    period: L("year")
                 )
             }
             
@@ -307,9 +307,9 @@ struct PaywallScreen: View {
                 planCardView(
                     plan: .weekly,
                     title: "Weekly",
-                    subtitle: "Billed weekly. Cancel anytime.",
+                    subtitle: L("Billed weekly. Cancel anytime."),
                     package: weekly,
-                    period: "week"
+                    period: L("week")
                 )
             }
         }
@@ -319,7 +319,7 @@ struct PaywallScreen: View {
     @ViewBuilder
     private func planCardView(
         plan: PaywallPlan,
-        title: String,
+        title: LocalizedStringKey,
         subtitle: String,
         package: Package,
         period: String
@@ -388,7 +388,7 @@ struct PaywallScreen: View {
                             .foregroundStyle(Theme.ink)
                         
                         if !period.isEmpty {
-                            Text("/ \(period)")
+                            Text(verbatim: "/ ").foregroundStyle(Theme.inkSoft) + Text(period)
                                 .font(.system(size: 12, design: .rounded))
                                 .foregroundStyle(Theme.inkSoft)
                         }
@@ -424,14 +424,10 @@ struct PaywallScreen: View {
     private func periodLabel(for package: Package) -> String {
         guard let period = package.storeProduct.subscriptionPeriod else { return "" }
         switch period.unit {
-        case .day:
-            return period.value == 1 ? "day" : "\(period.value) days"
-        case .week:
-            return period.value == 1 ? "week" : "\(period.value) weeks"
-        case .month:
-            return period.value == 1 ? "month" : "\(period.value) months"
-        case .year:
-            return period.value == 1 ? "year" : "\(period.value) years"
+        case .day:   return L("\(period.value) days")
+        case .week:  return L("\(period.value) weeks")
+        case .month: return L("\(period.value) months")
+        case .year:  return L("\(period.value) years")
         @unknown default:
             return ""
         }
@@ -444,14 +440,10 @@ struct PaywallScreen: View {
         
         let period = intro.subscriptionPeriod
         switch period.unit {
-        case .day:
-            return period.value == 1 ? "1 day" : "\(period.value) days"
-        case .week:
-            return period.value == 1 ? "1 week" : "\(period.value) weeks"
-        case .month:
-            return period.value == 1 ? "1 month" : "\(period.value) months"
-        case .year:
-            return period.value == 1 ? "1 year" : "\(period.value) years"
+        case .day:   return L("\(period.value) days")
+        case .week:  return L("\(period.value) weeks")
+        case .month: return L("\(period.value) months")
+        case .year:  return L("\(period.value) years")
         @unknown default:
             return nil
         }
@@ -483,7 +475,8 @@ struct PaywallScreen: View {
         formatter.numberStyle = .currency
         formatter.locale = yearly.storeProduct.priceFormatter?.locale
         formatter.currencySymbol = yearly.storeProduct.priceFormatter?.currencySymbol ?? "$"
-        return (formatter.string(from: NSNumber(value: weeklyVal)) ?? "") + "/week"
+        let price = formatter.string(from: NSNumber(value: weeklyVal)) ?? ""
+        return L("\(price)/week")
     }
 
     private var yearlyStrikethroughPrice: String? {
@@ -540,14 +533,14 @@ struct PaywallScreen: View {
         case .yearly:
             if let yearly = purchases.yearly {
                 if isYearlyEligibleForTrial, let trialLabel = trialPeriodLabel(for: yearly) {
-                    return "Try \(trialLabel) free, then \(yearly.storeProduct.localizedPriceString)/year"
+                    return L("Try \(trialLabel) free, then \(yearly.storeProduct.localizedPriceString)/year")
                 } else {
-                    return "Continue for \(yearly.storeProduct.localizedPriceString)/year"
+                    return L("Continue for \(yearly.storeProduct.localizedPriceString)/year")
                 }
             }
         case .lifetime:
             if let lifetime = purchases.lifetime {
-                return "Unlock Lifetime for \(lifetime.storeProduct.localizedPriceString)"
+                return L("Unlock Lifetime for \(lifetime.storeProduct.localizedPriceString)")
             }
         }
         return ""
@@ -556,18 +549,18 @@ struct PaywallScreen: View {
     private var subCTAText: String {
         switch selectedPlan {
         case .lifetime:
-            return "One-time purchase. No subscription"
+            return L("One-time purchase. No subscription")
         case .weekly:
             if isWeeklyEligibleForTrial {
-                return "No payment due now. Cancel Anytime"
+                return L("No payment due now. Cancel Anytime")
             } else {
-                return "Cancel anytime. Secure checkout"
+                return L("Cancel anytime. Secure checkout")
             }
         case .yearly:
             if isYearlyEligibleForTrial {
-                return "No payment due now. Cancel Anytime"
+                return L("No payment due now. Cancel Anytime")
             } else {
-                return "Cancel anytime. Secure checkout"
+                return L("Cancel anytime. Secure checkout")
             }
         }
     }

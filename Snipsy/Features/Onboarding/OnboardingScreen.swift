@@ -84,21 +84,37 @@ struct OnboardingScreen: View {
             // Skip to the gate — never past it. Plain ease: a spring's
             // overshoot makes the page-style TabView drop multi-page
             // programmatic jumps on the floor.
-            if page < Self.lastPage {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.35)) { page = Self.lastPage }
-                } label: {
-                    Text("Skip")
-                        .font(.system(size: 14, design: .rounded))
-                        .foregroundStyle(Theme.inkSoft)
-                        .padding(.horizontal, 14)
-                        .frame(height: 34)
+            // One top row rather than two fixed points. `.position()` centres
+            // a view on a coordinate, so a longer translation grew straight
+            // off the edge — "Skip" is 4 characters, "Überspringen" is 12.
+            // Anchoring the row keeps both inset from the margin at any width.
+            VStack {
+                HStack(alignment: .center, spacing: 12) {
+                    if page == 0 {
+                        LanguageBadge()
+                            .transition(.opacity)
+                    }
+                    Spacer(minLength: 8)
+                    if page < Self.lastPage {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.35)) { page = Self.lastPage }
+                        } label: {
+                            Text("Skip")
+                                .font(.system(size: 14, design: .rounded))
+                                .foregroundStyle(Theme.inkSoft)
+                                .lineLimit(1)
+                                .padding(.horizontal, 14)
+                                .frame(height: 34)
+                        }
+                        .buttonStyle(.plain)
+                        .transition(.opacity)
+                    }
                 }
-                .buttonStyle(.plain)
-                .position(x: screenSize.width - 44,
-                          y: max(safeArea.top, 20) + 18)
-                .transition(.opacity)
+                .padding(.horizontal, 20)
+                .padding(.top, max(safeArea.top, 20))
+                Spacer(minLength: 0)
             }
+            .frame(width: screenSize.width, height: screenSize.height, alignment: .top)
         }
         .frame(width: screenSize.width, height: screenSize.height)
         .fullScreenCover(isPresented: $showPaywall) {

@@ -27,7 +27,7 @@ struct OnboardingMessagesPage: View {
     @State private var sway = false
     @State private var gen = 0
 
-    private var caption: String {
+    private var caption: LocalizedStringKey {
         switch beat {
         case .thread: "In any thread, tap the plus…"
         case .menu: "…open Stickers…"
@@ -211,7 +211,7 @@ struct OnboardingMessagesPage: View {
     }
 
     private func menuRow<Icon: View>(
-        _ title: String, highlighted: Bool = false,
+        _ title: LocalizedStringKey, highlighted: Bool = false,
         @ViewBuilder icon: () -> Icon
     ) -> some View {
         HStack(spacing: 11) {
@@ -271,7 +271,7 @@ struct OnboardingMessagesPage: View {
         )
     }
 
-    private func bubble(_ text: String, fill: Color,
+    private func bubble(_ text: LocalizedStringKey, fill: Color,
                         dark: Bool = false) -> some View {
         Text(text)
             .font(.system(size: 13))
