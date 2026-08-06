@@ -26,17 +26,26 @@ struct CameraScreen: View {
     // measured off `viewfinder_frame`, so nothing here is eyeballed: change
     // the art and re-measure, don't nudge these by hand.
 
-    /// The mount's own proportions (639 × 953 as cut).
-    private static let frameAspect: CGFloat = 953.0 / 639.0
+    /// The mount's own proportions (1024 × 1536 as cut).
+    private static let frameAspect: CGFloat = 1536.0 / 1024.0
 
-    /// Where the punched window sits inside it, as fractions of the art.
-    /// This is what makes the aperture and the capture crop agree.
+    /// The moulded opening, as fractions of the art. Measured, not eyeballed:
+    /// the punch runs x 132…891, y 225…1261 of 1024 × 1536.
+    private static let openingInFrame = CGRect(x: 0.1289, y: 0.1465,
+                                               width: 0.7422, height: 0.6751)
+
+    /// What actually gets cut, 4:5, width-matched and centred in the opening.
     ///
-    /// The moulded opening is taller than 4:5, so the hole is cut
-    /// width-matched and centred inside it; the bands left above and below
-    /// keep the recess gradient and read as part of the moulding.
-    private static let apertureInFrame = CGRect(x: 0.1549, y: 0.2046,
-                                                width: 0.6635, height: 0.5561)
+    /// The opening is 0.733 wide — taller than 4:5 — but the crop stays 4:5
+    /// because that is the stamp's picture window (`StampView`: 0.85W ×
+    /// 1.0625W). Matching it is what makes the handoff pixel-continuous.
+    /// Derived rather than written down, so re-measuring the opening can
+    /// never leave the two out of step.
+    private static var apertureInFrame: CGRect {
+        let h = openingInFrame.width * 1.25 / frameAspect
+        return CGRect(x: openingInFrame.minX, y: openingInFrame.midY - h / 2,
+                      width: openingInFrame.width, height: h)
+    }
 
     /// The mount on screen — inset from the edges, so the live feed reads as
     /// the world you're holding it up against.
@@ -48,20 +57,32 @@ struct CameraScreen: View {
                       width: w, height: h)
     }
 
-    /// The stamp-to-be: the frame's window, 4:5. Shared by the capture path
-    /// and the reveal handoff — single source of truth, so what you see
-    /// through the mount is exactly what gets cut.
+    /// The glass you look through: the whole moulded opening. The live feed
+    /// fills it edge to edge, so the mount reads as a clean window instead of
+    /// a lens with dimmed bands top and bottom.
+    static func windowRect(in size: CGSize) -> CGRect {
+        rect(openingInFrame, in: size)
+    }
+
+    /// The stamp-to-be: 4:5, centred in the window. Shared by the capture
+    /// path and the reveal handoff — single source of truth for what is kept.
+    /// Slightly shorter than `windowRect`, so the top and bottom slivers of
+    /// the live feed are preview only.
     static func viewfinderRect(in size: CGSize) -> CGRect {
+        rect(apertureInFrame, in: size)
+    }
+
+    private static func rect(_ r: CGRect, in size: CGSize) -> CGRect {
         let f = frameRect(in: size)
-        return CGRect(x: f.minX + apertureInFrame.minX * f.width,
-                      y: f.minY + apertureInFrame.minY * f.height,
-                      width: apertureInFrame.width * f.width,
-                      height: apertureInFrame.height * f.height)
+        return CGRect(x: f.minX + r.minX * f.width,
+                      y: f.minY + r.minY * f.height,
+                      width: r.width * f.width,
+                      height: r.height * f.height)
     }
 
     var body: some View {
         let frame = Self.frameRect(in: screenSize)
-        let vf = Self.viewfinderRect(in: screenSize)
+        let window = Self.windowRect(in: screenSize)
 
         ZStack {
             // Without permission there is no feed to frame, so the stamp
@@ -73,8 +94,10 @@ struct CameraScreen: View {
 
                 // Darken the world the mount isn't framing, so the eye goes
                 // to the window. The mount's own body does the occluding
-                // inside its bounds.
-                HoleDim(hole: vf, corner: vf.width * 0.026)
+                // inside its bounds. Cut to the full opening, not the 4:5
+                // crop — punching the crop left the opening's top and bottom
+                // slivers dimmed, which read as a vignette on the glass.
+                HoleDim(hole: window, corner: window.width * 0.026)
                     .fill(Color.black.opacity(0.38), style: FillStyle(eoFill: true))
                     .allowsHitTesting(false)
 
@@ -87,7 +110,7 @@ struct CameraScreen: View {
                 permissionGate
             }
 
-            chrome(viewfinder: vf)
+            chrome()
 
             if let p = focusPoint, isLive {
                 FocusIndicator()
@@ -161,7 +184,7 @@ struct CameraScreen: View {
     // MARK: Chrome
 
     @ViewBuilder
-    private func chrome(viewfinder vf: CGRect) -> some View {
+    private func chrome() -> some View {
         let topLeftY = safeArea.top + 24
         let barY = screenSize.height - max(safeArea.bottom, 16) - 54
 
