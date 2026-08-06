@@ -45,8 +45,12 @@ struct OnboardingDemoPage: View {
                 OnboardingTitle("A STICKER, OR A STAMP")
                 // Answers the pain they just picked, so this reads as a
                 // reply rather than the next item in a feature tour.
+                // `blocker?.answer` is already localized; the fallback was
+                // not, and `Text(String)` doesn't localize either way — so
+                // anyone who skipped the blocker question got this line in
+                // English.
                 Text(blocker?.answer
-                     ?? "Same photo, cut out on your phone —\nthen dressed either way.")
+                     ?? L("Same photo, cut out on your phone —\nthen dressed either way."))
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)

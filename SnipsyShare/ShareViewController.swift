@@ -241,7 +241,7 @@ struct ShareComposerView: View {
                     VStack(spacing: 14) {
                         ProgressView()
                             .tint(Theme.inkSoft)
-                        Text("Lifting your subject…")
+                        Text(L("Lifting your subject…"))
                             .font(.system(size: 14, design: .rounded))
                             .foregroundStyle(Theme.inkSoft)
                     }
@@ -351,7 +351,10 @@ struct ShareComposerView: View {
                     HStack(spacing: 8) {
                         Image(systemName: state.kept ? "checkmark" : "seal.fill")
                             .font(.system(size: 15, weight: .semibold))
-                        Text(state.kept ? "Kept" : "Keep")
+                        // `L()` on each branch: a ternary of two literals is
+                        // a `String`, so `Text` picks its non-localizing
+                        // initialiser and both words shipped as English.
+                        Text(state.kept ? L("Kept") : L("Keep"))
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
                     }
                     .foregroundStyle(.white)

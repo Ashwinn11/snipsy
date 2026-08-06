@@ -90,6 +90,15 @@ final class AppModel {
     /// dark until DevelopOverlay's first frame has committed, so the heavy
     /// frozen-frame setup happens behind it and never as an on-screen snap.
     var blackout = false
+    /// How much of the screen that curtain covers.
+    ///
+    /// A shutter press only has to hide the swap inside the glass — the
+    /// world around the mount is the same live feed the frozen frame
+    /// carries — and dimming the whole app made every tap read as a flinch.
+    /// An import is different: it dismisses a full-screen cover back onto a
+    /// running camera, and without a full-screen curtain the live feed
+    /// flashes through before the develop takes over.
+    var blackoutFullScreen = false
 
     let camera = CameraController()
     let store = StampStore()
@@ -120,6 +129,9 @@ final class AppModel {
         isCapturing = true
         defer { isCapturing = false }
         haptics.shutter()
+        // Set before raising the curtain, so the extent never changes while
+        // it is visible.
+        blackoutFullScreen = false
         blackout = true
         let shutterMoment = Date()
 
@@ -190,6 +202,8 @@ final class AppModel {
         isCapturing = true
         defer { isCapturing = false }
         haptics.tick()
+        // Full-screen: the cover is dismissing off a live camera.
+        blackoutFullScreen = true
         blackout = true
 
         let baked = await Task.detached(priority: .userInitiated) {
@@ -215,6 +229,7 @@ final class AppModel {
         isCapturing = true
         defer { isCapturing = false }
         haptics.tick()
+        blackoutFullScreen = true
         blackout = true
 
         let image = ImageOptimizer.normalizedOrientation(raw)

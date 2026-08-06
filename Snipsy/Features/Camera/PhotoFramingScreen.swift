@@ -25,14 +25,22 @@ struct PhotoFramingScreen: View {
     @State private var liveZoom: CGFloat = 1
     @State private var offset: CGSize = .zero
     @State private var liveOffset: CGSize = .zero
+    @State private var punch = false
 
-    /// Both measured off the same art as the camera's — the window and the
-    /// mount around it, so what you frame here is what gets cut.
+    /// All measured off the same art as the camera's — the glass, the 4:5
+    /// cut inside it and the mount around both, so what you frame here is
+    /// what gets cut.
     private var aperture: CGRect { CameraScreen.viewfinderRect(in: screenSize) }
+    private var window: CGRect { CameraScreen.windowRect(in: screenSize) }
     private var mount: CGRect { CameraScreen.frameRect(in: screenSize) }
 
-    /// The floor: the photo exactly covers the aperture. Below this a drag
+    /// The floor: the photo exactly covers the *window*. Below this a drag
     /// exposes a bare corner, so `zoom` never goes under 1.
+    ///
+    /// Covering the aperture is not enough — the glass is taller than the
+    /// 4:5 cut, and a photo sized to the cut left the opening's top and
+    /// bottom slivers showing bare black. The camera fills the whole
+    /// opening; so does this.
     ///
     /// This is deliberately *not* where the photo starts. Folding the
     /// screen-filling look in here raised the floor along with the entry
@@ -41,7 +49,7 @@ struct PhotoFramingScreen: View {
     private var baseScale: CGFloat {
         let s = image.size
         guard s.width > 0, s.height > 0 else { return 1 }
-        return max(aperture.width / s.width, aperture.height / s.height)
+        return max(window.width / s.width, window.height / s.height)
     }
 
     /// Start showing the whole photo across the screen, so the frame reads as
@@ -61,11 +69,11 @@ struct PhotoFramingScreen: View {
         CGSize(width: image.size.width * scale, height: image.size.height * scale)
     }
 
-    /// Keep the aperture covered: the photo's own half-extent minus the
-    /// aperture's is how far it may travel before an edge shows.
+    /// Keep the glass covered: the photo's own half-extent minus the
+    /// window's is how far it may travel before an edge shows.
     private func clamped(_ o: CGSize) -> CGSize {
-        let slackX = max(0, (displaySize.width - aperture.width) / 2)
-        let slackY = max(0, (displaySize.height - aperture.height) / 2)
+        let slackX = max(0, (displaySize.width - window.width) / 2)
+        let slackY = max(0, (displaySize.height - window.height) / 2)
         return CGSize(width: min(slackX, max(-slackX, o.width)),
                       height: min(slackY, max(-slackY, o.height)))
     }
@@ -88,14 +96,19 @@ struct PhotoFramingScreen: View {
             // The same mount the camera holds up, composited the same way:
             // dim the world outside the window, then lay the physical frame
             // over it. Framing an imported photo has to be the same object
-            // as framing a live one, or it reads as a different feature.
-            HoleDim(hole: aperture, corner: aperture.width * 0.026)
+            // as framing a live one, or it reads as a different feature —
+            // and the develop dissolve rebuilds exactly this stack, so a
+            // hole cut anywhere else would jump at the handoff.
+            HoleDim(hole: window, corner: window.width * 0.026)
                 .fill(Color.black.opacity(0.38), style: FillStyle(eoFill: true))
                 .allowsHitTesting(false)
 
+            // Punches on Use Photo, exactly as the shutter punches it.
             Image("viewfinder_frame")
                 .resizable()
                 .frame(width: mount.width, height: mount.height)
+                .scaleEffect(punch ? CameraScreen.punchScale : 1,
+                             anchor: CameraScreen.punchAnchor)
                 .position(x: mount.midX, y: mount.midY)
                 .allowsHitTesting(false)
 
@@ -154,6 +167,7 @@ struct PhotoFramingScreen: View {
                     .foregroundStyle(.white.opacity(0.9))
 
                 Button {
+                    CameraScreen.firePunch($punch)
                     onUse(cropped(), screenFrame())
                 } label: {
                     Text("Use Photo")
@@ -172,10 +186,11 @@ struct PhotoFramingScreen: View {
 
     /// What the user is looking at, at screen size.
     ///
-    /// `DevelopOverlay` dissolves everything *outside* the aperture out of a
-    /// screen-sized frame. A live capture hands it exactly that. Handing it
-    /// the 4:5 cut instead stretched the crop across the whole screen and
-    /// left no region to preserve — the sweep ran over the wrong picture.
+    /// `DevelopOverlay` dissolves everything *outside* the stamp plate out
+    /// of a screen-sized frame, rebuilding the dim and the mount over it. A
+    /// live capture hands it exactly that. Handing it the 4:5 cut instead
+    /// stretched the crop across the whole screen and left no region to
+    /// preserve — the sweep ran over the wrong picture.
     private func screenFrame() -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 2

@@ -15,7 +15,8 @@ struct CameraPreviewView: UIViewRepresentable {
         )
         view.addGestureRecognizer(tap)
         context.coordinator.view = view
-        attachSession(to: view)
+        view.wants = session
+        view.syncSession()
         return view
     }
 
@@ -23,30 +24,16 @@ struct CameraPreviewView: UIViewRepresentable {
         context.coordinator.onTap = onTap
         // The layer is created before permission is granted, so the first
         // real attach usually lands here rather than in makeUIView.
-        attachSession(to: view)
+        view.wants = session
+        view.syncSession()
     }
 
-    /// Hand the session to the layer on the *next* main-loop turn, never
-    /// inline.
-    ///
-    /// `-[AVCaptureVideoPreviewLayer setSession:]` commits session
-    /// configuration, and that blocks on a nested `CFRunLoop`. Called from
-    /// inside `makeUIView`/`updateUIView` — i.e. in the middle of SwiftUI's
-    /// view-graph update — that nested loop drains pending UIKit touches,
-    /// the hit test asks SwiftUI for its responder node, and AttributeGraph
-    /// aborts on the re-entrant update. Hopping a turn puts the nested loop
-    /// safely outside the update.
-    ///
-    /// This became reachable when the camera stopped asking for permission
-    /// on entry: the preview is now built in response to authorization
-    /// flipping to `.authorized`, which is exactly a graph update with a
-    /// live touch still in flight.
-    private func attachSession(to view: PreviewView) {
-        guard view.previewLayer.session !== session else { return }
-        DispatchQueue.main.async {
-            guard view.previewLayer.session !== session else { return }
-            view.previewLayer.session = session
-        }
+    /// Leaving for good releases the session immediately — a torn-down
+    /// preview that still holds a connection is exactly the stale claimant
+    /// `syncSession` exists to prevent.
+    static func dismantleUIView(_ view: PreviewView, coordinator: Coordinator) {
+        view.wants = nil
+        view.syncSession()
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
@@ -68,5 +55,59 @@ struct CameraPreviewView: UIViewRepresentable {
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+
+        /// The session this view shows *while it is on screen*. The layer's
+        /// own `session` is derived from this and the window, never set
+        /// directly.
+        var wants: AVCaptureSession?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            syncSession()
+        }
+
+        /// A preview holds the session only while it is actually visible.
+        ///
+        /// This is the whole reason the canvas camera used to open slowly
+        /// while the camera tab was instant. Two views host a preview layer
+        /// — the camera tab's and the canvas cover's — and the tab's is
+        /// never torn down: `TabView` keeps a visited tab's view tree alive,
+        /// so its layer went on owning a preview connection forever. The
+        /// canvas cover then claimed the SAME session as a *second*
+        /// layer, and `AVCaptureSession` answers that with a full
+        /// begin/commitConfiguration cycle to build another connection —
+        /// synchronously, inside `setSession:`, on the main thread. The tab
+        /// never paid it because it was always the first claimant.
+        ///
+        /// Releasing on `window == nil` means there is only ever one
+        /// claimant, so every attach is a first attach.
+        ///
+        /// Never inline, in either direction: `-[AVCaptureVideoPreviewLayer
+        /// setSession:]` commits session configuration and blocks on a
+        /// nested `CFRunLoop`. Called from inside `makeUIView`/
+        /// `updateUIView` — the middle of SwiftUI's view-graph update — that
+        /// nested loop drains pending UIKit touches, the hit test asks
+        /// SwiftUI for its responder node, and AttributeGraph aborts on the
+        /// re-entrant update. Hopping a turn puts the nested loop safely
+        /// outside the update; `didMoveToWindow` can land inside one too.
+        ///
+        /// Ordering is safe by FIFO: the tab's release is scheduled when the
+        /// tab goes away, the cover's claim when the cover appears, so the
+        /// release always drains first.
+        func syncSession() {
+            guard previewLayer.session !== target else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                // Re-read: window and `wants` may both have moved on while
+                // this hop was in the queue.
+                guard previewLayer.session !== target else { return }
+                previewLayer.session = target
+            }
+        }
+
+        /// What the layer should be holding right now.
+        private var target: AVCaptureSession? {
+            window == nil ? nil : wants
+        }
     }
 }

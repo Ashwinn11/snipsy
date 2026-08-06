@@ -67,7 +67,10 @@ struct CardView: View {
                     .frame(width: 0.64 * w)
                     .modifier(FocusedIfAvailable(focus: titleFocused))
             } else {
-                Text(title.isEmpty ? "UNTITLED" : title.uppercased())
+                // Same fix as `StampView.titleDisplay`: `Text(String)` never
+                // localized this, so the placeholder printed English onto a
+                // shareable artifact.
+                Text(title.isEmpty ? L("Untitled").uppercased() : title.uppercased())
                     .font(Theme.stampEngraved(0.052 * w))
                     .kerning(0.052 * w * 0.13)
                     .foregroundStyle(Theme.stampInk.opacity(

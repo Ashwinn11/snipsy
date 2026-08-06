@@ -90,7 +90,10 @@ struct RootView: View {
         let mask = Image(uiImage: UIImage())
         let layerShaders = [
             ShaderLibrary.grainDissolveRect(
-                .float2(1, 1), .float4(0, 0, 1, 1), .float(1), .float(0), .float(9)),
+                .float2(1, 1), .float4(0, 0, 1, 1),
+                .float(PerforatedRect.defaultHoleRadiusFraction),
+                .float(PerforatedRect.defaultSpacingFactor),
+                .float(0), .float(9)),
             ShaderLibrary.grainDissolveWaste(
                 .float2(1, 1), .float2(0, 0), .image(mask), .float4(0, 0, 1, 1),
                 .float(0.5), .float(9)),
@@ -122,6 +125,8 @@ struct StampCaptureFlow: View {
     let safeArea: EdgeInsets
 
     var body: some View {
+        let window = CameraScreen.windowRect(in: screenSize)
+
         ZStack {
             CameraScreen(model: model, screenSize: screenSize,
                          safeArea: safeArea)
@@ -144,13 +149,36 @@ struct StampCaptureFlow: View {
             }
             .animation(.easeOut(duration: 0.2), value: model.phase.kind)
 
-            // Shutter blackout — above every phase, so the frozen frame's
+            // Shutter curtain — above every phase, so the frozen frame's
             // heavy first render happens behind it, never as a visible snap.
-            Color.black
-                .opacity(model.blackout ? 0.88 : 0)
-                .animation(.easeOut(duration: model.blackout ? 0.12 : 0.22),
-                           value: model.blackout)
-                .allowsHitTesting(false)
+            //
+            // The glass goes dark, not the app: cut to the mount's window so
+            // the moulding, the wordmark and the shutter stay lit. A
+            // full-screen dim made every tap read as the whole UI blinking,
+            // and it hid the one thing worth watching. Outside the window
+            // there is nothing to cover anyway — the frozen frame matches
+            // the live feed pixel-for-pixel there.
+            //
+            // The window form is sized to the opening at rest: the punch dips
+            // the moulding around it for a tenth of a second and is back
+            // before the curtain has anything to hide, so there is nothing
+            // to track. The extent is chosen before the curtain rises
+            // (`AppModel.blackoutFullScreen`), so this branch never swaps
+            // identity while it is on screen.
+            Group {
+                if model.blackoutFullScreen {
+                    Color.black
+                } else {
+                    RoundedRectangle(cornerRadius: window.width * 0.026)
+                        .fill(Color.black)
+                        .frame(width: window.width, height: window.height)
+                        .position(x: window.midX, y: window.midY)
+                }
+            }
+            .opacity(model.blackout ? 1 : 0)
+            .animation(.easeOut(duration: model.blackout ? 0.12 : 0.22),
+                       value: model.blackout)
+            .allowsHitTesting(false)
         }
         .frame(width: screenSize.width, height: screenSize.height)
         .ignoresSafeArea()

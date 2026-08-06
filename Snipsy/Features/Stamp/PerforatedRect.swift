@@ -4,10 +4,17 @@ import SwiftUI
 /// punched along every edge and a quarter notch at each corner. Fill it for
 /// stamp paper; stroke it dashed for empty states.
 struct PerforatedRect: Shape {
+    /// The stock perforation. Named rather than inlined because the develop
+    /// dissolve carves the same teeth in Metal (`insidePerforated`): the two
+    /// have to be handed identical numbers or the silhouette the dust leaves
+    /// won't be the one the reveal draws over it.
+    static let defaultHoleRadiusFraction: CGFloat = 0.032
+    static let defaultSpacingFactor: CGFloat = 2.9
+
     /// Perforation hole radius as a fraction of rect width.
-    var holeRadiusFraction: CGFloat = 0.032
+    var holeRadiusFraction: CGFloat = defaultHoleRadiusFraction
     /// Target center-to-center spacing between holes, in hole radii.
-    var spacingFactor: CGFloat = 2.9
+    var spacingFactor: CGFloat = defaultSpacingFactor
 
     func path(in rect: CGRect) -> Path {
         let r = max(2, rect.width * holeRadiusFraction)

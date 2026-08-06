@@ -64,10 +64,35 @@ static inline GrainSample grainMotion(float2 position, float2 cell, float cellSi
     return g;
 }
 
-/// Signed distance to a rounded rect (negative inside).
-static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float radius) {
-    float2 q = abs(p - center) - halfSize + radius;
-    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+/// Inside the perforated stamp silhouette?
+///
+/// Mirrors `PerforatedRect` exactly — same hole radius, the same
+/// `round(length / pitch)` count, holes punched at every step along all four
+/// edges with the corners shared between two edges. The shape the dust
+/// leaves behind and the shape the reveal draws have to be the same object,
+/// so this math is a transcription, not an approximation: change one and
+/// re-derive the other.
+static inline bool insidePerforated(float2 p, float4 r, float holeFraction, float spacing) {
+    float2 lo = r.xy;
+    float2 hi = lo + r.zw;
+    if (p.x < lo.x || p.y < lo.y || p.x > hi.x || p.y > hi.y) { return false; }
+
+    float hr = max(2.0, r.z * holeFraction);
+    float pitch = max(hr * spacing, 1.0);
+    float nx = max(2.0, round(r.z / pitch));
+    float ny = max(2.0, round(r.w / pitch));
+    float stepX = r.z / nx;
+    float stepY = r.w / ny;
+
+    // Every hole on an edge shares that edge's coordinate, so the nearest
+    // one is just the nearest index — no need to walk the ring.
+    float cx = lo.x + clamp(round((p.x - lo.x) / stepX), 0.0, nx) * stepX;
+    float cy = lo.y + clamp(round((p.y - lo.y) / stepY), 0.0, ny) * stepY;
+
+    return distance(p, float2(cx, lo.y)) >= hr
+        && distance(p, float2(cx, hi.y)) >= hr
+        && distance(p, float2(lo.x, cy)) >= hr
+        && distance(p, float2(hi.x, cy)) >= hr;
 }
 
 /// The die-cut's waste: everything the mask calls background dissolves in
@@ -167,9 +192,15 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     return c;
 }
 
-/// Everything outside the viewfinder rounded-rect dissolves: a ragged
-/// dust front sweeps the screen left→right (the viewfinder itself is
-/// untouchable). vfRect = (x, y, w, h) in view points; progress 0→1.
+/// Everything outside the stamp plate dissolves: a ragged dust front sweeps
+/// the screen left→right (the plate itself is untouchable). `plate` =
+/// (x, y, w, h) in view points; progress 0→1.
+///
+/// The kept region is the perforated silhouette, not a plain rounded rect:
+/// the wave carves the teeth as its front crosses them, so the capture never
+/// resolves into a bare photo that a later beat has to turn into a stamp —
+/// what the dust uncovers is already the artifact.
+///
 /// `size` is the CONTENT size in points, passed explicitly — a
 /// layerEffect's .boundingRect is padded by maxSampleOffset, and
 /// normalizing the sweep by the padded rect strands the front short of
@@ -178,21 +209,21 @@ static inline float sdRoundRect(float2 p, float2 center, float2 halfSize, float 
     float2 position,
     SwiftUI::Layer layer,
     float2 size,
-    float4 vfRect,
-    float vfCorner,
+    float4 plate,
+    float holeFraction,
+    float holeSpacing,
     float progress,
     float cellSize
 ) {
-    float2 vfCenter = vfRect.xy + vfRect.zw * 0.5;
-    float sd = sdRoundRect(position, vfCenter, vfRect.zw * 0.5, vfCorner);
-
-    // Inside the viewfinder: untouched, always.
-    if (sd <= 0.0) { return layer.sample(position); }
+    // Inside the plate: untouched, always.
+    if (insidePerforated(position, plate, holeFraction, holeSpacing)) {
+        return layer.sample(position);
+    }
 
     // Thanos snap: one ragged dust front sweeps across the whole screen,
     // left to right. Grains crumble as it passes and stream off with the
     // gust; noise clumps and per-grain chance tear the front's edge so it
-    // never reads as a clean line — and never echoes the viewfinder rect.
+    // never reads as a clean line — and never echoes the plate's outline.
     float sweep = clamp(position.x / max(size.x, 1.0), 0.0, 1.0);
     float2 cell = floor(position / cellSize);
     float rnd = hash21(cell + 13.1);

@@ -189,6 +189,8 @@ struct CanvasEditorScreen: View {
     @State private var pendingBatch: PendingBatch? = nil
     /// A camera shot waiting for its cover to close before it can ask.
     @State private var cameraCapture: UIImage? = nil
+    /// The photo layer being reframed, if any.
+    @State private var cropping: CanvasCropTarget? = nil
     @State private var saving = false
 
     /// One pick's worth of photos, awaiting a treatment.
@@ -239,11 +241,11 @@ struct CanvasEditorScreen: View {
             // Bottom-anchored so the selection bar replaces the tool rail
             // when a layer is selected — preventing 3 rows from covering the template.
             VStack(spacing: 10) {
-                CanvasSelectionBar(editor: editor)
+                CanvasSelectionBar(editor: editor, cropping: $cropping)
                 if editor.selectedLayerID == nil {
                     CanvasToolRail(editor: editor,
                                    pickedItems: $pickedItems,
-                                   showCamera: $showCamera,
+                                   openCamera: openCamera,
                                    showStickers: $showStickers,
                                    showDoodles: $showDoodles,
                                    showBackgrounds: $showBackgrounds)
@@ -291,6 +293,18 @@ struct CanvasEditorScreen: View {
                 cameraCapture = image
             }
         }
+        .fullScreenCover(item: $cropping) { target in
+            CanvasCropScreen(
+                image: target.image,
+                screenSize: screenSize,
+                safeArea: safeArea,
+                onCancel: { cropping = nil },
+                onCrop: { image in
+                    cropping = nil
+                    editor.setCroppedImage(image, for: target.layerID)
+                }
+            )
+        }
         // The chooser waits for the camera cover to actually leave — a sheet
         // raised in the same frame as a fullScreenCover dismissal gets eaten.
         .onChange(of: showCamera) { _, shown in
@@ -298,6 +312,20 @@ struct CanvasEditorScreen: View {
             cameraCapture = nil
             pendingBatch = PendingBatch(images: [image])
         }
+    }
+
+    /// Raise the camera cover — and start the session in the same tap.
+    ///
+    /// `AVCaptureSession.startRunning()` on an already-configured session is
+    /// still a few hundred milliseconds of hardware bring-up, and the canvas
+    /// always arrives at it cold: leaving the camera tab calls `stop()`.
+    /// Kicking it off from the cover's `onAppear` meant the wait started
+    /// only once the cover was already up, so the whole bring-up was spent
+    /// staring at a black screen. Starting here spends the cover's own
+    /// presentation animation on it instead.
+    private func openCamera() {
+        model.camera.start()
+        showCamera = true
     }
 
     // MARK: Stage
@@ -539,6 +567,10 @@ struct CanvasCameraSheet: View {
                 .padding(.bottom, 30)
             }
         }
+        // Belt and braces: the rail starts the session on tap so the
+        // bring-up overlaps this cover's presentation. This catches the
+        // paths that don't go through the rail (and is a no-op once the
+        // session is already running).
         .onAppear { model.camera.start() }
     }
 }

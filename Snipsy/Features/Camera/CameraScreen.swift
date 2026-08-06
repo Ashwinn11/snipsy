@@ -15,8 +15,9 @@ struct CameraScreen: View {
     @State private var pickedItem: PhotosPickerItem? = nil
     /// A picked photo waiting to be framed against the aperture.
     @State private var framingImage: PickedPhoto? = nil
-    /// Shutter-tap punch: a quick press-down-and-spring-back on the whole
-    /// viewfinder, so the tap itself reads as stamping down onto paper.
+    /// Shutter-tap punch: the mount dips under the die. Only the down-stroke
+    /// belongs to this screen — `DevelopOverlay` springs the frozen frame
+    /// back out of it.
     @State private var capturePunch = false
 
     // MARK: Frame geometry
@@ -72,6 +73,37 @@ struct CameraScreen: View {
         rect(apertureInFrame, in: size)
     }
 
+    // MARK: Punch
+
+    /// How far the mount dips under the die.
+    static let punchScale: CGFloat = 0.94
+
+    /// The press pivots on the opening's centre — expressed in the mount
+    /// art's OWN bounds, because the mount is the only thing that moves.
+    /// The aperture closes symmetrically on a picture that stays put.
+    static let punchAnchor = UnitPoint(x: openingInFrame.midX,
+                                       y: openingInFrame.midY)
+
+    /// Drive a mount's press-then-lift: down under the die, spring back
+    /// past rest.
+    ///
+    /// Deliberately quick. Both paths hold a curtain for ~0.2s before
+    /// handing over to a develop that draws the mount at rest, so a press
+    /// still travelling at the swap would ghost against its own still copy
+    /// through the crossfade. The whole motion lands inside that beat.
+    @MainActor
+    static func firePunch(_ pressed: Binding<Bool>) {
+        withAnimation(.spring(response: 0.15, dampingFraction: 0.9)) {
+            pressed.wrappedValue = true
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.10))
+            withAnimation(.spring(response: 0.20, dampingFraction: 0.68)) {
+                pressed.wrappedValue = false
+            }
+        }
+    }
+
     private static func rect(_ r: CGRect, in size: CGSize) -> CGRect {
         let f = frameRect(in: size)
         return CGRect(x: f.minX + r.minX * f.width,
@@ -101,9 +133,17 @@ struct CameraScreen: View {
                     .fill(Color.black.opacity(0.38), style: FillStyle(eoFill: true))
                     .allowsHitTesting(false)
 
+                // The mount is the only thing that punches. The feed, the
+                // dim and the chrome all hold still, so the tap reads as the
+                // frame pressing DOWN onto the picture — its aperture
+                // closing over a subject that never moves. Scaling anything
+                // wider than the art (the feed, or the whole screen) turned
+                // the press into the app flinching.
                 Image("viewfinder_frame")
                     .resizable()
                     .frame(width: frame.width, height: frame.height)
+                    .scaleEffect(capturePunch ? Self.punchScale : 1,
+                                 anchor: Self.punchAnchor)
                     .position(x: frame.midX, y: frame.midY)
                     .allowsHitTesting(false)
             } else {
@@ -118,7 +158,6 @@ struct CameraScreen: View {
                     .id("\(p.x)-\(p.y)")
             }
         }
-        .scaleEffect(capturePunch ? 0.97 : 1)
         .frame(width: screenSize.width, height: screenSize.height)
         .background(Color.black)
         .fullScreenCover(item: $framingImage) { picked in
@@ -136,17 +175,6 @@ struct CameraScreen: View {
                     }
                 }
             )
-        }
-    }
-
-    /// The shutter tap's press-then-lift: down quickly, spring back past
-    /// rest, settle — timed inside the pre-blackout beat so it reads as one
-    /// continuous stamp-and-flash with the existing shutter haptic.
-    private func firePunch() {
-        withAnimation(Theme.springTight) { capturePunch = true }
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.12))
-            withAnimation(Theme.springBouncy) { capturePunch = false }
         }
     }
 
@@ -252,7 +280,7 @@ struct CameraScreen: View {
         // path through the app that never needs the camera at all.
         if isLive {
             ShutterButton {
-                firePunch()
+                Self.firePunch($capturePunch)
                 let size = screenSize
                 let rect = Self.viewfinderRect(in: size)
                 Task { await model.capture(viewfinderRect: rect, viewSize: size) }

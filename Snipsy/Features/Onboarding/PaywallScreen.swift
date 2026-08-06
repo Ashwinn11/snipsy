@@ -158,9 +158,15 @@ struct PaywallScreen: View {
         .alert("Nothing to restore", isPresented: $noRestoreFound) {
             Button("OK", role: .cancel) {}
         } message: {
+            // Both halves localized. The tail used to be two raw English
+            // fragments concatenated onto a translated opener, so every
+            // non-English user got one translated sentence followed by two
+            // English ones. Kept as two whole sentences rather than merged:
+            // the opener already carries eleven translations, and splitting
+            // at a sentence boundary is safe where splitting mid-sentence
+            // (which is what the `+` chain really was) is not.
             Text(L("No previous purchase was found on this Apple Account. ")
-                 + "If you bought Snipsy with a different account, sign in "
-                 + "with that one and try again.")
+                 + L("If you bought Snipsy with a different account, sign in with that one and try again."))
         }
         .task {
             await purchases.loadOffering()
@@ -524,10 +530,15 @@ struct PaywallScreen: View {
         switch selectedPlan {
         case .weekly:
             if let weekly = purchases.weekly {
+                // `L()`, like every other branch. Without it these were
+                // plain Swift interpolation: never extracted into the
+                // catalog, never translated, so picking Weekly on a German
+                // or Japanese device put an English button under a
+                // translated card.
                 if isWeeklyEligibleForTrial, let trialLabel = trialPeriodLabel(for: weekly) {
-                    return "Try \(trialLabel) free, then \(weekly.storeProduct.localizedPriceString)/week"
+                    return L("Try \(trialLabel) free, then \(weekly.storeProduct.localizedPriceString)/week")
                 } else {
-                    return "Continue for \(weekly.storeProduct.localizedPriceString)/week"
+                    return L("Continue for \(weekly.storeProduct.localizedPriceString)/week")
                 }
             }
         case .yearly:

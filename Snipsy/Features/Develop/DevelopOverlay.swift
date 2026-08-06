@@ -1,9 +1,14 @@
 import SwiftUI
 
 /// The signature moment. The frozen frame sits pixel-perfect over the live
-/// preview; everything outside the viewfinder disintegrates into drifting
+/// preview; everything outside the stamp plate disintegrates into drifting
 /// grains, revealing the paper world beneath. Vision runs concurrently so the
 /// reveal is usually instant when the last grain dies.
+///
+/// What the dust leaves is a stamp, not a photo: the kept region is the
+/// perforated silhouette, and the wave carves its teeth as the front crosses
+/// them. Nothing downstream has to turn a rectangle into an artifact later,
+/// so there is no beat where the user is looking at a bare 4:5 crop.
 struct DevelopOverlay: View {
     let capture: Capture
     let model: AppModel
@@ -22,6 +27,10 @@ struct DevelopOverlay: View {
 
     var body: some View {
         let vf = capture.viewfinderRect
+        // The plate the reveal is about to draw, in the frozen frame's own
+        // coordinates. Shared derivation, so the silhouette the grains cut
+        // and the one the stamp wears are the same rect to the pixel.
+        let plate = StampView.plateRect(inscribedIn: vf)
 
         ZStack {
             GeometryReader { g in
@@ -44,35 +53,50 @@ struct DevelopOverlay: View {
                 // as the sweep stalling. Grains stagger their own deaths.
                 let progress = raw
 
-                Image(uiImage: capture.screenImage)
-                    .resizable()
-                    .frame(width: screenSize.width, height: screenSize.height)
-                    .layerEffect(
-                        ShaderLibrary.grainDissolveRect(
-                            .float2(screenSize.width, screenSize.height),
-                            .float4(vf.minX, vf.minY, vf.width, vf.height),
-                            .float(12),
-                            .float(progress),
-                            .float(4.5)
-                        ),
-                        // Width bound: symmetric breeze (≤48) + the sweep
-                        // gust (≤54) + a cell.
-                        maxSampleOffset: CGSize(width: 116, height: 210)
-                    )
-                    .onChange(of: raw >= 1) { _, done in
-                        if done {
-                            dissolveDone = true
-                            tryAdvance()
-                        }
-                    }
+                // The camera's last frame, rebuilt whole — feed, dim and
+                // moulding — so the phase swap has nothing to fade. The
+                // dissolve then takes the mount apart along with the world
+                // it was framing: the object in your hands crumbles and
+                // leaves the stamp. Composited INTO the effect's layer, so
+                // one wave eats all three.
+                let mount = CameraScreen.frameRect(in: screenSize)
+                let window = CameraScreen.windowRect(in: screenSize)
 
-                // Carry the camera's outside-viewfinder dim into the first
-                // dissolve frames so the handoff is seamless, then let the
-                // grains take it away.
-                HoleDim(hole: vf)
-                    .fill(Color.black.opacity(0.32 * (1 - min(1, progress * 2.2))),
-                          style: FillStyle(eoFill: true))
-                    .allowsHitTesting(false)
+                ZStack {
+                    Image(uiImage: capture.screenImage)
+                        .resizable()
+                        .frame(width: screenSize.width, height: screenSize.height)
+
+                    HoleDim(hole: window, corner: window.width * 0.026)
+                        .fill(Color.black.opacity(0.38), style: FillStyle(eoFill: true))
+
+                    Image("viewfinder_frame")
+                        .resizable()
+                        .frame(width: mount.width, height: mount.height)
+                        .position(x: mount.midX, y: mount.midY)
+                }
+                .frame(width: screenSize.width, height: screenSize.height)
+                .allowsHitTesting(false)
+                .layerEffect(
+                    ShaderLibrary.grainDissolveRect(
+                        .float2(screenSize.width, screenSize.height),
+                        .float4(plate.minX, plate.minY,
+                                plate.width, plate.height),
+                        .float(PerforatedRect.defaultHoleRadiusFraction),
+                        .float(PerforatedRect.defaultSpacingFactor),
+                        .float(progress),
+                        .float(4.5)
+                    ),
+                    // Width bound: symmetric breeze (≤48) + the sweep
+                    // gust (≤54) + a cell.
+                    maxSampleOffset: CGSize(width: 116, height: 210)
+                )
+                .onChange(of: raw >= 1) { _, done in
+                    if done {
+                        dissolveDone = true
+                        tryAdvance()
+                    }
+                }
             }
 
             // If Vision is still thinking after the dust settles.

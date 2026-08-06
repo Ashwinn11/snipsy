@@ -155,12 +155,32 @@ struct StampView: View {
     /// When set, the static caption is tappable (shows a rename affordance).
     var onTapCaption: (() -> Void)? = nil
 
+    /// Plate proportions: height as a multiple of width. The one number the
+    /// develop silhouette and the reveal's landing frame both have to agree
+    /// on, so it is declared here rather than measured off the layout.
+    static let aspect: CGFloat = 1.3125
+
+    /// The plate inscribed in a capture crop: stamp-proportioned, centred,
+    /// as large as fits.
+    ///
+    /// The 4:5 crop is taller than the plate is wide, so this trims ~2.4%
+    /// off each side — exactly what `.bleed`'s `scaledToFill` crops away
+    /// anyway. That equality is the point: the develop dissolve keeps this
+    /// rect, the reveal lands its plate on it, and the same pixels sit in
+    /// both, so the handoff has nothing to cover up.
+    static func plateRect(inscribedIn r: CGRect) -> CGRect {
+        var w = r.height / aspect
+        var h = r.height
+        if w > r.width { w = r.width; h = w * aspect }
+        return CGRect(x: r.midX - w / 2, y: r.midY - h / 2, width: w, height: h)
+    }
+
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
             stampBody(w)
         }
-        .aspectRatio(1 / 1.3125, contentMode: .fit)
+        .aspectRatio(1 / Self.aspect, contentMode: .fit)
     }
 
     // MARK: Layout
@@ -915,8 +935,11 @@ struct StampView: View {
     }
 
     private var titleDisplay: String {
-        let base = title.isEmpty ? (lowercaseTitle ? "Untitled" : "UNTITLED")
-                                 : title
+        // One localized placeholder, cased by the edition's own voice. The
+        // two hardcoded spellings never reached the catalog — `Text(String)`
+        // doesn't localize — so an untitled stamp printed "UNTITLED" in
+        // every language, on an artifact the user then shares.
+        let base = title.isEmpty ? L("Untitled") : title
         return lowercaseTitle ? base : base.uppercased()
     }
 

@@ -320,6 +320,33 @@ final class CanvasEditorModel {
         }
     }
 
+    /// Replace a photo layer's pixels with a crop of them.
+    ///
+    /// The treatment survives; its *derivation* cannot. `cutoutFile` was
+    /// lifted from pixels that no longer exist, so a die-cut layer would go
+    /// on showing a subject the new frame may not even contain — cropping to
+    /// someone's face would leave the old full-body cut floating there.
+    /// Dropping it and re-running the lift is what makes "crop, then cut"
+    /// mean what it says. Polaroid and outline need nothing: both are drawn
+    /// from `file` at render time, so they re-frame the moment it changes.
+    ///
+    /// The old file deliberately stays on disk. `duplicate` shares content
+    /// between layers, and undo has to be able to bring these pixels back;
+    /// `save()` sweeps whatever the final document stopped referencing.
+    func setCroppedImage(_ image: UIImage, for id: UUID) {
+        guard let i = doc.layers.firstIndex(where: { $0.id == id }),
+              case .image(_, _, let treatment) = doc.layers[i].content
+        else { return }
+        push()
+        let file = store.saveLayerImage(image)
+        sessionFiles.insert(file)
+        doc.layers[i].content = .image(file: file, cutoutFile: nil,
+                                       treatment: treatment)
+        if treatment == .dieCut {
+            Task { await fillDieCut(id: id) }
+        }
+    }
+
     /// Run the subject lift for a die-cut layer that has no cached cutout yet,
     /// then store it. No `push()` — this is the async completion of the add /
     /// switch that already pushed. Falls back to plain when no subject is found.
@@ -340,7 +367,7 @@ final class CanvasEditorModel {
         guard let sticker = analysis.sticker else {
             // No liftable subject — fall back to the plain photo.
             doc.layers[j].content = .image(file: f, cutoutFile: nil, treatment: .plain)
-            showToast("No subject found")
+            showToast(L("No subject found"))
             return
         }
         let newFile = store.saveLayerImage(sticker)
@@ -348,6 +375,10 @@ final class CanvasEditorModel {
         doc.layers[j].content = .image(file: f, cutoutFile: newFile, treatment: .dieCut)
     }
 
+    /// Takes an ALREADY-localized string. It cannot localize for you: the
+    /// value lands in `toast`, which the editor renders with `Text(String)`
+    /// — the non-localizing initialiser — so anything unwrapped here reaches
+    /// the screen in English no matter what language the app is in.
     private func showToast(_ text: String) {
         toast = text
         Task { @MainActor in

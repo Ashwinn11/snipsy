@@ -6,7 +6,10 @@ import PhotosUI
 struct CanvasToolRail: View {
     let editor: CanvasEditorModel
     @Binding var pickedItems: [PhotosPickerItem]
-    @Binding var showCamera: Bool
+    /// An action rather than a binding: opening the camera means warming
+    /// the capture session as well as raising the cover, and the rail has
+    /// no business knowing about the session. See `CanvasEditorScreen`.
+    var openCamera: () -> Void
     @Binding var showStickers: Bool
     @Binding var showDoodles: Bool
     @Binding var showBackgrounds: Bool
@@ -19,7 +22,7 @@ struct CanvasToolRail: View {
             }
             .glassEffect(.regular.interactive(), in: .circle)
 
-            railButton("camera") { showCamera = true }
+            railButton("camera", action: openCamera)
             railButton("textformat") { editor.addTextLayer() }
             railButton("seal") { showStickers = true }
             railButton("sparkles") { showDoodles = true }
@@ -46,6 +49,9 @@ struct CanvasToolRail: View {
 /// controls, or the image cutout toggle — plus z-order for everything.
 struct CanvasSelectionBar: View {
     let editor: CanvasEditorModel
+    /// Raised when a photo layer asks for the cropper; the editor screen
+    /// owns the cover.
+    @Binding var cropping: CanvasCropTarget?
 
     private static let inkChoices: [RGBValue] = [
         RGBValue(r: 0.133, g: 0.122, b: 0.102),   // stamp ink
@@ -70,9 +76,22 @@ struct CanvasSelectionBar: View {
                 }
 
                 barCapsule {
-                    // Stickers, doodles and text wear a single white contour;
-                    // photos choose a treatment above instead.
-                    if !isImage(layer) {
+                    // One leading slot for "change the content itself".
+                    // Stickers, doodles and text wear a single white
+                    // contour; photos choose a treatment above and reframe
+                    // here instead.
+                    if isImage(layer) {
+                        Button { requestCrop(layer) } label: {
+                            barIcon("crop")
+                        }
+                        // A lift in flight was started from the pixels this
+                        // would replace; letting it finish over a crop would
+                        // cache a cutout of the old frame. Same guard the
+                        // treatment buttons use.
+                        .disabled(editor.cutoutBusy.contains(layer.id))
+                        .opacity(editor.cutoutBusy.contains(layer.id) ? 0.3 : 1)
+                        Divider().frame(height: 22)
+                    } else {
                         Button {
                             editor.toggleDieCut(layer.id)
                         } label: {
@@ -113,6 +132,16 @@ struct CanvasSelectionBar: View {
     private func isImage(_ layer: CanvasLayer) -> Bool {
         if case .image = layer.content { return true }
         return false
+    }
+
+    /// Hand the layer's current pixels to the cropper — the plain photo,
+    /// never the cutout. A die-cut layer renders from `cutoutFile`, but
+    /// cropping the lifted subject would crop a picture with the background
+    /// already gone; the lift re-runs on whatever comes back instead.
+    private func requestCrop(_ layer: CanvasLayer) {
+        guard case .image(let file, _, _) = layer.content,
+              let bitmap = editor.bitmap(for: file) else { return }
+        cropping = CanvasCropTarget(layerID: layer.id, image: bitmap)
     }
 
     /// Photo treatment row: die-cut / polaroid / outline, applied to the

@@ -96,17 +96,22 @@ struct OnboardingScreen: View {
                     }
                     Spacer(minLength: 8)
                     if page < Self.lastPage {
+                        // Metrics and material copied from `LanguageBadge`,
+                        // not approximated: the two share this row, and a
+                        // bare label beside a glass capsule read as an
+                        // unfinished control rather than a quieter one.
                         Button {
                             withAnimation(.easeInOut(duration: 0.35)) { page = Self.lastPage }
                         } label: {
                             Text("Skip")
-                                .font(.system(size: 14, design: .rounded))
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundStyle(Theme.inkSoft)
                                 .lineLimit(1)
-                                .padding(.horizontal, 14)
-                                .frame(height: 34)
+                                .padding(.horizontal, 12)
+                                .frame(height: 32)
+                                .contentShape(Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .glassEffect(.regular.interactive(), in: .capsule)
                         .transition(.opacity)
                     }
                 }

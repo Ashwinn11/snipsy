@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Stamp assembly. Continuity chain:
-///   develop leaves the crop at the viewfinder → the crop glides to center →
+///   develop leaves the *stamp* at the viewfinder → it glides to center →
 ///   the die cutter punches the sticker outline into the photo → the waste
 ///   fades away → perforated paper unfurls behind it → the caption rises
 ///   letter by letter → on Keep, the cancellation mark strikes and the stamp flies
@@ -42,7 +42,10 @@ struct RevealScreen: View {
     /// Rename entry swaps shader-modifier identity, which snaps every
     /// in-flight spring — hold it off while a switch settles.
     @State private var lastSelectAt = Date.distantPast
-    @State private var paper: Double = 0
+    /// Up from the first frame. The develop dissolve already handed over a
+    /// perforated plate, so fading paper in here would mean fading in
+    /// something the user is looking at.
+    @State private var paper: Double = 1
     @State private var caption: Double = 0
     @State private var settle: Double = 0
     @State private var chromeVisible = false
@@ -63,7 +66,13 @@ struct RevealScreen: View {
     /// user (the default die cut) rather than one they tapped — keeps the
     /// chooser's prompt up so the default doesn't read as final.
     @State private var autoSelected = false
-    @State private var selectedVariant: StampVariant = .tinted
+    /// The edition already on screen when the reveal opens. Bleed is the
+    /// landing (`runEntrance` confirms it a beat later) and the photo *is*
+    /// its plate, so this is the only variant that can be up before the
+    /// user has chosen anything without inventing furniture they didn't ask
+    /// for. Starting on `.tinted` meant the handoff drew a plateless crop
+    /// and then dressed it — the beat this whole chain exists to remove.
+    @State private var selectedVariant: StampVariant = .bleed
 
     // Instant formats — crossfaded over the stamp stack by value, one fade
     // per format so polaroid ↔ card animates too. Both views stay mounted
@@ -118,12 +127,17 @@ struct RevealScreen: View {
 
     // MARK: Frames
 
-    /// Frame that puts the stamp's content rect exactly over the viewfinder.
+    /// Where the develop dissolve left the plate — the entry frame, and the
+    /// only frame this is ever asked for (`stampFrame` uses it until the
+    /// glide starts, by which time bleed is the selection).
+    ///
+    /// Same derivation the dissolve cut its silhouette from, so the plate
+    /// materialises exactly on top of itself: no scale step, no shape step,
+    /// nothing for the phase crossfade to hide. The old frame inflated the
+    /// crop to a *plated* stamp's content rect — right for `.tinted`, but
+    /// 18% too wide for the bleed the reveal actually lands on.
     private var landedFrame: CGRect {
-        let vf = pending.capture.viewfinderRect
-        let w = vf.width / 0.85
-        return CGRect(x: vf.minX - 0.075 * w, y: vf.minY - 0.075 * w,
-                      width: w, height: w * 1.3125)
+        StampView.plateRect(inscribedIn: pending.capture.viewfinderRect)
     }
 
     private var centeredFrame: CGRect {
@@ -367,21 +381,21 @@ struct RevealScreen: View {
             // Options rise WHILE the crop glides to center — the chooser
             // is tappable the moment the glide settles, not a beat after.
             try? await Task.sleep(for: .seconds(0.16))
-            // Pre-render the dressed layers invisibly (paper shader, path
-            // shadows, caption glyphs) while the glide covers the cost.
-            paper = 0.001
+            // Pre-render the caption glyphs invisibly while the glide covers
+            // the cost. `paper` is NOT pre-warmed here any more: it is
+            // already 1, carrying the plate the develop handed over, and
+            // dropping it to 0.001 for a frame would blank the stamp
+            // mid-glide.
             caption = 0.001
             await afterNextCommit()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 options = true
             }
 
-            // The dressed stamp is the default outcome — the live viewfinder
-            // already framed this as a whole stamp, so the reveal lands on
-            // paper instead of a raw photo waiting on a tap. Bleed is the
-            // landing: the photo itself cut to the perforation, with nothing
-            // printed on it to read past. Die-cut sits beside it as a
-            // secondary, manual choice. A tap inside this beat wins.
+            // Bleed is already on screen — the develop handed it over cut.
+            // This only *commits* it as the selection, which is what lights
+            // the option, runs the holo sweep and raises the chrome. A tap
+            // inside this beat still wins.
             try? await Task.sleep(for: .seconds(0.3))
             guard case .reveal = model.phase else { return }
             if selection == nil { select(.paper(.bleed), auto: true) }
