@@ -56,17 +56,17 @@ struct OnboardingCapturePage: View {
     }
 
     private var subhead: LocalizedStringKey {
-        if madeOne { return "It's in your collection —\nand it's a sticker too." }
+        if madeOne { return "It's in your collection now —\nand it works as a sticker too." }
         switch auth {
         case .denied:
-            return "Camera's off, but you can still\nmake one from your library."
+            return "Camera's off — you can still\nmake one from your library."
         default:
             // Calls back to the occasion answer, so the question they
             // answered two screens ago visibly aimed at this one.
             guard let cue = model.occasion?.captureCue else {
-                return "Snap anything. Watch it get cut out\nand pressed into a stamp."
+                return "Snap anything — watch it get cut\nand pressed into a stamp."
             }
-            return "\(cue)\nWatch it get cut out and kept."
+            return "\(cue)\nWatch it get cut, and kept."
         }
     }
 
@@ -130,7 +130,7 @@ struct OnboardingCapturePage: View {
                         UIApplication.shared.open(url)
                     }
                 }
-                Text("Or just swipe on — you can add photos\nfrom your library any time.")
+                Text("Or swipe on — add photos\nfrom your library any time.")
                     .font(.system(size: 12.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft.opacity(0.85))
                     .multilineTextAlignment(.center)
@@ -142,8 +142,8 @@ struct OnboardingCapturePage: View {
                     countBefore = model.store.stamps.count
                     capturing = true
                 }
-                Text(madeOne ? "Keep going, or swipe on."
-                             : "Takes about ten seconds.")
+                Text(madeOne ? "One more, or swipe on."
+                             : "About ten seconds.")
                     .font(.system(size: 12.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft.opacity(0.85))
             }

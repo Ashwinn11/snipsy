@@ -86,19 +86,17 @@ final class AppModel {
     var leadBlocker: MemoryBlocker? {
         MemoryBlocker.allCases.first { blockers.contains($0) }
     }
-    /// Shutter blackout curtain, rendered above every phase in RootView. Held
-    /// dark until DevelopOverlay's first frame has committed, so the heavy
-    /// frozen-frame setup happens behind it and never as an on-screen snap.
-    var blackout = false
-    /// How much of the screen that curtain covers.
+    /// Import curtain, rendered above every phase in RootView. Held dark
+    /// until DevelopOverlay's first frame has committed.
     ///
-    /// A shutter press only has to hide the swap inside the glass — the
-    /// world around the mount is the same live feed the frozen frame
-    /// carries — and dimming the whole app made every tap read as a flinch.
-    /// An import is different: it dismisses a full-screen cover back onto a
-    /// running camera, and without a full-screen curtain the live feed
-    /// flashes through before the develop takes over.
-    var blackoutFullScreen = false
+    /// The shutter path does not use this: `CameraScreen` freezes the
+    /// preview instead, which leaves the shot on the glass rather than a
+    /// black hole. Only the import paths still need it, and for a different
+    /// reason — they dismiss a full-screen cover back onto a *running*
+    /// camera, so without a curtain the live feed flashes through before the
+    /// develop takes over. That is a whole-screen problem, so this is a
+    /// whole-screen curtain.
+    var blackout = false
 
     let camera = CameraController()
     let store = StampStore()
@@ -129,10 +127,10 @@ final class AppModel {
         isCapturing = true
         defer { isCapturing = false }
         haptics.shutter()
-        // Set before raising the curtain, so the extent never changes while
-        // it is visible.
-        blackoutFullScreen = false
-        blackout = true
+        // No curtain here. `CameraScreen` freezes the preview on the tap, so
+        // the glass already holds the shot — the only thing a curtain was
+        // ever hiding was a live feed still moving under it, plus the frozen
+        // frame's first render, which the freeze covers just as well.
         let shutterMoment = Date()
 
         do {
@@ -141,7 +139,8 @@ final class AppModel {
             // Bake the on-screen presentation (aspect-fill) into a
             // screen-exact image so every later step shares one geometry.
             // Cropping and bitmap decode are heavy — do them off the main
-            // thread, behind the blackout, so no frame is ever built late.
+            // thread, behind the frozen preview, so no frame is ever
+            // built late.
             let baked = await Task.detached(priority: .userInitiated) {
                 () -> (screen: UIImage, crop: UIImage)? in
                 let screenRect = CGRect(origin: .zero, size: viewSize)
@@ -164,10 +163,7 @@ final class AppModel {
                         cropImage.preparingForDisplay() ?? cropImage)
             }.value
 
-            guard let baked else {
-                blackout = false
-                return
-            }
+            guard let baked else { return }
 
             pendingAnalysis = Task { await VisionService.analyze(baked.crop) }
 
@@ -182,10 +178,9 @@ final class AppModel {
                 cropImage: baked.crop,
                 viewfinderRect: viewfinderRect
             ))
-            // DevelopOverlay lifts the blackout once its first frame is up.
         } catch {
-            // Capture failed — remain in camera, no drama.
-            blackout = false
+            // Capture failed — remain in camera, no drama. `CameraScreen`
+            // thaws the preview off `isCapturing`.
         }
     }
 
@@ -202,8 +197,6 @@ final class AppModel {
         isCapturing = true
         defer { isCapturing = false }
         haptics.tick()
-        // Full-screen: the cover is dismissing off a live camera.
-        blackoutFullScreen = true
         blackout = true
 
         let baked = await Task.detached(priority: .userInitiated) {
@@ -229,7 +222,6 @@ final class AppModel {
         isCapturing = true
         defer { isCapturing = false }
         haptics.tick()
-        blackoutFullScreen = true
         blackout = true
 
         let image = ImageOptimizer.normalizedOrientation(raw)

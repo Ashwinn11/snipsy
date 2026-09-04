@@ -27,9 +27,9 @@ struct OnboardingSharePage: View {
 
     private var caption: LocalizedStringKey {
         switch beat {
-        case .photo: "Open any photo, tap Share…"
-        case .sheet: "…choose Snipsy…"
-        case .composer: "…and keep it as a stamp or sticker."
+        case .photo: "Open a photo, tap Share…"
+        case .sheet: "…pick Snipsy…"
+        case .composer: "…keep it as a sticker or a stamp."
         }
     }
 
@@ -38,8 +38,8 @@ struct OnboardingSharePage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                OnboardingTitle("YOUR OLD PHOTOS COUNT")
-                Text("Any photo you already have\ncan become the next one.")
+                OnboardingTitle("YOUR OLD PHOTOS COUNT TOO")
+                Text("Anything already in your library\ncan become the next one.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)

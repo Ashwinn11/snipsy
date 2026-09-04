@@ -29,10 +29,10 @@ struct OnboardingMessagesPage: View {
 
     private var caption: LocalizedStringKey {
         switch beat {
-        case .thread: "In any thread, tap the plus…"
+        case .thread: "Tap the plus, in any thread…"
         case .menu: "…open Stickers…"
-        case .drawer: "…your Snipsy drawer is there…"
-        case .landed: "…peel one onto any message."
+        case .drawer: "…your drawer's right there…"
+        case .landed: "…drop one on any message."
         }
     }
 
@@ -41,8 +41,8 @@ struct OnboardingMessagesPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                OnboardingTitle("IT BECOMES A STICKER")
-                Text("In any chat, your Snipsy drawer\nis right there.")
+                OnboardingTitle("SEND IT AS A STICKER")
+                Text("Your whole drawer is right there,\nin any chat.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)

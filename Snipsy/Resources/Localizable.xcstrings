@@ -1,220 +1,11 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Same photo, cut out on your phone —\nthen dressed either way." : {
-      "localizations" : {
-        "de-DE" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dasselbe Foto, auf dem Handy freigestellt —\nund daraus wird beides."
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La misma foto, recortada en tu móvil —\ny de ahí salen las dos."
-          }
-        },
-        "es-MX" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La misma foto, recortada en tu celular —\ny de ahí salen las dos."
-          }
-        },
-        "fr-FR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La même photo, détourée sur votre téléphone —\net elle devient l'un ou l'autre."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La stessa foto, ritagliata sul telefono —\ne diventa l'uno o l'altro."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "同じ写真を端末で切り抜いて —\nどちらにもなります。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "같은 사진을 기기에서 오려내 —\n둘 중 무엇으로든 만들어요."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A mesma foto, recortada no seu celular —\ne vira os dois."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "То же фото, вырезанное на телефоне —\nи получается и то, и другое."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "同一张照片，在手机上抠出主体 —\n两种都能做。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "同一張照片，在手機上摳出主體 —\n兩種都能做。"
-          }
-        }
-      }
-    },
-    "If you bought Snipsy with a different account, sign in with that one and try again." : {
-      "localizations" : {
-        "de-DE" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wenn du Snipsy mit einem anderen Apple-Account gekauft hast, melde dich damit an und versuche es erneut."
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Si compraste Snipsy con otra cuenta de Apple, inicia sesión con esa y vuelve a intentarlo."
-          }
-        },
-        "es-MX" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Si compraste Snipsy con otra cuenta de Apple, inicia sesión con esa y vuelve a intentarlo."
-          }
-        },
-        "fr-FR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Si vous avez acheté Snipsy avec un autre compte Apple, connectez-vous avec celui-ci et réessayez."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se hai acquistato Snipsy con un altro account Apple, accedi con quello e riprova."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "別のApple アカウントでSnipsyを購入した場合は、そのアカウントでサインインしてもう一度お試しください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "다른 Apple 계정으로 Snipsy를 구매했다면 그 계정으로 로그인한 뒤 다시 시도해 주세요."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se você comprou o Snipsy com outra Conta Apple, faça login com ela e tente novamente."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Если вы купили Snipsy под другим Apple Account, войдите в него и повторите попытку."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "如果你用其他 Apple 账户购买了 Snipsy，请用该账户登录后重试。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "如果你用其他 Apple 賬戶購買了 Snipsy，請用該賬戶登入後重試。"
-          }
-        }
-      }
-    },
-    "No subject found" : {
-      "localizations" : {
-        "de-DE" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kein Motiv gefunden"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se encontró ningún sujeto"
-          }
-        },
-        "es-MX" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se encontró ningún sujeto"
-          }
-        },
-        "fr-FR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun sujet trouvé"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nessun soggetto trovato"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "被写体が見つかりません"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "피사체를 찾지 못했어요"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nenhum assunto encontrado"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Объект не найден"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未找到主体"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未找到主體"
-          }
-        }
-      }
-    },
     "" : {
       "shouldTranslate" : false
     },
     "…and keep it as a stamp or sticker." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -285,6 +76,7 @@
       }
     },
     "…choose Snipsy…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -350,6 +142,146 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "…選擇 Snipsy…"
+          }
+        }
+      }
+    },
+    "…drop one on any message." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…und lege eins auf eine Nachricht."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…y suelta uno sobre cualquier mensaje."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…y suelta uno sobre cualquier mensaje."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…et déposez-en un sur n'importe quel message."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…e trascinane uno su qualsiasi messaggio."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…好きなメッセージに貼り付ける。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…아무 메시지에나 붙여보세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…e solte um em qualquer mensagem."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…и перетащите один на любое сообщение."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…把它放到任意一条消息上。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…把它放到任意一則訊息上。"
+          }
+        }
+      }
+    },
+    "…keep it as a sticker or a stamp." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…und behalte es als Sticker oder Marke."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…y guárdala como adhesivo o sello."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…y guárdala como calcomanía o sello."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…et gardez-la en autocollant ou en timbre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…e conservala come adesivo o francobollo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…ステッカーか切手として残す。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…스티커나 우표로 저장하세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…e guarde como adesivo ou selo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…и сохраните как стикер или марку."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…把它保存成贴纸或邮票。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…把它保存成貼紙或郵票。"
           }
         }
       }
@@ -425,6 +357,7 @@
       }
     },
     "…or a stamp on the paper you choose." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -494,7 +427,78 @@
         }
       }
     },
+    "…or dressed as a stamp, your call." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…oder als Marke gestaltet, du entscheidest."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…o convertido en sello, tú decides."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…o convertido en sello, tú decides."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…ou habillé en timbre, à vous de choisir."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…oppure vestito da francobollo, decidi tu."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…それとも切手仕立てに、選ぶのはあなた。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…아니면 우표로 꾸미기, 선택은 당신 몫."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…ou transformado em selo, você decide."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…или в виде марки — решать вам."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…或者做成邮票的样子,由你决定。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…或者做成郵票的樣子,由你決定。"
+          }
+        }
+      }
+    },
     "…peel one onto any message." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -564,7 +568,148 @@
         }
       }
     },
+    "…pick Snipsy…" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…wähle Snipsy…"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…elige Snipsy…"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…elige Snipsy…"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…choisissez Snipsy…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…scegli Snipsy…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…Snipsyを選んで…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…Snipsy를 선택하고…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…escolha Snipsy…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…выберите Snipsy…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…选择 Snipsy…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…選擇 Snipsy…"
+          }
+        }
+      }
+    },
+    "…your drawer's right there…" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…dein Fach ist direkt da…"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…tu cajón está justo ahí…"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…tu cajón está justo ahí…"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…votre tiroir est juste là…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…il tuo cassetto è proprio lì…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…あなたの引き出しがそこに…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…내 스티커함이 바로 거기 있고…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…sua gaveta está bem ali…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…ваш набор стикеров прямо тут…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…你的贴纸抽屉就在那儿…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "…你的貼紙抽屜就在那兒…"
+          }
+        }
+      }
+    },
     "…your Snipsy drawer is there…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -638,6 +783,7 @@
       "shouldTranslate" : false
     },
     "%@\nWatch it get cut out and kept." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -703,6 +849,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@\n看它被摳出來、留下來。"
+          }
+        }
+      }
+    },
+    "%@\nWatch it get cut, and kept." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\nSieh zu, wie es ausgeschnitten und aufbewahrt wird."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\nMira cómo se recorta y se guarda."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\nMira cómo se recorta y se guarda."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\nRegardez-la se découper et être gardée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\nGuardala ritagliarsi e restare tua."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\n切り抜かれて残るところを見てください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\n오려내지고 남는 과정을 지켜보세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\nVeja ela ser recortada e guardada."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\nСмотрите, как это вырезается и сохраняется."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\n看着它被剪裁下来,留存下来。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@\n看著它被剪裁下來,留存下來。"
           }
         }
       }
@@ -2687,6 +2903,7 @@
       }
     },
     "A sticker, cut on device…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -2757,6 +2974,7 @@
       }
     },
     "A STICKER, OR A STAMP" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -2826,8 +3044,218 @@
         }
       }
     },
+    "A sticker, right there…" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Sticker, sofort da…"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un adhesivo, ahí mismo…"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una calcomanía, ahí mismo…"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un autocollant, juste là…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un adesivo, subito pronto…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もうステッカーに…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "바로 스티커가 되고…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um adesivo, na hora…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уже стикер, вот он…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "贴纸就在眼前…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "貼紙就在眼前…"
+          }
+        }
+      }
+    },
+    "A STICKER. OR A STAMP." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EIN STICKER. ODER EINE MARKE."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UN ADHESIVO. O UN SELLO."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UNA CALCOMANÍA. O UN SELLO."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UN AUTOCOLLANT. OU UN TIMBRE."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UN ADESIVO. O UN FRANCOBOLLO."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ステッカーに。それとも切手に。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스티커로. 아니면 우표로."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UM ADESIVO. OU UM SELO."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "СТИКЕР. ИЛИ МАРКА."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "变成贴纸。还是邮票。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "變成貼紙。還是郵票。"
+          }
+        }
+      }
+    },
     "Aa" : {
       "shouldTranslate" : false
+    },
+    "About ten seconds." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Etwa zehn Sekunden."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unos diez segundos."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unos diez segundos."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Environ dix secondes."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Circa dieci secondi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "だいたい十秒。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대략 10초 정도."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerca de dez segundos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Около десяти секунд."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大概十秒钟。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大概十秒鐘。"
+          }
+        }
+      }
     },
     "Airmail" : {
       "localizations" : {
@@ -2899,7 +3327,78 @@
         }
       }
     },
+    "Answer once, and everything after\nis about yours." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einmal antworten, und alles danach\ndreht sich um deins."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Responde una vez, y todo lo demás\nserá sobre lo tuyo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Responde una vez, y todo lo demás\nserá sobre lo tuyo."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Répondez une fois, et tout le reste\nparlera de vous."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rispondi una volta, e tutto il resto\nparlerà di te."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一度答えれば、この先はすべて\nあなたのためのもの。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번만 답하면, 이후 모든 게\n당신 것에 관한 이야기예요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Responda uma vez, e tudo depois disso\nserá sobre o seu."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответьте один раз — и всё дальше\nбудет про ваше."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回答一次,之后的一切\n都是关于你的。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回答一次,之後的一切\n都是關於你的。"
+          }
+        }
+      }
+    },
     "Any photo you already have\ncan become the next one." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -2969,7 +3468,78 @@
         }
       }
     },
+    "Anything already in your library\ncan become the next one." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alles, was schon in deiner Mediathek ist,\nkann das nächste werden."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cualquier cosa que ya tengas en tu galería\npuede ser la siguiente."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cualquier cosa que ya tengas en tu galería\npuede ser la siguiente."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout ce qui est déjà dans votre photothèque\npeut devenir le prochain."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qualsiasi cosa già nella tua libreria\npuò diventare la prossima."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ライブラリにあるものなら何でも、\n次の一枚になれます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미 보관함에 있는 사진이라면\n다음 작품이 될 수 있어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qualquer coisa que já esteja na sua galeria\npode virar a próxima."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё, что уже есть в вашей библиотеке,\nможет стать следующим."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相册里已有的任何照片,\n都能成为下一张。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相簿裡已有的任何照片,\n都能成為下一張。"
+          }
+        }
+      }
+    },
     "Anything in the photo gets lifted out…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -3529,7 +4099,78 @@
         }
       }
     },
+    "Camera's off — you can still\nmake one from your library." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kamera ist aus — du kannst trotzdem\neins aus deiner Mediathek machen."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La cámara está desactivada — aun así puedes\nhacer una desde tu galería."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La cámara está desactivada — aun así puedes\nhacer una desde tu galería."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'appareil photo est désactivé — vous pouvez quand même\nen créer une depuis votre photothèque."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La fotocamera è disattivata — puoi comunque\ncrearne uno dalla tua libreria."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カメラはオフだけど —\nライブラリからでも作れます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "카메라가 꺼져 있어요 — 그래도\n사진 보관함에서 만들 수 있어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A câmera está desligada — mesmo assim você pode\nfazer um a partir da sua galeria."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера отключена — но вы всё ещё можете\nсоздать из своей библиотеки фото."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相机权限没开 — 不过你还是可以\n从相册里制作一张。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相機權限沒開 — 不過你還是可以\n從相簿裡製作一張。"
+          }
+        }
+      }
+    },
     "Camera's off, but you can still\nmake one from your library." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -4936,6 +5577,7 @@
       }
     },
     "Cut, dressed, and dated — on device." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -5001,6 +5643,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "摳好、裝幀、標上日期——都在裝置上。"
+          }
+        }
+      }
+    },
+    "Cut, dressed, dated — right on your phone." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgeschnitten, gestaltet, datiert — direkt auf dem Handy."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortada, decorada, fechada — en tu propio móvil."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortada, decorada, fechada — en tu propio celular."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découpée, habillée, datée — directement sur votre téléphone."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ritagliata, vestita, datata — direttamente sul telefono."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り抜いて、仕立てて、日付を入れて — すべてスマホの中で。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오려내고, 꾸미고, 날짜까지 — 휴대폰 안에서 전부."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortada, decorada, datada — direto no seu celular."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вырезано, оформлено, датировано — прямо на телефоне."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪裁、装扮、标注日期 — 全部在手机上完成。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪裁、裝扮、標註日期 — 全部在手機上完成。"
           }
         }
       }
@@ -5076,6 +5788,7 @@
       }
     },
     "Dated and kept forever." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -5141,6 +5854,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "標上日期，一直留著。"
+          }
+        }
+      }
+    },
+    "Dated and kept, for good." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datiert und für immer aufbewahrt."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechada y guardada para siempre."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechada y guardada para siempre."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datée et gardée pour de bon."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datata e conservata per sempre."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日付を刻んで、ずっと残る。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "날짜가 찍히고, 영원히 남아요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datada e guardada para sempre."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С датой — и сохранено навсегда."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标好日期,永久留存。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標好日期,永久留存。"
           }
         }
       }
@@ -6128,6 +6911,76 @@
         }
       }
     },
+    "Everyone's first one is free. Full access keeps every one after it — plus everything below." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das erste ist für alle kostenlos. Der volle Zugang sichert dir jedes weitere — plus alles, was unten folgt."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La primera es gratis para todos. El acceso completo te da todas las siguientes — y todo lo de abajo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La primera es gratis para todos. El acceso completo te da todas las siguientes — y todo lo de abajo."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La première est gratuite pour tout le monde. L'accès complet garde toutes celles qui suivront — plus tout ce qui est en dessous."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La prima è gratis per tutti. L'accesso completo ti tiene tutte le prossime — più tutto quello qui sotto."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最初の1枚は誰でも無料。フルアクセスなら、この先ずっと残せます — 下に並ぶものすべても。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "첫 번째는 누구나 무료예요. 전체 이용권이면 앞으로 만드는 모든 걸 남길 수 있어요 — 아래 있는 것도 전부."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A primeira é grátis pra todo mundo. O acesso completo guarda todas as próximas — mais tudo abaixo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первая — бесплатно для всех. Полный доступ сохранит каждую следующую — и всё, что ниже."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第一张对所有人都是免费的。开通完整版能留住之后每一张 — 还有下面这些。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第一張對所有人都是免費的。開通完整版能留住之後每一張 — 還有下面這些。"
+          }
+        }
+      }
+    },
     "Faded Bloom" : {
       "localizations" : {
         "de-DE" : {
@@ -6898,6 +7751,76 @@
         }
       }
     },
+    "If you bought Snipsy with a different account, sign in with that one and try again." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn du Snipsy mit einem anderen Apple-Account gekauft hast, melde dich damit an und versuche es erneut."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si compraste Snipsy con otra cuenta de Apple, inicia sesión con esa y vuelve a intentarlo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si compraste Snipsy con otra cuenta de Apple, inicia sesión con esa y vuelve a intentarlo."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si vous avez acheté Snipsy avec un autre compte Apple, connectez-vous avec celui-ci et réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se hai acquistato Snipsy con un altro account Apple, accedi con quello e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のApple アカウントでSnipsyを購入した場合は、そのアカウントでサインインしてもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 Apple 계정으로 Snipsy를 구매했다면 그 계정으로 로그인한 뒤 다시 시도해 주세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se você comprou o Snipsy com outra Conta Apple, faça login com ela e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если вы купили Snipsy под другим Apple Account, войдите в него и повторите попытку."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如果你用其他 Apple 账户购买了 Snipsy，请用该账户登录后重试。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如果你用其他 Apple 賬戶購買了 Snipsy，請用該賬戶登入後重試。"
+          }
+        }
+      }
+    },
     "iMessage" : {
       "shouldTranslate" : false
     },
@@ -6972,6 +7895,7 @@
       }
     },
     "In any chat, your Snipsy drawer\nis right there." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -7042,6 +7966,7 @@
       }
     },
     "In any thread, tap the plus…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -7182,6 +8107,7 @@
       }
     },
     "IT BECOMES A STICKER" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -7321,7 +8247,82 @@
         }
       }
     },
+    "It's a stamp now, on your phone —\n\ndone in seconds." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es ist jetzt eine Marke, direkt auf dem Handy —\nin Sekunden fertig."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya es un sello, en tu móvil —\nlisto en segundos."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya es un sello, en tu celular —\nlisto en segundos."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C'est déjà un timbre, sur votre téléphone —\nprêt en quelques secondes."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ora è un francobollo, sul telefono —\npronto in pochi secondi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もう切手になった、スマホの中で —\n数秒で完成。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이제 우표가 됐어요, 휴대폰에서 —\n몇 초면 끝나요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Já é um selo, no seu celular —\npronto em segundos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Теперь это марка, прямо на телефоне —\nготово за секунды."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "现在它是一张邮票了,就在手机上 —\n几秒就好。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在它是一張郵票了,就在手機上 —\n幾秒就好。"
+          }
+        }
+      }
+    },
+    "It's a stamp now, on your phone —\ndone in seconds." : {
+
+    },
     "It's in your collection —\nand it's a sticker too." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -7387,6 +8388,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已收進你的收藏——\n它也是一張貼紙。"
+          }
+        }
+      }
+    },
+    "It's in your collection now —\nand it works as a sticker too." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es ist jetzt in deiner Sammlung —\nund funktioniert auch als Sticker."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya está en tu colección —\ny también funciona como adhesivo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya está en tu colección —\ny también funciona como calcomanía."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C'est déjà dans votre collection —\net ça marche aussi comme autocollant."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È già nella tua collezione —\ne funziona anche come adesivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もうコレクションに入ってる —\nステッカーとしても使えます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이제 컬렉션에 저장됐어요 —\n스티커로도 쓸 수 있어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Já está na sua coleção —\ne também funciona como adesivo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уже в вашей коллекции —\nи работает как стикер тоже."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它已经在你的收藏里了 —\n也可以当贴纸用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "它已經在你的收藏裡了 —\n也可以當貼紙用。"
           }
         }
       }
@@ -7812,6 +8883,7 @@
       }
     },
     "Keep going, or swipe on." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -8722,6 +9794,7 @@
       }
     },
     "Make a Memory" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -8927,6 +10000,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "把它做成…"
+          }
+        }
+      }
+    },
+    "Make My First One" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meins jetzt machen"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear la mía"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear la mía"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer le mien"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea il mio"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最初の1枚を作る"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "첫 번째 만들기"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Criar o meu"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать первую"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "制作我的第一张"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "製作我的第一張"
           }
         }
       }
@@ -9634,6 +10777,76 @@
         }
       }
     },
+    "No subject found" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Motiv gefunden"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontró ningún sujeto"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontró ningún sujeto"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun sujet trouvé"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun soggetto trovato"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "被写体が見つかりません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "피사체를 찾지 못했어요"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum assunto encontrado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объект не найден"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未找到主体"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未找到主體"
+          }
+        }
+      }
+    },
     "Not now" : {
       "localizations" : {
         "de-DE" : {
@@ -10054,7 +11267,78 @@
         }
       }
     },
+    "One a day, and by next year —\na shelf of them." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eins pro Tag, und nächstes Jahr —\nein ganzes Regal davon."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una al día, y para el próximo año —\ntoda una estantería."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una al día, y para el próximo año —\ntoda una repisa."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une par jour, et d'ici l'an prochain —\ntoute une étagère."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una al giorno, e l'anno prossimo —\nun'intera mensola."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一日一枚、来年にはもう\n棚いっぱいに。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "하루에 하나씩, 내년이면\n선반 가득 쌓여있을 거예요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma por dia, e ano que vem —\numa prateleira cheia delas."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По одной в день — а к следующему году\nцелая полка."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一天一张,到明年 —\n就是满满一架子。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一天一張,到明年 —\n就是滿滿一架子。"
+          }
+        }
+      }
+    },
     "One after every day worth it.\nBy next year, a shelf of them." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -10124,6 +11408,79 @@
         }
       }
     },
+    "One cut, two finishes." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Schnitt, zwei Ergebnisse."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un recorte, dos acabados."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un recorte, dos acabados."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une découpe, deux finitions."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un ritaglio, due risultati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り抜きは一つ、仕上げは二通り。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 번의 오려내기, 두 가지 완성."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um recorte, dois acabamentos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Один вырез — два результата."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪裁一次,两种成品。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪裁一次,兩種成品。"
+          }
+        }
+      }
+    },
+    "One down. Do it again tomorrow.\nBy next year, a shelf of them." : {
+
+    },
     "One look for the batch — you can change any of them later." : {
       "localizations" : {
         "de-DE" : {
@@ -10190,6 +11547,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "整批用同一種效果——之後可以單獨修改。"
+          }
+        }
+      }
+    },
+    "One more, or swipe on." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch eins, oder wische weiter."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una más, o desliza para continuar."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una más, o desliza para continuar."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une de plus, ou continuez en glissant."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un'altra, oppure scorri e vai avanti."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もう1枚、それともスワイプで次へ。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "하나 더, 아니면 스와이프."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mais um, ou continue deslizando."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё один — или листайте дальше."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再来一张,或者直接划走。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "再來一張,或者直接滑走。"
           }
         }
       }
@@ -10334,7 +11761,78 @@
         }
       }
     },
+    "Open a photo, tap Share…" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne ein Foto, tippe auf Teilen…"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre una foto, toca Compartir…"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre una foto, toca Compartir…"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrez une photo, appuyez sur Partager…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri una foto, tocca Condividi…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真を開いて、共有をタップ…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사진을 열고 공유를 눌러요…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra uma foto, toque em Compartilhar…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте фото, нажмите «Поделиться»…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开一张照片,点击“共享”…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打開一張照片,點擊「共享」…"
+          }
+        }
+      }
+    },
     "Open any photo, tap Share…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -10545,6 +12043,7 @@
       }
     },
     "Or just swipe on — you can add photos\nfrom your library any time." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -10680,6 +12179,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "或者做成…"
+          }
+        }
+      }
+    },
+    "Or swipe on — add photos\nfrom your library any time." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oder wische weiter — füge jederzeit Fotos\naus deiner Mediathek hinzu."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O desliza para continuar — añade fotos\nde tu galería cuando quieras."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O desliza para continuar — añade fotos\nde tu galería cuando quieras."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ou continuez en glissant — ajoutez des photos\nde votre photothèque à tout moment."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oppure scorri e vai avanti — aggiungi foto\ndalla tua libreria quando vuoi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "またはそのままスワイプ —\nライブラリからいつでも写真を追加できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아니면 그냥 스와이프하세요 — 사진 보관함에서\n언제든 사진을 추가할 수 있어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ou continue deslizando — adicione fotos\nda sua galeria quando quiser."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Или просто листайте дальше — добавляйте фото\nиз библиотеки в любой момент."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或者直接划走 — 随时都能\n从相册里添加照片。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "或者直接滑走 — 隨時都能\n從相簿裡新增照片。"
           }
         }
       }
@@ -10898,6 +12467,7 @@
       }
     },
     "Photos pile up.\nNone of them get kept." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -10967,7 +12537,218 @@
         }
       }
     },
+    "PHOTOS PILE UP. THIS ONE GETS KEPT." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FOTOS STAPELN SICH. DIESES BLEIBT."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LAS FOTOS SE ACUMULAN. ESTA SE QUEDA."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LAS FOTOS SE ACUMULAN. ESTA SE QUEDA."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LES PHOTOS S'ENTASSENT. CELLE-CI RESTE."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LE FOTO SI ACCUMULANO. QUESTA RESTA."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写真は溜まっていく。これは残る。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사진은 쌓여만 가요. 이건 남아요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AS FOTOS SE ACUMULAM. ESTA FICA."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ФОТО НАКАПЛИВАЮТСЯ. ЭТО ОСТАНЕТСЯ."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片越堆越多,这一张会留下来。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片越堆越多,這一張會留下來。"
+          }
+        }
+      }
+    },
+    "Pick again whenever you like." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ändere deine Wahl jederzeit."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a elegir cuando quieras."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vuelve a elegir cuando quieras."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changez d'avis quand vous voulez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puoi rifare la scelta quando vuoi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "いつでも選び直せます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "언제든 다시 고를 수 있어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha de novo quando quiser."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Меняйте выбор в любой момент."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "随时都可以重新选择。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隨時都可以重新選擇。"
+          }
+        }
+      }
+    },
+    "Pick everything that's true." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle alles aus, was zutrifft."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige todo lo que sea cierto."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige todo lo que sea cierto."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionnez tout ce qui est vrai."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli tutto ciò che è vero per te."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当てはまるものをすべて選んでください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "해당하는 걸 모두 골라주세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha tudo o que for verdade."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отметьте всё, что подходит."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选出所有符合你情况的选项。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選出所有符合你情況的選項。"
+          }
+        }
+      }
+    },
     "Pick whatever's true." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -12227,6 +14008,77 @@
         }
       }
     },
+    "Same photo, cut out on your phone —\nthen dressed either way." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dasselbe Foto, auf dem Handy freigestellt —\nund daraus wird beides."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La misma foto, recortada en tu móvil —\ny de ahí salen las dos."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La misma foto, recortada en tu celular —\ny de ahí salen las dos."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La même photo, détourée sur votre téléphone —\net elle devient l'un ou l'autre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La stessa foto, ritagliata sul telefono —\ne diventa l'uno o l'altro."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同じ写真を端末で切り抜いて —\nどちらにもなります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "같은 사진을 기기에서 오려내 —\n둘 중 무엇으로든 만들어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A mesma foto, recortada no seu celular —\ne vira os dois."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "То же фото, вырезанное на телефоне —\nи получается и то, и другое."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同一张照片，在手机上抠出主体 —\n两种都能做。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同一張照片，在手機上摳出主體 —\n兩種都能做。"
+          }
+        }
+      }
+    },
     "SAVE %lld%%" : {
       "localizations" : {
         "de-DE" : {
@@ -12293,6 +14145,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "省 %lld%%"
+          }
+        }
+      }
+    },
+    "SEND IT AS A STICKER" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ALS STICKER VERSENDEN"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ENVÍALO COMO ADHESIVO"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ENVÍALO COMO CALCOMANÍA"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ENVOYEZ-LE EN AUTOCOLLANT"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "INVIALO COME ADESIVO"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ステッカーとして送る"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스티커로 보내보세요"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ENVIE COMO ADESIVO"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ОТПРАВЬТЕ КАК СТИКЕР"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把它当贴纸发出去"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把它當貼紙傳出去"
           }
         }
       }
@@ -12577,7 +14499,78 @@
         }
       }
     },
+    "Snap anything — watch it get cut\nand pressed into a stamp." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotografiere irgendetwas — sieh zu, wie es ausgeschnitten\nund zu einer Marke wird."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotografía lo que sea — mira cómo se recorta\ny se convierte en un sello."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotografía lo que sea — mira cómo se recorta\ny se convierte en un sello."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prenez n'importe quelle photo — regardez-la se découper\net devenir un timbre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scatta una foto qualsiasi — guardala ritagliarsi\ne diventare un francobollo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "何でも撮ってみて —\n切り抜かれて切手になる様子を見てください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아무거나 찍어보세요 — 오려내져서\n우표로 완성되는 걸 지켜보세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotografe qualquer coisa — veja ela ser recortada\ne virar um selo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сфотографируйте что угодно — смотрите, как это вырезается\nи превращается в марку."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "随便拍点什么 — 看着它被剪裁出来,\n变成一张邮票。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "隨便拍點什麼 — 看著它被剪裁出來,\n變成一張郵票。"
+          }
+        }
+      }
+    },
     "Snap anything. Watch it get cut out\nand pressed into a stamp." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -12794,6 +14787,7 @@
       }
     },
     "SO WHAT'S WORTH KEEPING?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -13287,6 +15281,7 @@
       }
     },
     "Takes about ten seconds." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -13356,7 +15351,78 @@
         }
       }
     },
+    "Tap the plus, in any thread…" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe in jedem Chat auf das Plus…"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca el signo más en cualquier chat…"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toca el signo más en cualquier chat…"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appuyez sur le plus, dans n'importe quelle conversation…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocca il più, in qualsiasi conversazione…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "どのスレッドでもプラスをタップ…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어떤 대화방에서든 더하기 버튼을 누르고…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toque no mais, em qualquer conversa…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите на плюс в любом чате…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在任意对话里点击加号…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在任意對話裡點擊加號…"
+          }
+        }
+      }
+    },
     "Tell us once, and the rest of this\nis about yours." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -13702,6 +15768,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "服務條款"
+          }
+        }
+      }
+    },
+    "That one's already yours. Full access keeps every one after it — plus everything below." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das gehört dir schon. Der volle Zugang sichert dir jedes weitere — plus alles, was unten folgt."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa ya es tuya. El acceso completo te da todas las siguientes — y todo lo de abajo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esa ya es tuya. El acceso completo te da todas las siguientes — y todo lo de abajo."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Celle-là est déjà à vous. L'accès complet garde toutes celles qui suivront — plus tout ce qui est en dessous."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quella è già tua. L'accesso completo ti tiene tutte le prossime — più tutto quello qui sotto."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "それはもうあなたのもの。フルアクセスなら、この先ずっと残せます — 下に並ぶものすべても。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "그건 이미 당신 거예요. 전체 이용권이면 앞으로 만드는 모든 걸 남길 수 있어요 — 아래 있는 것도 전부."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Essa já é sua. O acesso completo guarda todas as próximas — mais tudo abaixo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это уже ваше. Полный доступ сохранит каждую следующую — и всё, что ниже."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "那一张已经是你的了。开通完整版能留住之后每一张 — 还有下面这些。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "那一張已經是你的了。開通完整版能留住之後每一張 — 還有下面這些。"
           }
         }
       }
@@ -14979,6 +17115,7 @@
       }
     },
     "WHAT USUALLY STOPS YOU?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -15044,6 +17181,146 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "通常是什麼讓你放棄？"
+          }
+        }
+      }
+    },
+    "WHAT'S BEEN STOPPING YOU?" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAS HÄLT DICH BISHER AB?"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿QUÉ TE HA ESTADO FRENANDO?"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿QUÉ TE HA ESTADO DETENIENDO?"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QU'EST-CE QUI VOUS A FREINÉ JUSQU'ICI ?"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "COSA TI HA FRENATO FINORA?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "何があなたを止めていた?"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금까지 뭐가 당신을 막고 있었나요?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O QUE TEM TE IMPEDIDO?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ЧТО ВАМ МЕШАЛО ДО СИХ ПОР?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一直是什么在阻碍你?"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一直是什麼在阻礙你?"
+          }
+        }
+      }
+    },
+    "WHAT'S WORTH KEEPING TO YOU?" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAS IST ES DIR WERT, FESTZUHALTEN?"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿QUÉ MERECE LA PENA CONSERVAR?"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿QUÉ VALE LA PENA CONSERVAR?"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "QU'EST-CE QUI MÉRITE D'ÊTRE GARDÉ ?"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "COSA VALE LA PENA CONSERVARE?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あなたが残したいのは何?"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "당신에게 남길 가치가 있는 건 뭔가요?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O QUE VALE A PENA GUARDAR PRA VOCÊ?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ЧТО СТОИТ СОХРАНИТЬ ИМЕННО ДЛЯ ВАС?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对你来说,什么值得留下?"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "對你來說,什麼值得留下?"
           }
         }
       }
@@ -15329,6 +17606,7 @@
       }
     },
     "You can use any of them, any time." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -15469,6 +17747,7 @@
       }
     },
     "YOUR OLD PHOTOS COUNT" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -15538,7 +17817,78 @@
         }
       }
     },
+    "YOUR OLD PHOTOS COUNT TOO" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AUCH DEINE ALTEN FOTOS ZÄHLEN"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TUS FOTOS ANTIGUAS TAMBIÉN CUENTAN"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TUS FOTOS VIEJAS TAMBIÉN CUENTAN"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VOS ANCIENNES PHOTOS COMPTENT AUSSI"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ANCHE LE TUE VECCHIE FOTO CONTANO"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "昔の写真も対象です"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "예전 사진도 마찬가지예요"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SUAS FOTOS ANTIGAS TAMBÉM VALEM"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "СТАРЫЕ ФОТО ТОЖЕ ПОДХОДЯТ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的旧照片也算数"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的舊照片也算數"
+          }
+        }
+      }
+    },
     "Your subject is lifted and die-cut…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de-DE" : {
           "stringUnit" : {
@@ -15604,6 +17954,146 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在摳出主體並模切…"
+          }
+        }
+      }
+    },
+    "Your subject, lifted and cut…" : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Motiv, freigestellt und ausgeschnitten…"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu sujeto, extraído y recortado…"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu sujeto, extraído y recortado…"
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre sujet, extrait et découpé…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il tuo soggetto, isolato e ritagliato…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "被写体を切り出して…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "피사체를 오려내는 중…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seu sujeito, extraído e recortado…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш объект — выделен и вырезан…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把主体提取出来,剪裁好…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把主體提取出來,剪裁好…"
+          }
+        }
+      }
+    },
+    "Your whole drawer is right there,\nin any chat." : {
+      "localizations" : {
+        "de-DE" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein ganzes Fach ist direkt da,\nin jedem Chat."
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo tu cajón está ahí mismo,\nen cualquier chat."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo tu cajón está ahí mismo,\nen cualquier chat."
+          }
+        },
+        "fr-FR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout votre tiroir est juste là,\ndans n'importe quelle conversation."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutto il tuo cassetto è proprio lì,\nin ogni conversazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "どのチャットでも、あなたの\n引き出しがそのまま使えます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "어떤 대화방에서든 내 스티커함\n전체가 바로 거기 있어요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toda sua gaveta está bem ali,\nem qualquer conversa."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Весь ваш набор стикеров прямо тут,\nв любом чате."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的整个贴纸抽屉都在那儿,\n任何对话都能用。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的整個貼紙抽屜都在那兒,\n任何對話都能用。"
           }
         }
       }

@@ -3,12 +3,16 @@ import SwiftUI
 /// First run (and after Delete All Data): eight pages on paper, ordered as an
 /// argument rather than a reel of demos —
 ///
-///   1 the problem · 2 what's worth keeping (goal) · 3 what stops you (pain)
-///   4 the reply, die-cut with the real choreography · 5 they keep a real one
-///   6 old photos count too · 7 it becomes a sticker · 8 the close
+///   1 the hook (one photo, cut once) · 2 what's worth keeping (goal)
+///   3 what stops you (pain) · 4 the reply, die-cut with the real
+///   choreography · 5 they keep a real one · 6 old photos count too
+///   7 it becomes a sticker · 8 the close
 ///
-/// Screens 2 and 3 are what stop the rest reading as a feature tour: every
-/// screen after them is answering something the user said.
+/// Stamp-first throughout — Canvas/decorations don't appear until one
+/// sentence on page 8, as the payoff for having a few stamps to build a
+/// page out of, never as the opener. Screens 2 and 3 are what stop the
+/// rest reading as a feature tour: every screen after them is answering
+/// something the user said.
 struct OnboardingScreen: View {
     let model: AppModel
     let screenSize: CGSize
@@ -29,7 +33,7 @@ struct OnboardingScreen: View {
             PaperBackdrop()
 
             TabView(selection: $page) {
-                OnboardingCanvasPage(
+                OnboardingHookPage(
                     demo: demo, haptics: model.haptics,
                     isActive: page == 0, screenSize: screenSize)
                     .tag(0)
@@ -127,6 +131,7 @@ struct OnboardingScreen: View {
                 purchases: model.purchases,
                 demo: demo,
                 occasion: model.occasion,
+                didKeepFirst: !model.store.stamps.isEmpty,
                 screenSize: screenSize,
                 safeArea: safeArea,
                 onUnlocked: {

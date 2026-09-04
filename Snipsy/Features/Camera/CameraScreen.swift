@@ -19,6 +19,10 @@ struct CameraScreen: View {
     /// belongs to this screen — `DevelopOverlay` springs the frozen frame
     /// back out of it.
     @State private var capturePunch = false
+    /// The picture holds still from the shutter tap until the develop takes
+    /// over. There is no curtain any more: what fills the glass during a
+    /// capture is the shot itself, not black.
+    @State private var frozenPreview = false
 
     // MARK: Frame geometry
     //
@@ -160,6 +164,14 @@ struct CameraScreen: View {
         }
         .frame(width: screenSize.width, height: screenSize.height)
         .background(Color.black)
+        // Thaw whenever the camera owns the screen again — after a retake,
+        // and after a capture that failed before it could hand over. Held
+        // frozen through `.developing`/`.reveal` on purpose: the develop is
+        // covering this view anyway, so live frames there would only be
+        // power spent on pixels nobody sees.
+        .onChange(of: model.inCameraPhase && !model.isCapturing) { _, idle in
+            if idle { frozenPreview = false }
+        }
         .fullScreenCover(item: $framingImage) { picked in
             PhotoFramingScreen(
                 image: picked.image,
@@ -197,15 +209,19 @@ struct CameraScreen: View {
     }
 
     private var feed: some View {
-        CameraPreviewView(session: model.camera.session) { viewPoint, devicePoint in
-            model.camera.focus(atDevicePoint: devicePoint)
-            model.haptics.tick()
-            focusPoint = viewPoint
-            Task {
-                try? await Task.sleep(for: .seconds(0.9))
-                if focusPoint == viewPoint { focusPoint = nil }
-            }
-        }
+        CameraPreviewView(
+            session: model.camera.session,
+            onTap: { viewPoint, devicePoint in
+                model.camera.focus(atDevicePoint: devicePoint)
+                model.haptics.tick()
+                focusPoint = viewPoint
+                Task {
+                    try? await Task.sleep(for: .seconds(0.9))
+                    if focusPoint == viewPoint { focusPoint = nil }
+                }
+            },
+            frozen: frozenPreview
+        )
         .frame(width: screenSize.width, height: screenSize.height)
     }
 
@@ -280,6 +296,10 @@ struct CameraScreen: View {
         // path through the app that never needs the camera at all.
         if isLive {
             ShutterButton {
+                // Freeze first, in the same turn as the tap: the shot is
+                // whatever was in the window at this instant, and that is
+                // what should stay there while the photo is taken.
+                frozenPreview = true
                 Self.firePunch($capturePunch)
                 let size = screenSize
                 let rect = Self.viewfinderRect(in: size)

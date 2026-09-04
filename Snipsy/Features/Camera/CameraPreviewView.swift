@@ -6,6 +6,10 @@ struct CameraPreviewView: UIViewRepresentable {
     let session: AVCaptureSession
     /// (point in view coords, point in capture-device coords)
     var onTap: (CGPoint, CGPoint) -> Void
+    /// Hold the last frame instead of showing live video. This is what a
+    /// shutter press leaves on screen while the photo is being taken — the
+    /// picture you framed, standing still.
+    var frozen: Bool = false
 
     func makeUIView(context: Context) -> PreviewView {
         let view = PreviewView()
@@ -25,6 +29,7 @@ struct CameraPreviewView: UIViewRepresentable {
         // The layer is created before permission is granted, so the first
         // real attach usually lands here rather than in makeUIView.
         view.wants = session
+        view.frozen = frozen
         view.syncSession()
     }
 
@@ -60,6 +65,27 @@ struct CameraPreviewView: UIViewRepresentable {
         /// own `session` is derived from this and the window, never set
         /// directly.
         var wants: AVCaptureSession?
+
+        /// Stop feeding the layer new frames; it keeps displaying the last
+        /// one it got.
+        ///
+        /// This is the whole shutter "blink". Disabling the preview
+        /// *connection* is instantaneous and costs nothing — no snapshot, no
+        /// bitmap, no extra layer — and it leaves exactly the picture the
+        /// user framed sitting in the window while the photo is taken behind
+        /// it. The alternative was covering the glass with an opaque
+        /// curtain, which is only ever needed because a live feed would
+        /// otherwise keep moving under it. Freeze the feed and the curtain
+        /// has nothing left to hide.
+        var frozen = false {
+            didSet { if frozen != oldValue { applyFreeze() } }
+        }
+
+        /// The connection only exists once a session is attached, so this
+        /// runs again after every attach — not just when `frozen` flips.
+        func applyFreeze() {
+            previewLayer.connection?.isEnabled = !frozen
+        }
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
@@ -102,6 +128,7 @@ struct CameraPreviewView: UIViewRepresentable {
                 // this hop was in the queue.
                 guard previewLayer.session !== target else { return }
                 previewLayer.session = target
+                applyFreeze()
             }
         }
 

@@ -35,13 +35,13 @@ final class OnboardingDemo {
         let tint: RGBValue
     }
 
-    /// Page 2 — "THE TWO OF YOU, KEPT".
+    /// Page 4 — "A STICKER, OR A STAMP".
     private static let heroKey = "couple2"
-    /// Page 3 — the share sheet demo.
+    /// Page 6 — the share sheet demo.
     private static let shareKey = "couple1"
-    /// Page 4 — the Messages bubble literally reads "coffee first".
+    /// Page 7 — the Messages bubble literally reads "coffee first".
     static let messagesKey = "coffee"
-    /// Page 5 — the paywall's stamp.
+    /// The paywall's stamp.
     static let paywallKey = "lily"
 
     private(set) var hero: Subject?
@@ -51,28 +51,28 @@ final class OnboardingDemo {
     /// Every loaded subject; pages look theirs up by key.
     private(set) var subjects: [Subject] = []
 
-    /// couple1 raw photo — shown as a tilted photo card on the canvas page.
-    /// No Vision needed: it's used as a flat photo, not a die-cut.
-    private(set) var canvasPhoto: UIImage?
-
     func load() {
         guard hero == nil else { return }
 
-        // Load couple1 raw (no cutout pipeline — flat photo for the canvas page).
-        if let url = Bundle.main.url(forResource: "couple1", withExtension: "jpg"),
-           let img = UIImage(contentsOfFile: url.path) {
-            canvasPhoto = img
-        }
-
         Task.detached(priority: .userInitiated) { [weak self] in
-            // Loaded in screen order, so each page's subject is ready
-            // about when you reach it.
+            // Loaded in screen order, so each page's subject is ready about
+            // when you reach it.
+            //
+            // Tried running all five Vision lifts concurrently instead —
+            // reverted. The motivating problem (a sparse first screen) turned
+            // out to be a Simulator-only artifact: `VNGenerateForegroundInstanceMaskRequest`
+            // doesn't run in Simulator at all, so what looked like a slow
+            // sequential queue was actually every lift failing instantly,
+            // in both the sequential and concurrent versions alike. On a
+            // real device, five simultaneous Vision + CoreImage passes is
+            // real resource pressure with no proven upside — sequential is
+            // the version that was actually verified working.
             let specs: [(file: String, title: String)] = [
-                ("couple2", "Us"),      // page 2 hero
-                ("couple1", L("Together")),// page 3 share sheet
-                ("coffee",  L("Coffee")),  // page 4 Messages
-                ("lily",    L("Lily")),    // page 5 paywall
-                ("puppy",   L("Buddy")),   // drawer + canvas
+                ("couple2", "Us"),      // page 4 hero
+                ("couple1", L("Together")),// page 6 share sheet
+                ("coffee",  L("Coffee")),  // page 7 Messages
+                ("lily",    L("Lily")),    // paywall
+                ("puppy",   L("Buddy")),   // page 1 hook + drawer
             ]
             var loaded: [Subject] = []
             for spec in specs {
@@ -80,10 +80,10 @@ final class OnboardingDemo {
                 else { continue }
                 loaded.append(s)
                 let soFar = loaded
-                // Publish as each one lands. The memory page leads the
-                // onboarding and draws from `subjects`, so waiting for all
-                // four (three of which run Vision live on first launch)
-                // would leave the very first screen half-built.
+                // Publish as each one lands. The onboarding leads with
+                // page 1's subject and draws from `subjects` throughout, so
+                // waiting for all five (four of which run Vision live on
+                // first launch) would leave the very first screen blank.
                 await MainActor.run { [weak self] in
                     guard let self else { return }
                     self.subjects = soFar

@@ -14,8 +14,8 @@ struct OnboardingOccasionPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                OnboardingTitle("SO WHAT'S WORTH KEEPING?")
-                Text("Tell us once, and the rest of this\nis about yours.")
+                OnboardingTitle("WHAT'S WORTH KEEPING TO YOU?")
+                Text("Answer once, and everything after\nis about yours.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -30,7 +30,7 @@ struct OnboardingOccasionPage: View {
             }
             .padding(.horizontal, 30)
 
-            Text("You can use any of them, any time.")
+            Text("Pick again whenever you like.")
                 .font(.system(size: 12.5, design: .rounded))
                 .foregroundStyle(Theme.inkSoft.opacity(0.8))
                 .padding(.top, 20)

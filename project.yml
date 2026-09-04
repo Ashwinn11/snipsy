@@ -58,8 +58,8 @@ targets:
       path: Snipsy/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.6"
-        CFBundleVersion: "5"
+        CFBundleShortVersionString: "1.7"
+        CFBundleVersion: "7"
         NSCameraUsageDescription: "Snipsy uses the camera so you can turn your moments into collectible stamps and stickers."
         NSPhotoLibraryAddUsageDescription: "Snipsy saves the stamps and stickers you export to your photo library."
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
@@ -81,8 +81,8 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
         ENABLE_PREVIEWS: "YES"
-        CURRENT_PROJECT_VERSION: "5"
-        MARKETING_VERSION: "1.6"
+        CURRENT_PROJECT_VERSION: "7"
+        MARKETING_VERSION: "1.7"
   SnipsyStickers:
     type: app-extension.messages
     platform: iOS
@@ -99,8 +99,8 @@ targets:
       path: SnipsyStickers/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.6"
-        CFBundleVersion: "5"
+        CFBundleShortVersionString: "1.7"
+        CFBundleVersion: "7"
         UIUserInterfaceStyle: Light
         NSExtension:
           NSExtensionPointIdentifier: com.apple.message-payload-provider
@@ -110,8 +110,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark.stickers
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
-        CURRENT_PROJECT_VERSION: "5"
-        MARKETING_VERSION: "1.6"
+        CURRENT_PROJECT_VERSION: "7"
+        MARKETING_VERSION: "1.7"
         ASSETCATALOG_COMPILER_APPICON_NAME: iMessage App Icon
   SnipsyShare:
     type: app-extension
@@ -150,8 +150,8 @@ targets:
       path: SnipsyShare/Info.plist
       properties:
         CFBundleDisplayName: Snipsy
-        CFBundleShortVersionString: "1.6"
-        CFBundleVersion: "5"
+        CFBundleShortVersionString: "1.7"
+        CFBundleVersion: "7"
         UIUserInterfaceStyle: Light
         UIAppFonts:
           - PlusJakartaSans-Regular.ttf
@@ -170,5 +170,5 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ashwinn.postmark.share
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: "NO"
-        CURRENT_PROJECT_VERSION: "5"
-        MARKETING_VERSION: "1.6"
+        CURRENT_PROJECT_VERSION: "7"
+        MARKETING_VERSION: "1.7"

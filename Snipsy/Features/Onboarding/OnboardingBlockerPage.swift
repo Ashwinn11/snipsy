@@ -18,8 +18,8 @@ struct OnboardingBlockerPage: View {
             Spacer(minLength: 0)
 
             VStack(spacing: 10) {
-                OnboardingTitle("WHAT USUALLY STOPS YOU?")
-                Text("Pick whatever's true.")
+                OnboardingTitle("WHAT'S BEEN STOPPING YOU?")
+                Text("Pick everything that's true.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)

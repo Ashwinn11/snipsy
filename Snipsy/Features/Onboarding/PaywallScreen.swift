@@ -9,6 +9,12 @@ struct PaywallScreen: View {
     /// What onboarding's question answered, if anything — the headline
     /// echoes it back. `nil` falls back to the general line.
     var occasion: MemoryOccasion? = nil
+    /// Whether onboarding's capture screen already produced a real, kept
+    /// stamp. Names the actual free/paid boundary in the bridging line
+    /// below — there is no enforced free tier past this gate today, so
+    /// the copy never claims one; it only ever describes what's already
+    /// true for this specific user.
+    var didKeepFirst: Bool = false
     let screenSize: CGSize
     let safeArea: EdgeInsets
     var onUnlocked: () -> Void
@@ -40,6 +46,19 @@ struct PaywallScreen: View {
                         stickerFan
                             .padding(.bottom, 10)
                         OnboardingTitle(headline)
+                        // Bridges the 8 stamp-first pages that came before
+                        // this decoration-led pitch — without it, the jump
+                        // from "make your first stamp" to a sticker/paper
+                        // count reads as a non sequitur. Honest about the
+                        // actual gate: never claims stamps stay free after
+                        // this screen, since nothing enforces that today.
+                        Text(didKeepFirst
+                             ? "That one's already yours. Full access keeps every one after it — plus everything below."
+                             : "Everyone's first one is free. Full access keeps every one after it — plus everything below.")
+                            .font(.system(size: 13, design: .rounded))
+                            .foregroundStyle(Theme.inkSoft)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 30)
                     }
                     .padding(.bottom, 18)
                     .entrance(shown: stage >= 1)

@@ -32,7 +32,7 @@ struct OnboardingDemoPage: View {
     /// Bumped on every restart/stop; a loop that awakes into a different
     /// generation must exit silently.
     @State private var gen = 0
-    @State private var phaseLine = L("Anything in the photo gets lifted out…")
+    @State private var phaseLine = L("Your subject, lifted and cut…")
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,7 +42,7 @@ struct OnboardingDemoPage: View {
                 // The demo plays the fork, not just the cut: it settles as a
                 // sticker, then dresses as a stamp. The headline names both,
                 // and plants "sticker" for the Messages screen later.
-                OnboardingTitle("A STICKER, OR A STAMP")
+                OnboardingTitle("A STICKER. OR A STAMP.")
                 // Answers the pain they just picked, so this reads as a
                 // reply rather than the next item in a feature tour.
                 // `blocker?.answer` is already localized; the fallback was
@@ -50,7 +50,7 @@ struct OnboardingDemoPage: View {
                 // anyone who skipped the blocker question got this line in
                 // English.
                 Text(blocker?.answer
-                     ?? L("Same photo, cut out on your phone —\nthen dressed either way."))
+                     ?? L("One cut, two finishes."))
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -180,7 +180,7 @@ struct OnboardingDemoPage: View {
             paper = 1
             caption = 1
             settle = 1
-            phaseLine = L("Cut, dressed, and dated — on device.")
+            phaseLine = L("Cut, dressed, dated — right on your phone.")
             return
         }
 
@@ -204,7 +204,7 @@ struct OnboardingDemoPage: View {
     /// One full cycle: raw photo → punch → shatter → sticker → stamp →
     /// hold → fade out and reset. ~8s.
     private func runCycle(_ g: Int) async {
-        phaseLine = L("Your subject is lifted and die-cut…")
+        phaseLine = L("Your subject, lifted and cut…")
         await afterNextCommit()
         try? await Task.sleep(for: .seconds(0.8))
         guard gen == g else { return }
@@ -229,7 +229,7 @@ struct OnboardingDemoPage: View {
             settle = 1
             flight = 1
         }
-        phaseLine = L("A sticker, cut on device…")
+        phaseLine = L("A sticker, right there…")
         try? await Task.sleep(for: .seconds(1.4))
         guard gen == g else { return }
 
@@ -241,7 +241,7 @@ struct OnboardingDemoPage: View {
             paper = 1
             settle = 1
         }
-        phaseLine = L("…or a stamp on the paper you choose.")
+        phaseLine = L("…or dressed as a stamp, your call.")
         try? await Task.sleep(for: .seconds(0.2))
         guard gen == g else { return }
         withAnimation(.linear(duration: 0.5)) { caption = 1 }
@@ -255,7 +255,7 @@ struct OnboardingDemoPage: View {
 
         // The struck date already sits in the caption line — land the beat.
         haptics.thunk()
-        phaseLine = L("Dated and kept forever.")
+        phaseLine = L("Dated and kept, for good.")
         // Holds here. The wave driver is the only thing still running, and
         // it has already finished its travel — stop it so the display link
         // isn't ticking behind a static screen for the rest of onboarding.

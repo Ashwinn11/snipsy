@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Page 7: the close.
+/// Page 8: the close.
 ///
 /// Shows the one stamp they actually made, and nothing else. An earlier
 /// version drew a twelve-slot shelf filling up to sell "a year of this" —
@@ -8,6 +8,11 @@ import SwiftUI
 /// repeated. A collection they don't have is a lie to look at and dull to
 /// look at. The future belongs in the copy; the screen shows only what's
 /// real.
+///
+/// One idea only: celebrate what they just made (or the habit they're
+/// about to start) and hand off into the paywall. Canvas is not named
+/// here — this screen's whole job is the stamp habit; the paywall's own
+/// bridging line is where the next idea belongs, not stacked onto this one.
 struct OnboardingFinalPage: View {
     let model: AppModel
     let safeArea: EdgeInsets
@@ -30,8 +35,8 @@ struct OnboardingFinalPage: View {
             VStack(spacing: 10) {
                 OnboardingTitle(mine == nil ? "MAKE THE FIRST ONE" : "THAT'S NUMBER ONE")
                 Text(mine == nil
-                     ? "One after every day worth it.\nBy next year, a shelf of them."
-                     : "One after every day worth it.\nBy next year, a shelf of them.")
+                     ? "One a day, and by next year —\na shelf of them."
+                     : "One down. Do it again tomorrow.\nBy next year, a shelf of them.")
                     .font(.system(size: 14.5, design: .rounded))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -44,7 +49,7 @@ struct OnboardingFinalPage: View {
             Button {
                 onStart()
             } label: {
-                Text(mine == nil ? "Make a Memory" : "Start my collection")
+                Text(mine == nil ? "Make My First One" : "Start my collection")
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 38)

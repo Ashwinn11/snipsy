@@ -846,10 +846,18 @@ struct RevealScreen: View {
 }
 
 /// Gentle scale-on-press for filled buttons.
+///
+/// Used on nearly every button in the app, including ones tapped
+/// repeatedly in a single sitting (paywall plan cards, onboarding
+/// continues, "Take a photo" / "Make another"). `springBouncy` (response
+/// 0.5) reads fine for a one-off celebration but turns a workhorse tap
+/// into a slow squish-and-rebound when it fires dozens of times a
+/// session — `springTight` settles in roughly a third of the time with
+/// almost no overshoot, which reads as responsive rather than springy.
 struct PressableButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.93 : 1)
-            .animation(Theme.springBouncy, value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(Theme.springTight, value: configuration.isPressed)
     }
 }
