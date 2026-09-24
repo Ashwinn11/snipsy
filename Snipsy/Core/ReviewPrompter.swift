@@ -10,9 +10,8 @@ import UIKit
 @MainActor
 final class ReviewPrompter {
 
-    /// App Store ID for the write-review deep link. Empty until the app
-    /// is live — the manual path falls back to the system prompt then.
-    static let appStoreID = ""
+    /// App Store ID used by the explicit write-review deep link.
+    static let appStoreID = "6789720772"
 
     /// Moments worth a prompt. Counts are thresholds, not exact hits:
     /// a milestone blocked by the day gap simply fires on the first
